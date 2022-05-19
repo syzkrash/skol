@@ -195,7 +195,7 @@ func (l *Lexer) nextChar() (tok *Token, err error) {
 
 func (l *Lexer) nextPunctuator(c rune) (tok *Token, ok bool) {
 	switch c {
-	case '(', ')', '$':
+	case '(', ')', '$', '%', ':', '/':
 		tok = &Token{
 			Kind:  TkPunct,
 			Where: l.src.Position,
