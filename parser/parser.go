@@ -28,8 +28,29 @@ func (p *Parser) otherError(where *lexer.Token, msg string, cause error) error {
 	}
 }
 
+// funcCall parses a function call, reading values until enough values for this
+// function are found
+//
+// Example function calls:
+//
+//	add! 1 2               // add(1, 2)
+//	add! sqr! 2 sqr! 2     // add(sqr(2), sqr(2))
+//	add! a b               // add(a, b)
+//	add! mul! a a mul! bb  // add(mul(a, a), mul(b, b))
 func (p *Parser) funcCall(f *FuncDefNode) (n Node, err error) {
-	panic("unimplemented")
+	args := make([]Node, len(f.Args))
+	for i := 0; i < len(args); i++ {
+		v, err := p.value()
+		if err != nil {
+			return nil, err
+		}
+		args[i] = v
+	}
+	n = &FuncCallNode{
+		Func: f.Func,
+		Args: args,
+	}
+	return
 }
 
 // value parses a node that has a value
@@ -40,7 +61,7 @@ func (p *Parser) funcCall(f *FuncDefNode) (n Node, err error) {
 //	45.67      // FloatNode
 //	"hello"    // StringNode
 //	'E'        // CharNode
-//	add 1 2    // FuncCallNode
+//	add! 1 2   // FuncCallNode
 //	age        // VarRefNode
 //
 func (p *Parser) value() (n Node, err error) {
@@ -83,14 +104,19 @@ func (p *Parser) value() (n Node, err error) {
 			Char: r,
 		}
 	case lexer.TkIdent:
-		if _, ok := p.scope.FindVar(tok.Raw); ok {
+		if tok.Raw[len(tok.Raw)-1] == '!' {
+			f, ok := p.scope.FindFunc(tok.Raw[:len(tok.Raw)-1])
+			if !ok {
+				err = p.selfError(tok, "unknown function")
+				return
+			}
+			n, err = p.funcCall(f)
+		} else if _, ok := p.scope.FindVar(tok.Raw); ok {
 			n = &VarRefNode{
 				Var: tok.Raw,
 			}
-		} else if f, ok := p.scope.FindFunc(tok.Raw); ok {
-			n, err = p.funcCall(f)
 		} else {
-			err = p.selfError(tok, "unknown identifier")
+			err = p.selfError(tok, "unknown variable")
 		}
 	default:
 		err = p.selfError(tok, "expected value")
