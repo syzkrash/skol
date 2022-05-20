@@ -103,6 +103,10 @@ func (l *Lexer) nextConstant(c rune) (tok *Token, err error) {
 	num := string(c)
 	for {
 		c, _, err = l.src.ReadRune()
+		if errors.Is(err, io.EOF) {
+			err = nil
+			goto finish
+		}
 		if err != nil {
 			return
 		}
@@ -114,6 +118,7 @@ func (l *Lexer) nextConstant(c rune) (tok *Token, err error) {
 		}
 		num += string(c)
 	}
+finish:
 	tok = &Token{
 		Kind:  TkConstant,
 		Where: pos,

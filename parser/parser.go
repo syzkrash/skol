@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"io"
 	"strconv"
 	"strings"
 
@@ -10,6 +11,17 @@ import (
 type Parser struct {
 	lexer *lexer.Lexer
 	scope *Scope
+}
+
+func NewParser(fn string, src io.RuneScanner) *Parser {
+	return &Parser{
+		lexer: lexer.NewLexer(src, fn),
+		scope: &Scope{
+			parent: nil,
+			Funcs:  make(map[string]*FuncDefNode),
+			Vars:   make(map[string]*VarDefNode),
+		},
+	}
 }
 
 func (p *Parser) selfError(where *lexer.Token, msg string) error {

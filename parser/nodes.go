@@ -14,6 +14,22 @@ const (
 	NdReturn
 )
 
+var nodeKinds = []string{
+	"Integer",
+	"Float",
+	"String",
+	"Char",
+	"VarRef",
+	"VarDef",
+	"FuncCall",
+	"FuncDef",
+	"Return",
+}
+
+func (k NodeKind) String() string {
+	return nodeKinds[k]
+}
+
 type Node interface {
 	Kind() NodeKind
 }
@@ -80,7 +96,7 @@ func (*FuncCallNode) Kind() NodeKind {
 type FuncDefNode struct {
 	Func string
 	Args map[string]ValueType
-	Ret  string
+	Ret  ValueType
 	Body []Node
 }
 
