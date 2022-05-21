@@ -174,9 +174,11 @@ func (p *Parser) varDef() (n Node, err error) {
 		return nil, err
 	}
 
+	vt, _ := p.TypeOf(val)
 	n = &VarDefNode{
-		Var:   nameToken.Raw,
-		Value: val,
+		Var:     nameToken.Raw,
+		Value:   val,
+		VarType: vt,
 	}
 	p.scope.Vars[nameToken.Raw] = n.(*VarDefNode)
 
@@ -241,6 +243,7 @@ func (p *Parser) funcDef() (n Node, err error) {
 		}
 	}
 	p.scope = newScope
+	retType := VtNothing
 	body := []Node{}
 	for {
 		tok, err := p.lexer.Next()
@@ -254,6 +257,15 @@ func (p *Parser) funcDef() (n Node, err error) {
 		if err != nil {
 			return nil, err
 		}
+		if n.Kind() == NdReturn {
+			if retType != VtNothing {
+				return nil, &ParserError{
+					Where: tok,
+					msg:   "duplicate return",
+				}
+			}
+			retType, _ = p.TypeOf(n)
+		}
 		body = append(body, n)
 	}
 	p.scope = p.scope.parent
@@ -262,8 +274,20 @@ func (p *Parser) funcDef() (n Node, err error) {
 		Func: nameToken.Raw,
 		Args: args,
 		Body: body,
+		Ret:  retType,
 	}
 	p.scope.Funcs[nameToken.Raw] = n.(*FuncDefNode)
+	return
+}
+
+func (p *Parser) ret() (n Node, err error) {
+	v, err := p.value()
+	if err != nil {
+		return
+	}
+	n = &ReturnNode{
+		Value: v,
+	}
 	return
 }
 
@@ -276,7 +300,21 @@ func (p *Parser) internalNext(tok *lexer.Token) (n Node, err error) {
 		if tok.Raw == "%" {
 			return p.varDef()
 		}
+		if p.scope.parent != nil && tok.Raw[0] == '>' {
+			return p.ret()
+		}
 		err = p.selfError(tok, "unexpected punctuator")
+	case lexer.TkIdent:
+		if tok.Raw[len(tok.Raw)-1] == '!' {
+			f, ok := p.scope.FindFunc(tok.Raw[:len(tok.Raw)-1])
+			if !ok {
+				err = p.selfError(tok, "unknown function")
+				return
+			}
+			n, err = p.funcCall(f)
+		} else {
+			err = p.selfError(tok, "unexpected identifier")
+		}
 	default:
 		err = p.selfError(tok, "unexpected token")
 	}

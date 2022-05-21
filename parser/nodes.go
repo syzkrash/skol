@@ -1,6 +1,9 @@
 package parser
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type NodeKind uint8
 
@@ -107,7 +110,7 @@ func (*VarDefNode) Kind() NodeKind {
 }
 
 func (n *VarDefNode) String() string {
-	return fmt.Sprintf("VarDef{%s/%s = %s}", n.Var, n.VarType, n.Value)
+	return fmt.Sprintf("VarDef{%s %s = %s}", n.VarType, n.Var, n.Value)
 }
 
 type FuncCallNode struct {
@@ -137,11 +140,12 @@ func (*FuncDefNode) Kind() NodeKind {
 func (n *FuncDefNode) String() string {
 	argText := ""
 	for n, t := range n.Args {
-		argText += n
-		argText += "/"
 		argText += t.String()
 		argText += " "
+		argText += n
+		argText += " "
 	}
+	argText = strings.TrimSuffix(argText, " ")
 	bodyText := ""
 	if len(n.Body) == 0 {
 		bodyText = "(nothing?)"
@@ -152,7 +156,7 @@ func (n *FuncDefNode) String() string {
 	if len(n.Body) > 1 {
 		bodyText = fmt.Sprintf("[... %s]", n.Body[len(n.Body)-1])
 	}
-	return fmt.Sprintf("FuncDef{%s(%s) = %s}", n.Func, argText, bodyText)
+	return fmt.Sprintf("FuncDef{%s %s(%s) = %s}", n.Ret, n.Func, argText, bodyText)
 }
 
 type ReturnNode struct {
@@ -161,4 +165,8 @@ type ReturnNode struct {
 
 func (*ReturnNode) Kind() NodeKind {
 	return NdReturn
+}
+
+func (n *ReturnNode) String() string {
+	return fmt.Sprintf("Return{%s}", n.Value)
 }
