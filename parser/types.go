@@ -3,7 +3,7 @@ package parser
 type ValueType uint8
 
 const (
-	VtUnknown ValueType = iota
+	VtNothing ValueType = iota
 	VtInteger
 	VtFloat
 	VtString
@@ -12,7 +12,7 @@ const (
 )
 
 var types = []string{
-	"Unknown",
+	"Nothing",
 	"Integer",
 	"Float",
 	"String",

@@ -79,6 +79,9 @@ func (l *Lexer) nextIdent(c rune) (tok *Token, err error) {
 	ident := string(c)
 	for {
 		c, _, err = l.src.ReadRune()
+		if errors.Is(err, io.EOF) {
+			goto finish
+		}
 		if err != nil {
 			return
 		}
@@ -90,6 +93,7 @@ func (l *Lexer) nextIdent(c rune) (tok *Token, err error) {
 		}
 		ident += string(c)
 	}
+finish:
 	tok = &Token{
 		Kind:  TkIdent,
 		Where: pos,

@@ -134,6 +134,27 @@ func (*FuncDefNode) Kind() NodeKind {
 	return NdFuncDef
 }
 
+func (n *FuncDefNode) String() string {
+	argText := ""
+	for n, t := range n.Args {
+		argText += n
+		argText += "/"
+		argText += t.String()
+		argText += " "
+	}
+	bodyText := ""
+	if len(n.Body) == 0 {
+		bodyText = "(nothing?)"
+	}
+	if len(n.Body) == 1 {
+		bodyText = fmt.Sprint(n.Body[0])
+	}
+	if len(n.Body) > 1 {
+		bodyText = fmt.Sprintf("[... %s]", n.Body[len(n.Body)-1])
+	}
+	return fmt.Sprintf("FuncDef{%s(%s) = %s}", n.Func, argText, bodyText)
+}
+
 type ReturnNode struct {
 	Value Node
 }

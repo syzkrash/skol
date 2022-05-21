@@ -178,12 +178,93 @@ func (p *Parser) varDef() (n Node, err error) {
 		Var:   nameToken.Raw,
 		Value: val,
 	}
+	p.scope.Vars[nameToken.Raw] = n.(*VarDefNode)
 
 	return
 }
 
 func (p *Parser) funcDef() (n Node, err error) {
-	panic("unimplemented")
+	nameToken, err := p.lexer.Next()
+	if err != nil {
+		return
+	}
+	if nameToken.Kind != lexer.TkIdent {
+		err = p.selfError(nameToken, "expected an identifier")
+		return
+	}
+
+	args := map[string]ValueType{}
+	for {
+		argName, err := p.lexer.Next()
+		if err != nil {
+			return nil, err
+		}
+		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '(' {
+			break
+		}
+		if argName.Kind != lexer.TkIdent {
+			return nil, p.selfError(argName, "expected an identifier")
+		}
+		sept, err := p.lexer.Next()
+		if err != nil {
+			return nil, err
+		}
+		if sept.Kind != lexer.TkPunct {
+			return nil, p.selfError(sept, "expected a punctuator")
+		}
+		if sept.Raw[0] != '/' {
+			return nil, p.selfError(sept, "expected '/'")
+		}
+		argType, err := p.lexer.Next()
+		if err != nil {
+			return nil, err
+		}
+		if argType.Kind != lexer.TkIdent {
+			return nil, p.selfError(argType, "expected an identifier")
+		}
+		t, ok := ParseType(argType.Raw)
+		if !ok {
+			return nil, p.selfError(argType, "unknown type")
+		}
+		args[argName.Raw] = t
+	}
+
+	newScope := &Scope{
+		parent: p.scope,
+		Funcs:  make(map[string]*FuncDefNode),
+		Vars:   make(map[string]*VarDefNode),
+	}
+	for n, t := range args {
+		newScope.Vars[n] = &VarDefNode{
+			VarType: t,
+			Var:     n,
+		}
+	}
+	p.scope = newScope
+	body := []Node{}
+	for {
+		tok, err := p.lexer.Next()
+		if err != nil {
+			return nil, err
+		}
+		if tok.Kind == lexer.TkPunct && tok.Raw[0] == ')' {
+			break
+		}
+		n, err := p.internalNext(tok)
+		if err != nil {
+			return nil, err
+		}
+		body = append(body, n)
+	}
+	p.scope = p.scope.parent
+
+	n = &FuncDefNode{
+		Func: nameToken.Raw,
+		Args: args,
+		Body: body,
+	}
+	p.scope.Funcs[nameToken.Raw] = n.(*FuncDefNode)
+	return
 }
 
 func (p *Parser) internalNext(tok *lexer.Token) (n Node, err error) {
