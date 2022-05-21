@@ -1,5 +1,7 @@
 package lexer
 
+import "fmt"
+
 // TokenKind classifes a token from one of the constants
 type TokenKind uint8
 
@@ -37,4 +39,8 @@ type Token struct {
 	Kind  TokenKind
 	Where Position
 	Raw   string
+}
+
+func (t *Token) String() string {
+	return fmt.Sprintf("%s `%s` at %s", t.Kind, t.Raw, t.Where)
 }
