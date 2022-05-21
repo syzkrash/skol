@@ -10,15 +10,15 @@ import (
 
 type Parser struct {
 	lexer *lexer.Lexer
-	scope *Scope
+	Scope *Scope
 }
 
 func NewParser(fn string, src io.RuneScanner) *Parser {
 	return &Parser{
 		lexer: lexer.NewLexer(src, fn),
-		scope: &Scope{
+		Scope: &Scope{
 			parent: nil,
-			Funcs:  make(map[string]*FuncDefNode),
+			Funcs:  make(map[string]*Function),
 			Vars:   make(map[string]*VarDefNode),
 		},
 	}
@@ -49,7 +49,7 @@ func (p *Parser) otherError(where *lexer.Token, msg string, cause error) error {
 //	add! sqr! 2 sqr! 2     // add(sqr(2), sqr(2))
 //	add! a b               // add(a, b)
 //	add! mul! a a mul! bb  // add(mul(a, a), mul(b, b))
-func (p *Parser) funcCall(f *FuncDefNode) (n Node, err error) {
+func (p *Parser) funcCall(f *Function) (n Node, err error) {
 	args := make([]Node, len(f.Args))
 	for i := 0; i < len(args); i++ {
 		v, err := p.value()
@@ -59,7 +59,7 @@ func (p *Parser) funcCall(f *FuncDefNode) (n Node, err error) {
 		args[i] = v
 	}
 	n = &FuncCallNode{
-		Func: f.Func,
+		Func: f.Name,
 		Args: args,
 	}
 	return
@@ -117,13 +117,13 @@ func (p *Parser) value() (n Node, err error) {
 		}
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
-			f, ok := p.scope.FindFunc(tok.Raw[:len(tok.Raw)-1])
+			f, ok := p.Scope.FindFunc(tok.Raw[:len(tok.Raw)-1])
 			if !ok {
 				err = p.selfError(tok, "unknown function")
 				return
 			}
 			n, err = p.funcCall(f)
-		} else if _, ok := p.scope.FindVar(tok.Raw); ok {
+		} else if _, ok := p.Scope.FindVar(tok.Raw); ok {
 			n = &VarRefNode{
 				Var: tok.Raw,
 			}
@@ -180,7 +180,7 @@ func (p *Parser) varDef() (n Node, err error) {
 		Value:   val,
 		VarType: vt,
 	}
-	p.scope.Vars[nameToken.Raw] = n.(*VarDefNode)
+	p.Scope.Vars[nameToken.Raw] = n.(*VarDefNode)
 
 	return
 }
@@ -232,8 +232,8 @@ func (p *Parser) funcDef() (n Node, err error) {
 	}
 
 	newScope := &Scope{
-		parent: p.scope,
-		Funcs:  make(map[string]*FuncDefNode),
+		parent: p.Scope,
+		Funcs:  make(map[string]*Function),
 		Vars:   make(map[string]*VarDefNode),
 	}
 	for n, t := range args {
@@ -242,7 +242,7 @@ func (p *Parser) funcDef() (n Node, err error) {
 			Var:     n,
 		}
 	}
-	p.scope = newScope
+	p.Scope = newScope
 	retType := VtNothing
 	body := []Node{}
 	for {
@@ -268,15 +268,15 @@ func (p *Parser) funcDef() (n Node, err error) {
 		}
 		body = append(body, n)
 	}
-	p.scope = p.scope.parent
+	p.Scope = p.Scope.parent
 
 	n = &FuncDefNode{
-		Func: nameToken.Raw,
-		Args: args,
-		Body: body,
-		Ret:  retType,
+		Func:    nameToken.Raw,
+		Arg:     args,
+		Body:    body,
+		RetType: retType,
 	}
-	p.scope.Funcs[nameToken.Raw] = n.(*FuncDefNode)
+	p.Scope.Funcs[nameToken.Raw] = DefinedFunction(n.(*FuncDefNode))
 	return
 }
 
@@ -300,13 +300,13 @@ func (p *Parser) internalNext(tok *lexer.Token) (n Node, err error) {
 		if tok.Raw == "%" {
 			return p.varDef()
 		}
-		if p.scope.parent != nil && tok.Raw[0] == '>' {
+		if p.Scope.parent != nil && tok.Raw[0] == '>' {
 			return p.ret()
 		}
 		err = p.selfError(tok, "unexpected punctuator")
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
-			f, ok := p.scope.FindFunc(tok.Raw[:len(tok.Raw)-1])
+			f, ok := p.Scope.FindFunc(tok.Raw[:len(tok.Raw)-1])
 			if !ok {
 				err = p.selfError(tok, "unknown function")
 				return

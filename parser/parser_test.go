@@ -33,7 +33,7 @@ func TestVarRef(t *testing.T) {
 	code := ` a `
 	src := strings.NewReader(code)
 	p := NewParser("TestVarRef", src)
-	p.scope.Vars["a"] = &VarDefNode{} // to prevent 'unknown variable' error
+	p.Scope.Vars["a"] = &VarDefNode{} // to prevent 'unknown variable' error
 	n, err := p.value()
 	if err != nil {
 		t.Fatal(err)
@@ -52,14 +52,13 @@ func TestFuncCall(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestFuncCall", src)
 	// to prevent 'unknown function' error
-	p.scope.Funcs["add"] = &FuncDefNode{
-		Func: "add",
+	p.Scope.Funcs["add"] = &Function{
+		Name: "add",
 		Args: map[string]ValueType{
 			"a": VtFloat,
 			"b": VtFloat,
 		},
-		Ret:  VtFloat,
-		Body: []Node{},
+		Ret: VtFloat,
 	}
 	n, err := p.value()
 	if err != nil {

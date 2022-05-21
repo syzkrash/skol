@@ -1,0 +1,11 @@
+$funnyNumber(
+	>
+	add!
+		add!
+			mul!
+				6 9
+			6
+		9
+)
+
+print! funnyNumber!

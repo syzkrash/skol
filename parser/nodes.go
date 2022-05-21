@@ -127,10 +127,10 @@ func (n *FuncCallNode) String() string {
 }
 
 type FuncDefNode struct {
-	Func string
-	Args map[string]ValueType
-	Ret  ValueType
-	Body []Node
+	Func    string
+	Arg     map[string]ValueType
+	RetType ValueType
+	Body    []Node
 }
 
 func (*FuncDefNode) Kind() NodeKind {
@@ -139,7 +139,7 @@ func (*FuncDefNode) Kind() NodeKind {
 
 func (n *FuncDefNode) String() string {
 	argText := ""
-	for n, t := range n.Args {
+	for n, t := range n.Arg {
 		argText += t.String()
 		argText += " "
 		argText += n
@@ -156,7 +156,26 @@ func (n *FuncDefNode) String() string {
 	if len(n.Body) > 1 {
 		bodyText = fmt.Sprintf("[... %s]", n.Body[len(n.Body)-1])
 	}
-	return fmt.Sprintf("FuncDef{%s %s(%s) = %s}", n.Ret, n.Func, argText, bodyText)
+	return fmt.Sprintf("FuncDef{%s %s(%s) = %s}", n.RetType, n.Func, argText, bodyText)
+}
+
+func (n *FuncDefNode) Name() string {
+	return n.Func
+}
+
+func (n *FuncDefNode) Args() map[string]ValueType {
+	return n.Arg
+}
+
+func (n *FuncDefNode) Ret() ValueType {
+	return n.RetType
+}
+
+func (n *FuncDefNode) Call(a []Node) Node {
+	return &FuncCallNode{
+		Func: n.Name(),
+		Args: a,
+	}
 }
 
 type ReturnNode struct {

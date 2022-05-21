@@ -9,6 +9,7 @@ const (
 	VtString
 	VtChar
 	VtPointer
+	VtAny
 )
 
 var types = []string{
@@ -55,14 +56,14 @@ func (p *Parser) TypeOf(n Node) (t ValueType, ok bool) {
 		t, ok = p.TypeOf(n.(*ReturnNode).Value)
 	case NdVarRef:
 		var v *VarDefNode
-		v, ok = p.scope.FindVar(n.(*VarRefNode).Var)
+		v, ok = p.Scope.FindVar(n.(*VarRefNode).Var)
 		if !ok {
 			return
 		}
 		t = v.VarType
 	case NdFuncCall:
-		var f *FuncDefNode
-		f, ok = p.scope.FindFunc(n.(*FuncCallNode).Func)
+		var f *Function
+		f, ok = p.Scope.FindFunc(n.(*FuncCallNode).Func)
 		if !ok {
 			return
 		}

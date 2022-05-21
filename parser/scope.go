@@ -2,11 +2,11 @@ package parser
 
 type Scope struct {
 	parent *Scope
-	Funcs  map[string]*FuncDefNode
+	Funcs  map[string]*Function
 	Vars   map[string]*VarDefNode
 }
 
-func (s *Scope) FindFunc(name string) (*FuncDefNode, bool) {
+func (s *Scope) FindFunc(name string) (*Function, bool) {
 	f, ok := s.Funcs[name]
 	if s.parent != nil && !ok && name[0] != '_' {
 		return s.parent.FindFunc(name)

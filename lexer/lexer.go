@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -16,6 +17,7 @@ func NewLexer(src io.RuneScanner, fn string) *Lexer {
 }
 
 func (l *Lexer) selfError(msg string) error {
+	fmt.Println(l.src.Position)
 	return &LexerError{
 		msg:   msg,
 		cause: nil,
@@ -238,7 +240,7 @@ func (l *Lexer) internalNext() (tok *Token, err error) {
 		var ok bool
 		tok, ok = l.nextPunctuator(c)
 		if !ok {
-			err = l.selfError("illegal token")
+			err = l.selfError("illegal token: " + string(c))
 		}
 	}
 

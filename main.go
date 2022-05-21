@@ -2,28 +2,116 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
+	"github.com/syzkrash/skol/codegen"
+	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser"
+	"github.com/syzkrash/skol/python"
 )
 
+type Engine uint8
+
+const (
+	EnUndefined Engine = iota
+	EnPy
+	EnAST
+)
+
+var theEngine = EnUndefined
+
+func engineFlag(arg string) error {
+	switch arg {
+	case "py", "python":
+		theEngine = EnPy
+	case "ast":
+		theEngine = EnAST
+	default:
+		return fmt.Errorf("unknown engine: %s", arg)
+	}
+	return nil
+}
+
+var input string
+
 func main() {
+	flag.StringVar(&input, "input", "", "File to compile/transpile/interpret. (Leave blank for REPL)")
+	flag.Func("engine", "Which interpreter/compiler to use.", engineFlag)
+	flag.Parse()
+
+	if theEngine == EnUndefined {
+		fmt.Println("Specify an engine to use.")
+		return
+	}
+
+	if input == "" {
+		repl()
+	} else {
+		compile()
+	}
+}
+
+func compile() {
+	inFile, err := os.Open(input)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer inFile.Close()
+	code, err := io.ReadAll(inFile)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	outFile, err := os.Create(input + ".py")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer outFile.Close()
+	gen := gen(input, bytes.NewReader(code))
+	err = gen.Generate(outFile)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if gen.CanRun() {
+		if err = gen.Run(input + ".py"); err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
+}
+
+func gen(fn string, src io.RuneScanner) codegen.Generator {
+	switch theEngine {
+	case EnPy:
+		return python.NewPython(fn, src)
+	case EnAST:
+		return codegen.NewAST(fn, src)
+	}
+	return nil
+}
+
+func repl() {
 	fmt.Println("Welcome to Skol.")
 	fmt.Println("Type a line of Skol code and hit Enter.")
-	fmt.Println("AST node generated from that line will be printed.")
+	fmt.Println("Code generated for the given engine will be printed.")
 	fmt.Println("Press ^C at any time to exit.")
 
-	input := bufio.NewReader(os.Stdin)
+	stdin := bufio.NewReader(os.Stdin)
 	src := strings.NewReader("")
-	par := parser.NewParser("stdin", src)
+	gen := gen(input, src)
 
 	for {
 		fmt.Print(">> ")
-		line, err := input.ReadString('\n')
+		line, err := stdin.ReadString('\n')
 		if errors.Is(err, io.EOF) {
 			fmt.Print("\n")
 			return
@@ -33,16 +121,16 @@ func main() {
 			return
 		}
 		src.Reset(line)
-		n, err := par.Next()
-		if err != nil {
+		if err = gen.Generate(os.Stdout); err != nil {
 			var perr *parser.ParserError
-			if errors.As(err, &perr) {
+			var lerr *lexer.LexerError
+			if errors.As(err, &lerr) {
+				fmt.Println("Error at", lerr.Where, "-", lerr.Error())
+			} else if errors.As(err, &perr) {
 				fmt.Println("Error on token", perr.Where, "-", perr.Error())
 			} else {
 				fmt.Println("Error -", err)
 			}
-		} else {
-			fmt.Println(n)
 		}
 	}
 }
