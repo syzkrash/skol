@@ -1,11 +1,10 @@
+// funnyNumber returns a funny number
 $funnyNumber(
-	>
-	add!
-		add!
-			mul!
-				6 9
-			6
-		9
+  %six: 6
+  %nine: 9
+  >
+	add! add! mul!
+	six nine six nine // 6*9+6+9
 )
 
 print! funnyNumber!
