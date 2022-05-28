@@ -16,6 +16,7 @@ const (
 	NdVarDef
 	NdFuncCall
 	NdFuncDef
+	NdFuncExtern
 	NdReturn
 )
 
@@ -28,6 +29,7 @@ var nodeKinds = []string{
 	"VarDef",
 	"FuncCall",
 	"FuncDef",
+	"FuncExtern",
 	"Return",
 }
 
@@ -127,10 +129,10 @@ func (n *FuncCallNode) String() string {
 }
 
 type FuncDefNode struct {
-	Func    string
-	Arg     map[string]ValueType
-	RetType ValueType
-	Body    []Node
+	Name string
+	Args map[string]ValueType
+	Ret  ValueType
+	Body []Node
 }
 
 func (*FuncDefNode) Kind() NodeKind {
@@ -139,7 +141,7 @@ func (*FuncDefNode) Kind() NodeKind {
 
 func (n *FuncDefNode) String() string {
 	argText := ""
-	for n, t := range n.Arg {
+	for n, t := range n.Args {
 		argText += t.String()
 		argText += " "
 		argText += n
@@ -156,26 +158,29 @@ func (n *FuncDefNode) String() string {
 	if len(n.Body) > 1 {
 		bodyText = fmt.Sprintf("[... %s]", n.Body[len(n.Body)-1])
 	}
-	return fmt.Sprintf("FuncDef{%s %s(%s) = %s}", n.RetType, n.Func, argText, bodyText)
+	return fmt.Sprintf("FuncDef{%s %s(%s) = %s}", n.Ret, n.Name, argText, bodyText)
 }
 
-func (n *FuncDefNode) Name() string {
-	return n.Func
+type FuncExternNode struct {
+	Name string
+	Args map[string]ValueType
+	Ret  ValueType
 }
 
-func (n *FuncDefNode) Args() map[string]ValueType {
-	return n.Arg
+func (*FuncExternNode) Kind() NodeKind {
+	return NdFuncExtern
 }
 
-func (n *FuncDefNode) Ret() ValueType {
-	return n.RetType
-}
-
-func (n *FuncDefNode) Call(a []Node) Node {
-	return &FuncCallNode{
-		Func: n.Name(),
-		Args: a,
+func (n *FuncExternNode) String() string {
+	argText := ""
+	for n, t := range n.Args {
+		argText += t.String()
+		argText += " "
+		argText += n
+		argText += " "
 	}
+	argText = strings.TrimSuffix(argText, " ")
+	return fmt.Sprintf("FuncExtern{%s %s(%s)}", n.Ret, n.Name, argText)
 }
 
 type ReturnNode struct {

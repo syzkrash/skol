@@ -1,3 +1,7 @@
+$add a/i b/i?
+$mul a/i b/i?
+$print o/i?
+
 $funnyNumber(
 	>
 	add!
