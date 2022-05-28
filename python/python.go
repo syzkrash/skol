@@ -180,6 +180,8 @@ func (p *Python) internalGenerate(n parser.Node, output io.StringWriter) (err er
 			}
 		}
 		output.WriteString("\n")
+	case parser.NdFuncExtern:
+		// do noth ing lol
 	case parser.NdFuncCall:
 		f := n.(*parser.FuncCallNode)
 		p.funcCall(f, output)
