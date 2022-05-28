@@ -78,7 +78,15 @@ func compile() {
 	gen := gen(input, bytes.NewReader(code))
 	err = gen.Generate(outFile)
 	if err != nil {
-		fmt.Println(err)
+		var perr *parser.ParserError
+		var lerr *lexer.LexerError
+		if errors.As(err, &perr) {
+			fmt.Println("Parser error at", perr.Where, "-", perr.Error())
+		} else if errors.As(err, &lerr) {
+			fmt.Println("Lexer error at", lerr.Where, "-", lerr.Error())
+		} else {
+			fmt.Println("Error -", err)
+		}
 		return
 	}
 	if gen.CanRun() {

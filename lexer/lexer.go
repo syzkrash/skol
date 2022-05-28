@@ -33,49 +33,6 @@ func (l *Lexer) otherError(cause error) error {
 	}
 }
 
-func (l *Lexer) ignoreSpace(c rune) (err error) {
-	for isSpace(c) {
-		c, _, err = l.src.ReadRune()
-		if err != nil {
-			return err
-		}
-	}
-	return l.src.UnreadRune()
-}
-
-func (l *Lexer) ignoreComment(c rune) (err error) {
-	for c != '\n' {
-		c, _, err = l.src.ReadRune()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (l *Lexer) ignoreSpacesAndComments() error {
-	for {
-		c, _, err := l.src.ReadRune()
-		if err != nil {
-			return err
-		}
-		if isSpace(c) {
-			if err = l.ignoreSpace(c); err != nil {
-				return err
-			}
-			continue
-		}
-		if c == '#' {
-			if err = l.ignoreComment(c); err != nil {
-				return err
-			}
-			continue
-		}
-		break
-	}
-	return l.src.UnreadRune()
-}
-
 func (l *Lexer) nextIdent(c rune) (tok *Token, err error) {
 	pos := l.src.Position
 	ident := string(c)
@@ -217,14 +174,97 @@ func (l *Lexer) nextPunctuator(c rune) (tok *Token, ok bool) {
 	return
 }
 
-func (l *Lexer) internalNext() (tok *Token, err error) {
-	err = l.ignoreSpacesAndComments()
+func (l *Lexer) ignoreLineComment() (err error) {
+	var c rune
+	for c != '\n' {
+		c, _, err = l.src.ReadRune()
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (l *Lexer) ignoreBlockComment() (err error) {
+	var c rune
+	for {
+		c, _, err = l.src.ReadRune()
+		if err != nil {
+			return
+		}
+		if c != '*' {
+			continue
+		}
+		c, _, err = l.src.ReadRune()
+		if err != nil {
+			return
+		}
+		if c == '/' {
+			break
+		}
+	}
+	return
+}
+
+func (l *Lexer) commentOrSlash() (comment bool, err error) {
+	var c rune
+	c, _, err = l.src.ReadRune()
 	if err != nil {
 		return
 	}
+
+	switch c {
+	case '/':
+		comment = true
+		err = l.ignoreLineComment()
+	case '*':
+		comment = true
+		err = l.ignoreBlockComment()
+	default:
+		comment = false
+		// err = l.src.UnreadRune()
+	}
+
+	return
+}
+
+func (l *Lexer) internalNext() (tok *Token, err error) {
 	c, _, err := l.src.ReadRune()
 	if err != nil {
 		return
+	}
+
+	for {
+		if isSpace(c) {
+			for isSpace(c) {
+				c, _, err = l.src.ReadRune()
+				if err != nil {
+					return
+				}
+			}
+			continue
+		}
+		if c == '/' {
+			var cmt bool
+			cmt, err = l.commentOrSlash()
+			if err != nil {
+				return
+			}
+			if !cmt {
+				tok = &Token{
+					Kind:  TkPunct,
+					Where: l.src.Position,
+					Raw:   "/",
+				}
+				return
+			}
+			c, _, err = l.src.ReadRune()
+			if err != nil {
+				return
+			}
+			continue
+		}
+		break
 	}
 
 	switch {
