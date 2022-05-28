@@ -1,4 +1,7 @@
-// funnyNumber returns a funny number
+$add a/i b/i?
+$mul a/i b/i?
+$print o/i?
+
 $funnyNumber(
   %six: 6
   %nine: 9

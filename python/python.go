@@ -141,14 +141,14 @@ func (p *Python) internalGenerate(n parser.Node, output io.StringWriter) (err er
 		if _, err = output.WriteString("def "); err != nil {
 			return
 		}
-		if _, err = output.WriteString(f.Func); err != nil {
+		if _, err = output.WriteString(f.Name); err != nil {
 			return
 		}
 		if _, err = output.WriteString("("); err != nil {
 			return
 		}
 		argNames := []string{}
-		for n := range f.Arg {
+		for n := range f.Args {
 			argNames = append(argNames, n)
 		}
 		if len(argNames) == 1 {
@@ -180,6 +180,8 @@ func (p *Python) internalGenerate(n parser.Node, output io.StringWriter) (err er
 			}
 		}
 		output.WriteString("\n")
+	case parser.NdFuncExtern:
+		// do noth ing lol
 	case parser.NdFuncCall:
 		f := n.(*parser.FuncCallNode)
 		p.funcCall(f, output)

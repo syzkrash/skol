@@ -185,52 +185,7 @@ func (p *Parser) varDef() (n Node, err error) {
 	return
 }
 
-func (p *Parser) funcDef() (n Node, err error) {
-	nameToken, err := p.lexer.Next()
-	if err != nil {
-		return
-	}
-	if nameToken.Kind != lexer.TkIdent {
-		err = p.selfError(nameToken, "expected an identifier")
-		return
-	}
-
-	args := map[string]ValueType{}
-	for {
-		argName, err := p.lexer.Next()
-		if err != nil {
-			return nil, err
-		}
-		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '(' {
-			break
-		}
-		if argName.Kind != lexer.TkIdent {
-			return nil, p.selfError(argName, "expected an identifier")
-		}
-		sept, err := p.lexer.Next()
-		if err != nil {
-			return nil, err
-		}
-		if sept.Kind != lexer.TkPunct {
-			return nil, p.selfError(sept, "expected a punctuator")
-		}
-		if sept.Raw[0] != '/' {
-			return nil, p.selfError(sept, "expected '/'")
-		}
-		argType, err := p.lexer.Next()
-		if err != nil {
-			return nil, err
-		}
-		if argType.Kind != lexer.TkIdent {
-			return nil, p.selfError(argType, "expected an identifier")
-		}
-		t, ok := ParseType(argType.Raw)
-		if !ok {
-			return nil, p.selfError(argType, "unknown type")
-		}
-		args[argName.Raw] = t
-	}
-
+func (p *Parser) funcDef(name string, args map[string]ValueType) (n Node, err error) {
 	newScope := &Scope{
 		parent: p.Scope,
 		Funcs:  make(map[string]*Function),
@@ -271,13 +226,69 @@ func (p *Parser) funcDef() (n Node, err error) {
 	p.Scope = p.Scope.parent
 
 	n = &FuncDefNode{
-		Func:    nameToken.Raw,
-		Arg:     args,
-		Body:    body,
-		RetType: retType,
+		Name: name,
+		Args: args,
+		Body: body,
+		Ret:  retType,
 	}
-	p.Scope.Funcs[nameToken.Raw] = DefinedFunction(n.(*FuncDefNode))
+	p.Scope.Funcs[name] = DefinedFunction(n.(*FuncDefNode))
 	return
+}
+
+func (p *Parser) funcOrExtern() (n Node, err error) {
+	nameToken, err := p.lexer.Next()
+	if err != nil {
+		return
+	}
+	if nameToken.Kind != lexer.TkIdent {
+		err = p.selfError(nameToken, "expected an identifier")
+		return
+	}
+
+	args := map[string]ValueType{}
+	for {
+		argName, err := p.lexer.Next()
+		if err != nil {
+			return nil, err
+		}
+		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '(' {
+			return p.funcDef(nameToken.Raw, args)
+		}
+		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '?' {
+			n = &FuncExternNode{
+				Name: nameToken.Raw,
+				Args: args,
+				Ret:  VtNothing,
+			}
+			p.Scope.Funcs[nameToken.Raw] = ExternFunction(n.(*FuncExternNode))
+			return n, nil
+		}
+		if argName.Kind != lexer.TkIdent {
+			return nil, p.selfError(argName, "expected an identifier")
+		}
+		sept, err := p.lexer.Next()
+		if err != nil {
+			return nil, err
+		}
+		if sept.Kind != lexer.TkPunct {
+			return nil, p.selfError(sept, "expected a punctuator")
+		}
+		if sept.Raw[0] != '/' {
+			return nil, p.selfError(sept, "expected '/'")
+		}
+		argType, err := p.lexer.Next()
+		if err != nil {
+			return nil, err
+		}
+		if argType.Kind != lexer.TkIdent {
+			return nil, p.selfError(argType, "expected an identifier")
+		}
+		t, ok := ParseType(argType.Raw)
+		if !ok {
+			return nil, p.selfError(argType, "unknown type")
+		}
+		args[argName.Raw] = t
+	}
 }
 
 func (p *Parser) ret() (n Node, err error) {
@@ -295,7 +306,7 @@ func (p *Parser) internalNext(tok *lexer.Token) (n Node, err error) {
 	switch tok.Kind {
 	case lexer.TkPunct:
 		if tok.Raw == "$" {
-			return p.funcDef()
+			return p.funcOrExtern()
 		}
 		if tok.Raw == "%" {
 			return p.varDef()
