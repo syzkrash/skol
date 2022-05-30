@@ -1,13 +1,2 @@
-$add a/i b/i?
-$mul a/i b/i?
-$print o/i?
-
-$funnyNumber(
-  %six: 6
-  %nine: 9
-  >
-	add! add! mul!
-	six nine six nine // 6*9+6+9
-)
-
-print! funnyNumber!
+?1 (print! "Yo")
+:  (print! "Wait what")

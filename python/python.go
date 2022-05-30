@@ -116,6 +116,40 @@ func (p *Python) regularFuncCall(f *parser.FuncCallNode, output io.StringWriter)
 
 func (p *Python) internalGenerate(n parser.Node, output io.StringWriter) (err error) {
 	switch n.Kind() {
+	case parser.NdIf:
+		c := n.(*parser.IfNode)
+		if _, err = output.WriteString("if "); err != nil {
+			return
+		}
+		if err = p.value(c.Condition, output); err != nil {
+			return
+		}
+		if _, err = output.WriteString(":\n"); err != nil {
+			return
+		}
+		for _, n := range c.IfBlock {
+			if _, err = output.WriteString("\t"); err != nil {
+				return
+			}
+			if err = p.internalGenerate(n, output); err != nil {
+				return
+			}
+		}
+		if len(c.ElseBlock) == 0 {
+			output.WriteString("\n")
+			break
+		}
+		if _, err = output.WriteString("else:\n"); err != nil {
+			return
+		}
+		for _, n := range c.ElseBlock {
+			if _, err = output.WriteString("\t"); err != nil {
+				return
+			}
+			if err = p.internalGenerate(n, output); err != nil {
+				return
+			}
+		}
 	case parser.NdReturn:
 		r := n.(*parser.ReturnNode)
 		if _, err = output.WriteString("return "); err != nil {
