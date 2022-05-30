@@ -18,7 +18,7 @@ func NewParser(fn string, src io.RuneScanner) *Parser {
 	return &Parser{
 		lexer: lexer.NewLexer(src, fn),
 		Scope: &Scope{
-			parent: nil,
+			Parent: nil,
 			Funcs:  make(map[string]*Function),
 			Vars:   make(map[string]*VarDefNode),
 		},
@@ -188,7 +188,7 @@ func (p *Parser) varDef() (n Node, err error) {
 
 func (p *Parser) funcDef(name string, args map[string]ValueType) (n Node, err error) {
 	newScope := &Scope{
-		parent: p.Scope,
+		Parent: p.Scope,
 		Funcs:  make(map[string]*Function),
 		Vars:   make(map[string]*VarDefNode),
 	}
@@ -224,7 +224,7 @@ func (p *Parser) funcDef(name string, args map[string]ValueType) (n Node, err er
 		}
 		body = append(body, n)
 	}
-	p.Scope = p.Scope.parent
+	p.Scope = p.Scope.Parent
 
 	n = &FuncDefNode{
 		Name: name,
@@ -322,7 +322,7 @@ func (p *Parser) condition() (n Node, err error) {
 		return
 	}
 	newScope := &Scope{
-		parent: p.Scope,
+		Parent: p.Scope,
 		Funcs:  make(map[string]*Function),
 		Vars:   make(map[string]*VarDefNode),
 	}
@@ -385,7 +385,7 @@ func (p *Parser) condition() (n Node, err error) {
 	}
 
 finish:
-	p.Scope = p.Scope.parent
+	p.Scope = p.Scope.Parent
 
 	n = &IfNode{
 		Condition: condition,
@@ -407,7 +407,7 @@ func (p *Parser) internalNext(tok *lexer.Token) (n Node, err error) {
 		if tok.Raw == "?" {
 			return p.condition()
 		}
-		if p.Scope.parent != nil && tok.Raw[0] == '>' {
+		if p.Scope.Parent != nil && tok.Raw[0] == '>' {
 			return p.ret()
 		}
 		err = p.selfError(tok, "unexpected punctuator")

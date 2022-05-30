@@ -250,17 +250,20 @@ func (p *Python) Generate(output io.StringWriter) error {
 }
 
 func (p *Python) addEnv() {
-	p.parser.Scope.Funcs = map[string]*parser.Function{
-		"print": {
-			Name: "print",
-			Args: map[string]parser.ValueType{
-				"a": parser.VtAny,
+	envScope := &parser.Scope{
+		Funcs: map[string]*parser.Function{
+			"print": {
+				Name: "print",
+				Args: map[string]parser.ValueType{
+					"a": parser.VtAny,
+				},
+				Ret: parser.VtNothing,
 			},
-			Ret: parser.VtNothing,
 		},
+		Vars: map[string]*parser.VarDefNode{},
 	}
 	for fn := range ops {
-		p.parser.Scope.Funcs[fn] = &parser.Function{
+		envScope.Funcs[fn] = &parser.Function{
 			Name: fn,
 			Args: map[string]parser.ValueType{
 				"a": parser.VtAny,
@@ -269,6 +272,7 @@ func (p *Python) addEnv() {
 			Ret: parser.VtAny,
 		}
 	}
+	p.parser.Scope.Parent = envScope
 }
 
 func (*Python) CanRun() bool {
