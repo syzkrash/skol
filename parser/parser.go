@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"io"
 	"strconv"
 	"strings"
@@ -307,16 +308,17 @@ func (p *Parser) condition() (n Node, err error) {
 	if err != nil {
 		return
 	}
-	brace, err := p.lexer.Next()
+	var tok *lexer.Token
+	tok, err = p.lexer.Next()
 	if err != nil {
 		return
 	}
-	if brace.Kind != lexer.TkPunct {
-		err = p.selfError(brace, "expected Punctuator, got "+brace.Kind.String())
+	if tok.Kind != lexer.TkPunct {
+		err = p.selfError(tok, "expected Punctuator, got "+tok.Kind.String())
 		return
 	}
-	if brace.Raw != "(" {
-		err = p.selfError(brace, "expected '(', got '"+brace.Raw+"'")
+	if tok.Raw != "(" {
+		err = p.selfError(tok, "expected '(', got '"+tok.Raw+"'")
 		return
 	}
 	newScope := &Scope{
@@ -326,7 +328,7 @@ func (p *Parser) condition() (n Node, err error) {
 	}
 	p.Scope = newScope
 	ifBlock := []Node{}
-	var tok *lexer.Token
+	elseBlock := []Node{}
 	for {
 		tok, err = p.lexer.Next()
 		if err != nil {
@@ -341,11 +343,54 @@ func (p *Parser) condition() (n Node, err error) {
 		}
 		ifBlock = append(ifBlock, n)
 	}
+
+	tok, err = p.lexer.Next()
+	if errors.Is(err, io.EOF) {
+		err = nil
+		goto finish
+	} else if err != nil {
+		return
+	}
+	if tok.Kind != lexer.TkPunct && tok.Raw[0] != ':' {
+		p.lexer.Rollback(tok)
+		goto finish
+	}
+
+	tok, err = p.lexer.Next()
+	if err != nil {
+		return
+	}
+	if tok.Kind != lexer.TkPunct {
+		err = p.selfError(tok, "expected Punctuator, got "+tok.Kind.String())
+		return
+	}
+	if tok.Raw != "(" {
+		err = p.selfError(tok, "expected '(', got '"+tok.Raw+"'")
+		return
+	}
+
+	for {
+		tok, err = p.lexer.Next()
+		if err != nil {
+			return
+		}
+		if tok.Kind == lexer.TkPunct && tok.Raw[0] == ')' {
+			break
+		}
+		n, err = p.internalNext(tok)
+		if err != nil {
+			return
+		}
+		elseBlock = append(elseBlock, n)
+	}
+
+finish:
 	p.Scope = p.Scope.parent
 
 	n = &IfNode{
 		Condition: condition,
 		IfBlock:   ifBlock,
+		ElseBlock: elseBlock,
 	}
 	return
 }
