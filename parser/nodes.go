@@ -5,6 +5,19 @@ import (
 	"strings"
 )
 
+func body(n []Node) (text string) {
+	if len(n) == 0 {
+		text = "(nothing?)"
+	}
+	if len(n) == 1 {
+		text = fmt.Sprint(n[0])
+	}
+	if len(n) > 1 {
+		text = fmt.Sprintf("[... %s]", n[len(n)-1])
+	}
+	return text
+}
+
 type NodeKind uint8
 
 const (
@@ -18,6 +31,7 @@ const (
 	NdFuncDef
 	NdFuncExtern
 	NdReturn
+	NdIf
 )
 
 var nodeKinds = []string{
@@ -148,16 +162,7 @@ func (n *FuncDefNode) String() string {
 		argText += " "
 	}
 	argText = strings.TrimSuffix(argText, " ")
-	bodyText := ""
-	if len(n.Body) == 0 {
-		bodyText = "(nothing?)"
-	}
-	if len(n.Body) == 1 {
-		bodyText = fmt.Sprint(n.Body[0])
-	}
-	if len(n.Body) > 1 {
-		bodyText = fmt.Sprintf("[... %s]", n.Body[len(n.Body)-1])
-	}
+	bodyText := body(n.Body)
 	return fmt.Sprintf("FuncDef{%s %s(%s) = %s}", n.Ret, n.Name, argText, bodyText)
 }
 
@@ -193,4 +198,27 @@ func (*ReturnNode) Kind() NodeKind {
 
 func (n *ReturnNode) String() string {
 	return fmt.Sprintf("Return{%s}", n.Value)
+}
+
+type IfSubNode struct {
+	Condition Node
+	Block     []Node
+}
+
+type IfNode struct {
+	Condition Node
+	IfBlock   []Node
+	ElseBlock []Node
+}
+
+func (*IfNode) Kind() NodeKind {
+	return NdIf
+}
+
+func (n *IfNode) String() string {
+	return fmt.Sprintf(
+		"If{%s(%s) else(%s)}",
+		n.Condition,
+		body(n.IfBlock),
+		body(n.ElseBlock))
 }
