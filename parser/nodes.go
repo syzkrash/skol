@@ -45,6 +45,7 @@ var nodeKinds = []string{
 	"FuncDef",
 	"FuncExtern",
 	"Return",
+	"If",
 }
 
 func (k NodeKind) String() string {

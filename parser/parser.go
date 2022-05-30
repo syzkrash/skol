@@ -302,6 +302,54 @@ func (p *Parser) ret() (n Node, err error) {
 	return
 }
 
+func (p *Parser) condition() (n Node, err error) {
+	condition, err := p.value()
+	if err != nil {
+		return
+	}
+	brace, err := p.lexer.Next()
+	if err != nil {
+		return
+	}
+	if brace.Kind != lexer.TkPunct {
+		err = p.selfError(brace, "expected Punctuator, got "+brace.Kind.String())
+		return
+	}
+	if brace.Raw != "(" {
+		err = p.selfError(brace, "expected '(', got '"+brace.Raw+"'")
+		return
+	}
+	newScope := &Scope{
+		parent: p.Scope,
+		Funcs:  make(map[string]*Function),
+		Vars:   make(map[string]*VarDefNode),
+	}
+	p.Scope = newScope
+	ifBlock := []Node{}
+	var tok *lexer.Token
+	for {
+		tok, err = p.lexer.Next()
+		if err != nil {
+			return
+		}
+		if tok.Kind == lexer.TkPunct && tok.Raw[0] == ')' {
+			break
+		}
+		n, err = p.internalNext(tok)
+		if err != nil {
+			return
+		}
+		ifBlock = append(ifBlock, n)
+	}
+	p.Scope = p.Scope.parent
+
+	n = &IfNode{
+		Condition: condition,
+		IfBlock:   ifBlock,
+	}
+	return
+}
+
 func (p *Parser) internalNext(tok *lexer.Token) (n Node, err error) {
 	switch tok.Kind {
 	case lexer.TkPunct:
@@ -310,6 +358,9 @@ func (p *Parser) internalNext(tok *lexer.Token) (n Node, err error) {
 		}
 		if tok.Raw == "%" {
 			return p.varDef()
+		}
+		if tok.Raw == "?" {
+			return p.condition()
 		}
 		if p.Scope.parent != nil && tok.Raw[0] == '>' {
 			return p.ret()

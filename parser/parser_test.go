@@ -83,3 +83,42 @@ func TestFuncCall(t *testing.T) {
 		t.Fatalf("expected argument %d to be %s, got %s", 1, NdFloat, a.Kind())
 	}
 }
+
+func TestIf(t *testing.T) {
+	code := `	?1(print!"hello world") `
+	src := strings.NewReader(code)
+	p := NewParser("TestIf", src)
+	// to prevent 'unknown function' error
+	p.Scope.Funcs["print"] = &Function{
+		Name: "print",
+		Args: map[string]ValueType{
+			"a": VtAny,
+		},
+		Ret: VtNothing,
+	}
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != NdIf {
+		t.Fatalf("expected If, got %s", n.Kind())
+	}
+	ifn := n.(*IfNode)
+	if ifn.Condition.Kind() != NdInteger {
+		t.Fatalf("expected Integer, got %s", n.Kind())
+	}
+	if len(ifn.IfBlock) < 1 {
+		t.Fatalf("expected 1 Node in block, got %d", len(ifn.IfBlock))
+	}
+	pn := ifn.IfBlock[0]
+	if pn.Kind() != NdFuncCall {
+		t.Fatalf("expected FuncCall, got %s", pn.Kind())
+	}
+	fcn := pn.(*FuncCallNode)
+	if fcn.Func != "print" {
+		t.Fatalf("expected call to print, got call to %s", fcn.Func)
+	}
+	if len(fcn.Args) != 1 {
+		t.Fatalf("expected 1 argument in call, got %d", len(fcn.Args))
+	}
+}
