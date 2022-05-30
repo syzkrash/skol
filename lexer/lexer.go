@@ -7,7 +7,8 @@ import (
 )
 
 type Lexer struct {
-	src *Source
+	src  *Source
+	prev *Token
 }
 
 func NewLexer(src io.RuneScanner, fn string) *Lexer {
@@ -288,10 +289,19 @@ func (l *Lexer) internalNext() (tok *Token, err error) {
 }
 
 func (l *Lexer) Next() (tok *Token, err error) {
+	if l.prev != nil {
+		tok = l.prev
+		l.prev = nil
+		return
+	}
 	tok, err = l.internalNext()
 	var lerr *LexerError
 	if err != nil && !errors.As(err, &lerr) {
 		err = l.otherError(err)
 	}
 	return
+}
+
+func (l *Lexer) Rollback(tok *Token) {
+	l.prev = tok
 }
