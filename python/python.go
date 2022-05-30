@@ -59,6 +59,13 @@ var ops = map[string]string{
 	"pow": "**",
 	"div": "/",
 	"mod": "%",
+
+	"eq":  "==",
+	"neq": "!=",
+	"gt":  ">",
+	"lt":  "<",
+	"geq": ">=",
+	"leq": "<=",
 }
 
 func (p *Python) funcCall(f *parser.FuncCallNode, output io.StringWriter) (err error) {
@@ -256,10 +263,10 @@ func (p *Python) addEnv() {
 		p.parser.Scope.Funcs[fn] = &parser.Function{
 			Name: fn,
 			Args: map[string]parser.ValueType{
-				"a": parser.VtFloat,
-				"b": parser.VtFloat,
+				"a": parser.VtAny,
+				"b": parser.VtAny,
 			},
-			Ret: parser.VtFloat,
+			Ret: parser.VtAny,
 		}
 	}
 }

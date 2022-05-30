@@ -1,2 +1,3 @@
-?1 (print! "Yo")
-:  (print! "Wait what")
+? geq! add! 6 9 10
+  (print! "Yo")
+: (print! "Wait what")
