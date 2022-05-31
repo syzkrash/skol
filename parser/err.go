@@ -9,7 +9,7 @@ type ParserError struct {
 }
 
 func (e *ParserError) Error() string {
-	return e.msg
+	return e.Where.Where.String() + " - " + e.msg
 }
 
 func (e *ParserError) Unwrap() error {

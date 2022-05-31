@@ -328,6 +328,8 @@ func (p *Parser) condition() (n Node, err error) {
 	}
 	p.Scope = newScope
 	ifBlock := []Node{}
+	elseIfNodes := []*IfSubNode{}
+	subBlock := []Node{}
 	elseBlock := []Node{}
 	for {
 		tok, err = p.lexer.Next()
@@ -344,29 +346,89 @@ func (p *Parser) condition() (n Node, err error) {
 		ifBlock = append(ifBlock, n)
 	}
 
-	tok, err = p.lexer.Next()
-	if errors.Is(err, io.EOF) {
-		err = nil
-		goto finish
-	} else if err != nil {
-		return
-	}
-	if tok.Kind != lexer.TkPunct && tok.Raw[0] != ':' {
-		p.lexer.Rollback(tok)
-		goto finish
-	}
+	for {
+		tok, err = p.lexer.Next()
+		if errors.Is(err, io.EOF) {
+			err = nil
+			goto finish
+		}
+		if err != nil {
+			return
+		}
+		if tok.Kind != lexer.TkPunct {
+			p.lexer.Rollback(tok)
+			goto finish
+		}
+		if tok.Raw != ":" {
+			err = p.selfError(tok, "expected '(', got '"+tok.Raw+"'")
+			return
+		}
 
-	tok, err = p.lexer.Next()
-	if err != nil {
-		return
-	}
-	if tok.Kind != lexer.TkPunct {
-		err = p.selfError(tok, "expected Punctuator, got "+tok.Kind.String())
-		return
-	}
-	if tok.Raw != "(" {
-		err = p.selfError(tok, "expected '(', got '"+tok.Raw+"'")
-		return
+		tok, err = p.lexer.Next()
+		if errors.Is(err, io.EOF) {
+			err = nil
+			goto finish
+		}
+		if err != nil {
+			return
+		}
+
+		if tok.Kind != lexer.TkPunct {
+			err = p.selfError(tok, "expected Punctuator, got "+tok.Kind.String())
+			return
+		}
+		if tok.Raw == "(" {
+			p.lexer.Rollback(tok)
+			break
+		}
+		if tok.Raw != "?" {
+			err = p.selfError(tok, "expected '(' or '?', got '"+tok.Raw+"'")
+			return
+		}
+
+		var subCond Node
+		subCond, err = p.value()
+		if err != nil {
+			return
+		}
+
+		tok, err = p.lexer.Next()
+		if errors.Is(err, io.EOF) {
+			err = nil
+			goto finish
+		}
+		if err != nil {
+			return
+		}
+
+		if tok.Kind != lexer.TkPunct {
+			err = p.selfError(tok, "expected Punctuator, got "+tok.Kind.String())
+			return
+		}
+		if tok.Raw != "(" {
+			err = p.selfError(tok, "expected '(', got '"+tok.Raw+"'")
+			return
+		}
+
+		for {
+			tok, err = p.lexer.Next()
+			if err != nil {
+				return
+			}
+			if tok.Kind == lexer.TkPunct && tok.Raw[0] == ')' {
+				elseIfNodes = append(elseIfNodes, &IfSubNode{
+					Condition: subCond,
+					Block:     subBlock,
+				})
+				subBlock = []Node{}
+				continue
+			}
+			n, err = p.internalNext(tok)
+			if err != nil {
+				return
+			}
+			subBlock = append(subBlock, n)
+		}
 	}
 
 	for {
@@ -388,9 +450,10 @@ finish:
 	p.Scope = p.Scope.Parent
 
 	n = &IfNode{
-		Condition: condition,
-		IfBlock:   ifBlock,
-		ElseBlock: elseBlock,
+		Condition:   condition,
+		IfBlock:     ifBlock,
+		ElseIfNodes: elseIfNodes,
+		ElseBlock:   elseBlock,
 	}
 	return
 }
@@ -410,20 +473,20 @@ func (p *Parser) internalNext(tok *lexer.Token) (n Node, err error) {
 		if p.Scope.Parent != nil && tok.Raw[0] == '>' {
 			return p.ret()
 		}
-		err = p.selfError(tok, "unexpected punctuator")
+		err = p.selfError(tok, "unexpected punctuator: "+tok.Raw)
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
 			f, ok := p.Scope.FindFunc(tok.Raw[:len(tok.Raw)-1])
 			if !ok {
-				err = p.selfError(tok, "unknown function")
+				err = p.selfError(tok, "unknown function: "+tok.Raw)
 				return
 			}
 			n, err = p.funcCall(f)
 		} else {
-			err = p.selfError(tok, "unexpected identifier")
+			err = p.selfError(tok, "unexpected identifier: "+tok.Raw)
 		}
 	default:
-		err = p.selfError(tok, "unexpected token")
+		err = p.selfError(tok, "unexpected token: "+tok.Raw)
 	}
 
 	return

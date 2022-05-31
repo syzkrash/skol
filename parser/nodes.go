@@ -207,9 +207,10 @@ type IfSubNode struct {
 }
 
 type IfNode struct {
-	Condition Node
-	IfBlock   []Node
-	ElseBlock []Node
+	Condition   Node
+	IfBlock     []Node
+	ElseIfNodes []*IfSubNode
+	ElseBlock   []Node
 }
 
 func (*IfNode) Kind() NodeKind {
