@@ -241,7 +241,7 @@ func TestIfElse(t *testing.T) {
 }
 
 func TestIfElseIf(t *testing.T) {
-	code := `	?1(print!"hello world"):?0(print!"world?):(print!"bye world") `
+	code := `	?1(print!"hello world"):?0(print!"world?"):(print!"bye world") `
 	src := strings.NewReader(code)
 	p := NewParser("TestIfElseIf", src)
 	// to prevent 'unknown function' error
