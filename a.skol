@@ -1,5 +1,6 @@
 // stupid fucking fuck fuck
 $ gt A/int B/int ?
+$ sub A/int B/int ?
 $ print S/str ?
 
 /* CompareInt compares two integers together:
@@ -13,6 +14,10 @@ $ CompareInt A/int B/int (
   >0
 )
 
-print! CompareInt! 9 3
-print! CompareInt! 1 7
-print! CompareInt! 0 0
+%i: 10
+
+* gt! i 0 (
+  print! "Iteration!"
+  print! i
+  %i: sub! i 1
+)

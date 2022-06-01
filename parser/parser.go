@@ -388,6 +388,34 @@ func (p *Parser) condition() (n Node, err error) {
 	return
 }
 
+func (p *Parser) loop() (n Node, err error) {
+	condition, err := p.value()
+	if err != nil {
+		return
+	}
+
+	newScope := &Scope{
+		Parent: p.Scope,
+		Funcs:  map[string]*Function{},
+		Vars:   map[string]*VarDefNode{},
+	}
+	oldScope := p.Scope
+	p.Scope = newScope
+
+	body, err := p.block()
+	if err != nil {
+		return
+	}
+
+	p.Scope = oldScope
+
+	n = &WhileNode{
+		Condition: condition,
+		Body:      body,
+	}
+	return
+}
+
 func (p *Parser) internalNext(tok *lexer.Token) (n Node, err error) {
 	switch tok.Kind {
 	case lexer.TkPunct:
@@ -399,6 +427,9 @@ func (p *Parser) internalNext(tok *lexer.Token) (n Node, err error) {
 		}
 		if tok.Raw == "?" {
 			return p.condition()
+		}
+		if tok.Raw == "*" {
+			return p.loop()
 		}
 		if p.Scope.Parent != nil && tok.Raw[0] == '>' {
 			return p.ret()

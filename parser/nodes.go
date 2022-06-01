@@ -32,6 +32,7 @@ const (
 	NdFuncExtern
 	NdReturn
 	NdIf
+	NdWhile
 )
 
 var nodeKinds = []string{
@@ -46,6 +47,7 @@ var nodeKinds = []string{
 	"FuncExtern",
 	"Return",
 	"If",
+	"While",
 }
 
 func (k NodeKind) String() string {
@@ -223,4 +225,17 @@ func (n *IfNode) String() string {
 		n.Condition,
 		body(n.IfBlock),
 		body(n.ElseBlock))
+}
+
+type WhileNode struct {
+	Condition Node
+	Body      []Node
+}
+
+func (*WhileNode) Kind() NodeKind {
+	return NdWhile
+}
+
+func (n *WhileNode) String() string {
+	return fmt.Sprintf("While{%s(%s)}", n.Condition, body(n.Body))
 }
