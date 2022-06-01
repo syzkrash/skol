@@ -2,7 +2,6 @@ package parser
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -362,7 +361,6 @@ func (p *Parser) condition() (n Node, err error) {
 		tok *lexer.Token
 	)
 	for {
-		fmt.Println("elif/else iter")
 		tok, err = p.lexer.Next()
 		if errors.Is(err, io.EOF) {
 			err = nil
