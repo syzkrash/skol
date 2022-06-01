@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/syzkrash/skol/codegen"
+	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser"
 	"github.com/syzkrash/skol/python"
@@ -44,6 +45,8 @@ func main() {
 	flag.StringVar(&input, "input", "", "File to compile/transpile/interpret. (Leave blank for REPL)")
 	flag.Func("engine", "Which interpreter/compiler to use.", engineFlag)
 	flag.Parse()
+
+	fmt.Printf("Skol v%s\n", common.Version)
 
 	if theEngine == EnUndefined {
 		fmt.Println("Specify an engine to use.")
@@ -108,14 +111,13 @@ func gen(fn string, src io.RuneScanner) codegen.Generator {
 }
 
 func repl() {
-	fmt.Println("Welcome to Skol.")
 	fmt.Println("Type a line of Skol code and hit Enter.")
 	fmt.Println("Code generated for the given engine will be printed.")
 	fmt.Println("Press ^C at any time to exit.")
 
 	stdin := bufio.NewReader(os.Stdin)
 	src := strings.NewReader("")
-	gen := gen(input, src)
+	gen := gen("REPL", src)
 
 	for {
 		fmt.Print(">> ")
@@ -128,17 +130,9 @@ func repl() {
 			fmt.Println(err)
 			return
 		}
-		src.Reset(line)
+		src.Reset(line + "\n")
 		if err = gen.Generate(os.Stdout); err != nil {
-			var perr *parser.ParserError
-			var lerr *lexer.LexerError
-			if errors.As(err, &lerr) {
-				fmt.Println("Error at", lerr.Where, "-", lerr.Error())
-			} else if errors.As(err, &perr) {
-				fmt.Println("Error on token", perr.Where, "-", perr.Error())
-			} else {
-				fmt.Println("Error -", err)
-			}
+			fmt.Println("Error -", err)
 		}
 	}
 }
