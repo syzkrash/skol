@@ -186,56 +186,6 @@ func (p *Parser) varDef() (n Node, err error) {
 	return
 }
 
-func (p *Parser) funcDef(name string, args map[string]ValueType) (n Node, err error) {
-	newScope := &Scope{
-		Parent: p.Scope,
-		Funcs:  make(map[string]*Function),
-		Vars:   make(map[string]*VarDefNode),
-	}
-	for n, t := range args {
-		newScope.Vars[n] = &VarDefNode{
-			VarType: t,
-			Var:     n,
-		}
-	}
-	p.Scope = newScope
-	retType := VtNothing
-	body := []Node{}
-	for {
-		tok, err := p.lexer.Next()
-		if err != nil {
-			return nil, err
-		}
-		if tok.Kind == lexer.TkPunct && tok.Raw[0] == ')' {
-			break
-		}
-		n, err := p.internalNext(tok)
-		if err != nil {
-			return nil, err
-		}
-		if n.Kind() == NdReturn {
-			if retType != VtNothing {
-				return nil, &ParserError{
-					Where: tok,
-					msg:   "duplicate return",
-				}
-			}
-			retType, _ = p.TypeOf(n)
-		}
-		body = append(body, n)
-	}
-	p.Scope = p.Scope.Parent
-
-	n = &FuncDefNode{
-		Name: name,
-		Args: args,
-		Body: body,
-		Ret:  retType,
-	}
-	p.Scope.Funcs[name] = DefinedFunction(n.(*FuncDefNode))
-	return
-}
-
 func (p *Parser) funcOrExtern() (n Node, err error) {
 	nameToken, err := p.lexer.Next()
 	if err != nil {
@@ -246,14 +196,42 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 		return
 	}
 
+	var body []Node
+	var argName *lexer.Token
 	args := map[string]ValueType{}
 	for {
-		argName, err := p.lexer.Next()
+		argName, err = p.lexer.Next()
 		if err != nil {
 			return nil, err
 		}
 		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '(' {
-			return p.funcDef(nameToken.Raw, args)
+			newScope := &Scope{
+				Parent: p.Scope,
+				Funcs:  make(map[string]*Function),
+				Vars:   make(map[string]*VarDefNode),
+			}
+			for n, t := range args {
+				newScope.Vars[n] = &VarDefNode{
+					VarType: t,
+					Var:     n,
+				}
+			}
+			p.Scope = newScope
+
+			p.lexer.Rollback(argName)
+			body, err = p.block()
+			if err != nil {
+				return
+			}
+
+			n = &FuncDefNode{
+				Name: nameToken.Raw,
+				Args: args,
+				Ret:  VtAny,
+				Body: body,
+			}
+			p.Scope.Funcs[nameToken.Raw] = DefinedFunction(n.(*FuncDefNode))
+			return
 		}
 		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '?' {
 			n = &FuncExternNode{
@@ -262,7 +240,7 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 				Ret:  VtNothing,
 			}
 			p.Scope.Funcs[nameToken.Raw] = ExternFunction(n.(*FuncExternNode))
-			return n, nil
+			return
 		}
 		if argName.Kind != lexer.TkIdent {
 			return nil, p.selfError(argName, "expected an identifier")
@@ -286,7 +264,7 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 		}
 		t, ok := ParseType(argType.Raw)
 		if !ok {
-			return nil, p.selfError(argType, "unknown type")
+			return nil, p.selfError(argType, "unknown type: "+argType.Raw)
 		}
 		args[argName.Raw] = t
 	}

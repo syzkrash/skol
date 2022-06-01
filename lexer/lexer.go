@@ -223,7 +223,7 @@ func (l *Lexer) commentOrSlash() (comment bool, err error) {
 		err = l.ignoreBlockComment()
 	default:
 		comment = false
-		// err = l.src.UnreadRune()
+		err = l.src.UnreadRune()
 	}
 
 	return

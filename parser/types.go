@@ -19,6 +19,7 @@ var types = []string{
 	"String",
 	"Char",
 	"Pointer",
+	"Any",
 }
 
 func (t ValueType) String() string {
