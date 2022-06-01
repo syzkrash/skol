@@ -59,6 +59,13 @@ var ops = map[string]string{
 	"pow": "**",
 	"div": "/",
 	"mod": "%",
+
+	"eq":  "==",
+	"neq": "!=",
+	"gt":  ">",
+	"lt":  "<",
+	"geq": ">=",
+	"leq": "<=",
 }
 
 func (p *Python) funcCall(f *parser.FuncCallNode, output io.StringWriter) (err error) {
@@ -116,6 +123,40 @@ func (p *Python) regularFuncCall(f *parser.FuncCallNode, output io.StringWriter)
 
 func (p *Python) internalGenerate(n parser.Node, output io.StringWriter) (err error) {
 	switch n.Kind() {
+	case parser.NdIf:
+		c := n.(*parser.IfNode)
+		if _, err = output.WriteString("if "); err != nil {
+			return
+		}
+		if err = p.value(c.Condition, output); err != nil {
+			return
+		}
+		if _, err = output.WriteString(":\n"); err != nil {
+			return
+		}
+		for _, n := range c.IfBlock {
+			if _, err = output.WriteString("\t"); err != nil {
+				return
+			}
+			if err = p.internalGenerate(n, output); err != nil {
+				return
+			}
+		}
+		if len(c.ElseBlock) == 0 {
+			output.WriteString("\n")
+			break
+		}
+		if _, err = output.WriteString("else:\n"); err != nil {
+			return
+		}
+		for _, n := range c.ElseBlock {
+			if _, err = output.WriteString("\t"); err != nil {
+				return
+			}
+			if err = p.internalGenerate(n, output); err != nil {
+				return
+			}
+		}
 	case parser.NdReturn:
 		r := n.(*parser.ReturnNode)
 		if _, err = output.WriteString("return "); err != nil {
@@ -209,25 +250,29 @@ func (p *Python) Generate(output io.StringWriter) error {
 }
 
 func (p *Python) addEnv() {
-	p.parser.Scope.Funcs = map[string]*parser.Function{
-		"print": {
-			Name: "print",
-			Args: map[string]parser.ValueType{
-				"a": parser.VtAny,
+	envScope := &parser.Scope{
+		Funcs: map[string]*parser.Function{
+			"print": {
+				Name: "print",
+				Args: map[string]parser.ValueType{
+					"a": parser.VtAny,
+				},
+				Ret: parser.VtNothing,
 			},
-			Ret: parser.VtNothing,
 		},
+		Vars: map[string]*parser.VarDefNode{},
 	}
 	for fn := range ops {
-		p.parser.Scope.Funcs[fn] = &parser.Function{
+		envScope.Funcs[fn] = &parser.Function{
 			Name: fn,
 			Args: map[string]parser.ValueType{
-				"a": parser.VtFloat,
-				"b": parser.VtFloat,
+				"a": parser.VtAny,
+				"b": parser.VtAny,
 			},
-			Ret: parser.VtFloat,
+			Ret: parser.VtAny,
 		}
 	}
+	p.parser.Scope.Parent = envScope
 }
 
 func (*Python) CanRun() bool {

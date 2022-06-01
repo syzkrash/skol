@@ -83,3 +83,303 @@ func TestFuncCall(t *testing.T) {
 		t.Fatalf("expected argument %d to be %s, got %s", 1, NdFloat, a.Kind())
 	}
 }
+
+func TestIf(t *testing.T) {
+	code := `	?1(print!"hello world") `
+	src := strings.NewReader(code)
+	p := NewParser("TestIf", src)
+	// to prevent 'unknown function' error
+	p.Scope.Funcs["print"] = &Function{
+		Name: "print",
+		Args: map[string]ValueType{
+			"a": VtAny,
+		},
+		Ret: VtNothing,
+	}
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != NdIf {
+		t.Fatalf("expected If, got %s", n.Kind())
+	}
+	ifn := n.(*IfNode)
+	if ifn.Condition.Kind() != NdInteger {
+		t.Fatalf("expected Integer, got %s", n.Kind())
+	}
+	if len(ifn.IfBlock) < 1 {
+		t.Fatalf("expected 1 Node in block, got %d", len(ifn.IfBlock))
+	}
+	pn := ifn.IfBlock[0]
+	if pn.Kind() != NdFuncCall {
+		t.Fatalf("expected FuncCall, got %s", pn.Kind())
+	}
+	fcn := pn.(*FuncCallNode)
+	if fcn.Func != "print" {
+		t.Fatalf("expected call to print, got call to %s", fcn.Func)
+	}
+	if len(fcn.Args) != 1 {
+		t.Fatalf("expected 1 argument in call, got %d", len(fcn.Args))
+	}
+}
+
+func TestIfBetween(t *testing.T) {
+	code := `	?1(print!"hello world")print!"bye world" `
+	src := strings.NewReader(code)
+	p := NewParser("TestIfBetween", src)
+	// to prevent 'unknown function' error
+	p.Scope.Funcs["print"] = &Function{
+		Name: "print",
+		Args: map[string]ValueType{
+			"a": VtAny,
+		},
+		Ret: VtNothing,
+	}
+
+	// check for the if statement
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != NdIf {
+		t.Fatalf("expected If, got %s", n.Kind())
+	}
+	ifn := n.(*IfNode)
+	if ifn.Condition.Kind() != NdInteger {
+		t.Fatalf("expected Integer, got %s", n.Kind())
+	}
+	if len(ifn.IfBlock) < 1 {
+		t.Fatalf("expected 1 Node in block, got %d", len(ifn.IfBlock))
+	}
+	pn := ifn.IfBlock[0]
+	if pn.Kind() != NdFuncCall {
+		t.Fatalf("expected FuncCall, got %s", pn.Kind())
+	}
+	fcn := pn.(*FuncCallNode)
+	if fcn.Func != "print" {
+		t.Fatalf("expected call to print, got call to %s", fcn.Func)
+	}
+	if len(fcn.Args) != 1 {
+		t.Fatalf("expected 1 argument in call, got %d", len(fcn.Args))
+	}
+
+	// check for the print statement after it
+	n, err = p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != NdFuncCall {
+		t.Fatalf("expected FuncCall, got %s", n.Kind())
+	}
+	fcn = n.(*FuncCallNode)
+	if fcn.Func != "print" {
+		t.Fatalf("expected call to print, got call to %s", fcn.Func)
+	}
+	if len(fcn.Args) != 1 {
+		t.Fatalf("expected 1 argument in call, got %d", len(fcn.Args))
+	}
+}
+
+func TestIfElse(t *testing.T) {
+	code := `	?1(print!"hello world"):(print!"bye world") `
+	src := strings.NewReader(code)
+	p := NewParser("TestIfElse", src)
+	// to prevent 'unknown function' error
+	p.Scope.Funcs["print"] = &Function{
+		Name: "print",
+		Args: map[string]ValueType{
+			"a": VtAny,
+		},
+		Ret: VtNothing,
+	}
+
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check the if itself
+	if n.Kind() != NdIf {
+		t.Fatalf("expected If, got %s", n.Kind())
+	}
+	ifn := n.(*IfNode)
+	if ifn.Condition.Kind() != NdInteger {
+		t.Fatalf("expected Integer, got %s", n.Kind())
+	}
+
+	// check the IfBlock
+	if len(ifn.IfBlock) != 1 {
+		t.Fatalf("expected 1 Node in IfBlock, got %d", len(ifn.IfBlock))
+	}
+	pn := ifn.IfBlock[0]
+	if pn.Kind() != NdFuncCall {
+		t.Fatalf("expected FuncCall, got %s", pn.Kind())
+	}
+	fcn := pn.(*FuncCallNode)
+	if fcn.Func != "print" {
+		t.Fatalf("expected call to print, got call to %s", fcn.Func)
+	}
+	if len(fcn.Args) != 1 {
+		t.Fatalf("expected 1 argument in call, got %d", len(fcn.Args))
+	}
+
+	// check the ElseBlock
+	if len(ifn.ElseBlock) != 1 {
+		t.Fatalf("expected 1 Node in ElseBlock, got %d", len(ifn.ElseBlock))
+	}
+	pn = ifn.ElseBlock[0]
+	if pn.Kind() != NdFuncCall {
+		t.Fatalf("expected FuncCall, got %s", pn.Kind())
+	}
+	fcn = pn.(*FuncCallNode)
+	if fcn.Func != "print" {
+		t.Fatalf("expected call to print, got call to %s", fcn.Func)
+	}
+	if len(fcn.Args) != 1 {
+		t.Fatalf("expected 1 argument in call, got %d", len(fcn.Args))
+	}
+}
+
+func TestIfElseIfElse(t *testing.T) {
+	code := `	?1(print!"hello world"):?0(print!"world?"):(print!"bye world") `
+	src := strings.NewReader(code)
+	p := NewParser("TestIfElseIfElse", src)
+	// to prevent 'unknown function' error
+	p.Scope.Funcs["print"] = &Function{
+		Name: "print",
+		Args: map[string]ValueType{
+			"a": VtAny,
+		},
+		Ret: VtNothing,
+	}
+
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check the if itself
+	if n.Kind() != NdIf {
+		t.Fatalf("expected If, got %s", n.Kind())
+	}
+	ifn := n.(*IfNode)
+	if ifn.Condition.Kind() != NdInteger {
+		t.Fatalf("expected Integer, got %s", n.Kind())
+	}
+
+	// check the IfBlock
+	if len(ifn.IfBlock) != 1 {
+		t.Fatalf("expected 1 Node in IfBlock, got %d", len(ifn.IfBlock))
+	}
+	pn := ifn.IfBlock[0]
+	if pn.Kind() != NdFuncCall {
+		t.Fatalf("expected FuncCall, got %s", pn.Kind())
+	}
+	fcn := pn.(*FuncCallNode)
+	if fcn.Func != "print" {
+		t.Fatalf("expected call to print, got call to %s", fcn.Func)
+	}
+	if len(fcn.Args) != 1 {
+		t.Fatalf("expected 1 argument in call, got %d", len(fcn.Args))
+	}
+
+	// check the IfSubNode
+	if len(ifn.ElseIfNodes) != 1 {
+		t.Fatalf("expected 1 IfSubNode in IfBlock, got %d", len(ifn.ElseIfNodes))
+	}
+	sn := ifn.ElseIfNodes[0]
+	if len(sn.Block) != 1 {
+		t.Fatalf("expected 1 Node in IfSubNode body, got %d", len(sn.Block))
+	}
+	pn = sn.Block[0]
+	if pn.Kind() != NdFuncCall {
+		t.Fatalf("expected FuncCall, got %s", pn.Kind())
+	}
+	fcn = pn.(*FuncCallNode)
+	if fcn.Func != "print" {
+		t.Fatalf("expected call to print, got call to %s", fcn.Func)
+	}
+	if len(fcn.Args) != 1 {
+		t.Fatalf("expected 1 argument in call, got %d", len(fcn.Args))
+	}
+
+	// check the ElseBlock
+	if len(ifn.ElseBlock) != 1 {
+		t.Fatalf("expected 1 Node in ElseBlock, got %d", len(ifn.ElseBlock))
+	}
+	pn = ifn.ElseBlock[0]
+	if pn.Kind() != NdFuncCall {
+		t.Fatalf("expected FuncCall, got %s", pn.Kind())
+	}
+	fcn = pn.(*FuncCallNode)
+	if fcn.Func != "print" {
+		t.Fatalf("expected call to print, got call to %s", fcn.Func)
+	}
+	if len(fcn.Args) != 1 {
+		t.Fatalf("expected 1 argument in call, got %d", len(fcn.Args))
+	}
+}
+
+func TestIfElseIf(t *testing.T) {
+	code := `	?1(print!"hello world"):?1(print!"bye world?") `
+	src := strings.NewReader(code)
+	p := NewParser("TestIfElseIf", src)
+	// to prevent 'unknown function' error
+	p.Scope.Funcs["print"] = &Function{
+		Name: "print",
+		Args: map[string]ValueType{
+			"a": VtAny,
+		},
+		Ret: VtNothing,
+	}
+
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check the if itself
+	if n.Kind() != NdIf {
+		t.Fatalf("expected If, got %s", n.Kind())
+	}
+	ifn := n.(*IfNode)
+	if ifn.Condition.Kind() != NdInteger {
+		t.Fatalf("expected Integer, got %s", n.Kind())
+	}
+
+	// check the IfBlock
+	if len(ifn.IfBlock) != 1 {
+		t.Fatalf("expected 1 Node in IfBlock, got %d", len(ifn.IfBlock))
+	}
+	pn := ifn.IfBlock[0]
+	if pn.Kind() != NdFuncCall {
+		t.Fatalf("expected FuncCall, got %s", pn.Kind())
+	}
+	fcn := pn.(*FuncCallNode)
+	if fcn.Func != "print" {
+		t.Fatalf("expected call to print, got call to %s", fcn.Func)
+	}
+	if len(fcn.Args) != 1 {
+		t.Fatalf("expected 1 argument in call, got %d", len(fcn.Args))
+	}
+
+	// check the IfSubNode
+	if len(ifn.ElseIfNodes) != 1 {
+		t.Fatalf("expected 1 IfSubNode in IfBlock, got %d", len(ifn.ElseIfNodes))
+	}
+	sn := ifn.ElseIfNodes[0]
+	if len(sn.Block) != 1 {
+		t.Fatalf("expected 1 Node in IfSubNode body, got %d", len(sn.Block))
+	}
+	pn = sn.Block[0]
+	if pn.Kind() != NdFuncCall {
+		t.Fatalf("expected FuncCall, got %s", pn.Kind())
+	}
+	fcn = pn.(*FuncCallNode)
+	if fcn.Func != "print" {
+		t.Fatalf("expected call to print, got call to %s", fcn.Func)
+	}
+	if len(fcn.Args) != 1 {
+		t.Fatalf("expected 1 argument in call, got %d", len(fcn.Args))
+	}
+}
