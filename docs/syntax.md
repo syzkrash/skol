@@ -4,7 +4,7 @@ This is a reference guide for the syntax of the skol language.
 
 ## Variable Definition
 
-```rust
+```hs
 %name/string
 %name: "value"
 ```
@@ -15,20 +15,20 @@ zero value. The second line defines a variable named `name` with an explicit
 `String` value `"value"`. Note that defining the type of the variable is not
 required ahead of time. So both the following codeblocks are equivalent:
 
-```rust
+```hs
 %my_var/string
 %my_var: "hello"
 print! my_var
 ```
 
-```rust
+```hs
 %my_var: "hello"
 print! my_var
 ```
 
 ## Variable Reference
 
-```rust
+```hs
 my_var
 ```
 
@@ -36,7 +36,7 @@ A reference to a variable is simply the variable's name. Quite ordinary.
 
 ## Function Definition
 
-```rust
+```hs
 $greet who/s (
   %greeting: concat! "Hello, " who
   print! greeting
@@ -54,7 +54,7 @@ the `greeting` variable and returns it.
 
 ## Function Call
 
-```rust
+```hs
 greet! "John"
 ```
 
@@ -65,7 +65,7 @@ When a function is called it's arguments are looked up and values are consumed
 from whatever comes after the call until enough argument to satisfy the function
 are found. The below example defines and call multiple functions to show this.
 
-```rust
+```hs
 $greet who/s (
   >concat! "Hello, " who
 )
@@ -79,3 +79,35 @@ $hello (
 )
 print! exclaim! hello! "Joe"
 ```
+
+## Conditional
+
+```hs
+? SomeCondition! (
+  print! "Condition #1 met."
+) :? OtherCondition! (
+  print! "Condition #1 not met, but condition #2 met."
+) : (
+  print! "Neither condition was met."
+)
+```
+
+Skol now features full-blown control flow and branching!
+
+An if statement is written just like any other language, except you use `?` for
+`if`, `:?` for `else if` and `:` for `else`.
+
+For example, to determine the relationship of two numbers:
+
+```hs
+$ NumCompare A/f B/f (
+  ?  gtr! A B
+    (> 1)
+  ?: gtr! B A
+    (> -1)
+  >0
+)
+```
+
+The above function returns `1` is `A` is greater than `B`, `-1` if `B` is grater
+than `A`, and `0` if the numbers are equal.
