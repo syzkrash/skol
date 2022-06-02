@@ -11,6 +11,7 @@ import (
 type Generator interface {
 	Generate(io.StringWriter) error
 	CanRun() bool
+	Ext() string
 	Run(string) error
 }
 
@@ -41,6 +42,10 @@ func (g *ASTGenerator) Generate(output io.StringWriter) error {
 
 func (*ASTGenerator) CanRun() bool {
 	return false
+}
+
+func (*ASTGenerator) Ext() string {
+	return ".ast_dump.txt"
 }
 
 func (*ASTGenerator) Run(string) error {

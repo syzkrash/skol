@@ -279,6 +279,10 @@ func (*Python) CanRun() bool {
 	return true
 }
 
+func (*Python) Ext() string {
+	return ".py"
+}
+
 func (*Python) Run(fn string) error {
 	cmd := exec.Command("py", fn)
 	cmd.Stdout = os.Stdout

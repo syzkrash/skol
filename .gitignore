@@ -1,3 +1,4 @@
 skol.exe
 skol
 *.skol.py
+*.skol.ast_dump.txt

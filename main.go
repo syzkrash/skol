@@ -72,13 +72,13 @@ func compile() {
 		fmt.Println(err)
 		return
 	}
-	outFile, err := os.Create(input + ".py")
+	gen := gen(input, bytes.NewReader(code))
+	outFile, err := os.Create(input + gen.Ext())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	defer outFile.Close()
-	gen := gen(input, bytes.NewReader(code))
 	err = gen.Generate(outFile)
 	if err != nil {
 		var perr *parser.ParserError
