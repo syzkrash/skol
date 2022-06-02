@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/syzkrash/skol/codegen"
 	"github.com/syzkrash/skol/common"
@@ -22,6 +23,12 @@ const (
 	EnPy
 	EnAST
 )
+
+var engines = [...]string{
+	"Undefined",
+	"Python",
+	"AST Dump",
+}
 
 var theEngine = EnUndefined
 
@@ -70,6 +77,7 @@ func compile() {
 		fmt.Println(err)
 		return
 	}
+
 	gen := gen(input, bytes.NewReader(code))
 	outFile, err := os.Create(input + gen.Ext())
 	if err != nil {
@@ -77,6 +85,9 @@ func compile() {
 		return
 	}
 	defer outFile.Close()
+
+	fmt.Println("Compiling using engine:", engines[theEngine])
+	compStart := time.Now()
 
 	for {
 		err = gen.Generate(outFile)
@@ -88,7 +99,12 @@ func compile() {
 			return
 		}
 	}
+
+	fmt.Println("Compiled in", time.Since(compStart))
+
 	if gen.CanRun() {
+		fmt.Println("Running...")
+		fmt.Println("----------")
 		if err = gen.Run(input + ".py"); err != nil {
 			fmt.Println(err)
 			return
