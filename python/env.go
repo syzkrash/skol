@@ -13,6 +13,13 @@ func (p *pythonState) initEnv() {
 				},
 				Ret: parser.VtNothing,
 			},
+			"import": {
+				Name: "import",
+				Args: map[string]parser.ValueType{
+					"module": parser.VtString,
+				},
+				Ret: parser.VtNothing,
+			},
 		},
 		Vars: map[string]*parser.VarDefNode{},
 	}

@@ -95,6 +95,9 @@ func (p *pythonState) varRef(n *parser.VarRefNode) (err error) {
 }
 
 func (p *pythonState) callOrExpr(n *parser.FuncCallNode) (err error) {
+	if n.Func == "import" {
+		return p.impt(n.Args[0].(*parser.StringNode).Str)
+	}
 	if oper, ok := ops[n.Func]; ok {
 		return p.expr(oper, n.Args[0], n.Args[1])
 	}
@@ -155,6 +158,18 @@ func (p *pythonState) funcCall(n *parser.FuncCallNode) (err error) {
 	}
 
 	_, err = p.out.WriteString(")")
+	return
+}
+
+func (p *pythonState) impt(mod string) (err error) {
+	_, err = p.out.WriteString("import ")
+	if err != nil {
+		return
+	}
+	_, err = p.out.WriteString(mod)
+	if err != nil {
+		return
+	}
 	return
 }
 

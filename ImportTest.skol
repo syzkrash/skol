@@ -1,0 +1,7 @@
+import! "requests"
+$get url/s?"requests.get"
+
+$Main
+(
+  %r: get! "http://example.com"
+)
