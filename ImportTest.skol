@@ -1,7 +1,11 @@
 import! "requests"
-$get url/s?"requests.get"
+$get/any url/str ?"requests.get"
+$getattr/any obj/any prop/str ?
 
 $Main
 (
   %r: get! "http://example.com"
+  print! getattr! r "status_code"
 )
+
+Main!
