@@ -259,10 +259,22 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 			return
 		}
 		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '?' {
+			var internToken *lexer.Token
+			internToken, err = p.lexer.Next()
+			if err != nil {
+				return
+			}
+			intern := ""
+			if internToken.Kind != lexer.TkString {
+				p.lexer.Rollback(internToken)
+			} else {
+				intern = internToken.Raw
+			}
 			n = &FuncExternNode{
-				Name: nameToken.Raw,
-				Args: args,
-				Ret:  funcType,
+				Name:   nameToken.Raw,
+				Intern: intern,
+				Args:   args,
+				Ret:    funcType,
 			}
 			p.Scope.Funcs[nameToken.Raw] = ExternFunction(n.(*FuncExternNode))
 			return

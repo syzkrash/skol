@@ -15,8 +15,14 @@ func DefinedFunction(n *FuncDefNode) *Function {
 }
 
 func ExternFunction(n *FuncExternNode) *Function {
+	var name string
+	if n.Intern != "" {
+		name = n.Intern
+	} else {
+		name = n.Name
+	}
 	return &Function{
-		Name: n.Name,
+		Name: name,
 		Args: n.Args,
 		Ret:  n.Ret,
 	}

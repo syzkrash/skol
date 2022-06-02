@@ -170,9 +170,10 @@ func (n *FuncDefNode) String() string {
 }
 
 type FuncExternNode struct {
-	Name string
-	Args map[string]ValueType
-	Ret  ValueType
+	Name   string
+	Intern string
+	Args   map[string]ValueType
+	Ret    ValueType
 }
 
 func (*FuncExternNode) Kind() NodeKind {
