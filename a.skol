@@ -1,5 +1,5 @@
 // stupid fucking fuck fuck
-$ gt/int A/int B/int ?
+$ gt/bool A/int B/int ?
 $ sub/int A/int B/int ?
 $ print/void S/str ?
 

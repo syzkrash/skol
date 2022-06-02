@@ -5,6 +5,7 @@ type ValueType uint8
 const (
 	VtNothing ValueType = iota
 	VtInteger
+	VtBool
 	VtFloat
 	VtString
 	VtChar
@@ -15,6 +16,7 @@ const (
 var types = [...]string{
 	"Nothing",
 	"Integer",
+	"Boolean",
 	"Float",
 	"String",
 	"Char",
@@ -31,6 +33,8 @@ func ParseType(raw string) (t ValueType, ok bool) {
 	switch raw {
 	case "i", "int", "integer":
 		t = VtInteger
+	case "b", "bool", "boolean":
+		t = VtBool
 	case "f", "float", "real":
 		t = VtFloat
 	case "s", "str", "string":
