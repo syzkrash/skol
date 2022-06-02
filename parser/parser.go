@@ -196,6 +196,31 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 		return
 	}
 
+	var typeToken *lexer.Token
+	var funcType ValueType
+	var ok bool
+	sepToken, err := p.lexer.Next()
+	if err != nil {
+		return
+	}
+	if sepToken.Kind == lexer.TkPunct && sepToken.Raw == "/" {
+		typeToken, err = p.lexer.Next()
+		if err != nil {
+			return
+		}
+		if typeToken.Kind != lexer.TkIdent {
+			err = p.selfError(typeToken, "expected Identifier, got "+typeToken.Kind.String())
+			return
+		}
+		funcType, ok = ParseType(typeToken.Raw)
+		if !ok {
+			err = p.selfError(typeToken, "unknown type: "+funcType.String())
+			return
+		}
+	} else {
+		p.lexer.Rollback(sepToken)
+	}
+
 	var body []Node
 	var argName *lexer.Token
 	args := map[string]ValueType{}
@@ -227,7 +252,7 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 			n = &FuncDefNode{
 				Name: nameToken.Raw,
 				Args: args,
-				Ret:  VtAny,
+				Ret:  funcType,
 				Body: body,
 			}
 			p.Scope.Funcs[nameToken.Raw] = DefinedFunction(n.(*FuncDefNode))
@@ -237,7 +262,7 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 			n = &FuncExternNode{
 				Name: nameToken.Raw,
 				Args: args,
-				Ret:  VtNothing,
+				Ret:  funcType,
 			}
 			p.Scope.Funcs[nameToken.Raw] = ExternFunction(n.(*FuncExternNode))
 			return

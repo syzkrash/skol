@@ -12,7 +12,7 @@ const (
 	VtAny
 )
 
-var types = []string{
+var types = [...]string{
 	"Nothing",
 	"Integer",
 	"Float",
@@ -37,6 +37,10 @@ func ParseType(raw string) (t ValueType, ok bool) {
 		t = VtString
 	case "c", "char", "rune":
 		t = VtChar
+	case "a", "any":
+		t = VtAny
+	case "n", "null", "none", "nothing", "v", "void":
+		t = VtNothing
 	default:
 		ok = false
 	}

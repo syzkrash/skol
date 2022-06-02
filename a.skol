@@ -1,14 +1,14 @@
 // stupid fucking fuck fuck
-$ gt A/int B/int ?
-$ sub A/int B/int ?
-$ print S/str ?
+$ gt/int A/int B/int ?
+$ sub/int A/int B/int ?
+$ print/void S/str ?
 
 /* CompareInt compares two integers together:
 ** Returns  1 if A >  B
 ** Returns -1 if B >  A
 ** Returns  0 if A == B
 */
-$ CompareInt A/int B/int (
+$ CompareInt/int A/int B/int (
    ? gt! A B (>  1)
   :? gt! B A (> -1)
   >0
