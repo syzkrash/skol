@@ -11,14 +11,18 @@ import (
 	"github.com/syzkrash/skol/parser"
 )
 
+const indent = "  "
+
 // Python is a simple transpiler that turns a skol AST into Python code
 type Python struct {
-	parser *parser.Parser
+	parser     *parser.Parser
+	identLevel int
 }
 
 func NewPython(fn string, src io.RuneScanner) codegen.Generator {
 	gen := &Python{
-		parser: parser.NewParser(fn, src),
+		parser:     parser.NewParser(fn, src),
+		identLevel: 0,
 	}
 	gen.addEnv()
 	return gen
@@ -122,104 +126,67 @@ func (p *Python) regularFuncCall(f *parser.FuncCallNode, output io.StringWriter)
 }
 
 func (p *Python) internalGenerate(n parser.Node, output io.StringWriter) (err error) {
+	for i := 0; i < p.identLevel; i++ {
+		output.WriteString(indent)
+	}
 	switch n.Kind() {
 	case parser.NdIf:
 		c := n.(*parser.IfNode)
-		if _, err = output.WriteString("if "); err != nil {
-			return
-		}
-		if err = p.value(c.Condition, output); err != nil {
-			return
-		}
-		if _, err = output.WriteString(":\n"); err != nil {
-			return
-		}
+		output.WriteString("if ")
+		p.value(c.Condition, output)
+		output.WriteString(":\n")
+		p.identLevel++
 		for _, n := range c.IfBlock {
-			if _, err = output.WriteString("\t"); err != nil {
-				return
-			}
-			if err = p.internalGenerate(n, output); err != nil {
-				return
-			}
+			p.internalGenerate(n, output)
 		}
+		p.identLevel--
 		if len(c.ElseBlock) == 0 {
 			output.WriteString("\n")
 			break
 		}
-		if _, err = output.WriteString("else:\n"); err != nil {
-			return
-		}
+		output.WriteString("else:\n")
+		p.identLevel++
 		for _, n := range c.ElseBlock {
-			if _, err = output.WriteString("\t"); err != nil {
-				return
-			}
 			if err = p.internalGenerate(n, output); err != nil {
 				return
 			}
 		}
+		p.identLevel--
+		output.WriteString("\n")
 	case parser.NdReturn:
 		r := n.(*parser.ReturnNode)
-		if _, err = output.WriteString("return "); err != nil {
-			return
-		}
-		if err = p.value(r.Value, output); err != nil {
-			return
-		}
+		output.WriteString("return ")
+		p.value(r.Value, output)
 	case parser.NdVarDef:
 		v := n.(*parser.VarDefNode)
-		if _, err = output.WriteString(v.Var); err != nil {
-			return
-		}
-		if _, err = output.WriteString("="); err != nil {
-			return
-		}
-		if err = p.value(v.Value, output); err != nil {
-			return
-		}
+		output.WriteString(v.Var)
+		output.WriteString(" = ")
+		p.value(v.Value, output)
 		output.WriteString("\n")
 	case parser.NdFuncDef:
 		f := n.(*parser.FuncDefNode)
-		if _, err = output.WriteString("def "); err != nil {
-			return
-		}
-		if _, err = output.WriteString(f.Name); err != nil {
-			return
-		}
-		if _, err = output.WriteString("("); err != nil {
-			return
-		}
+		output.WriteString("def ")
+		output.WriteString(f.Name)
+		output.WriteString("(")
 		argNames := []string{}
 		for n := range f.Args {
 			argNames = append(argNames, n)
 		}
 		if len(argNames) == 1 {
-			if _, err = output.WriteString(argNames[0]); err != nil {
-				return
-			}
+			output.WriteString(argNames[0])
 		} else if len(argNames) > 1 {
 			for _, n := range argNames[:len(argNames)-1] {
-				if _, err = output.WriteString(n); err != nil {
-					return
-				}
-				if _, err = output.WriteString(","); err != nil {
-					return
-				}
+				output.WriteString(n)
+				output.WriteString(", ")
 			}
-			if _, err = output.WriteString(argNames[len(argNames)-1]); err != nil {
-				return
-			}
+			output.WriteString(argNames[len(argNames)-1])
 		}
-		if _, err = output.WriteString("):\n"); err != nil {
-			return
-		}
+		output.WriteString("):\n")
+		p.identLevel++
 		for _, n := range f.Body {
-			if _, err = output.WriteString("\t"); err != nil {
-				return
-			}
-			if err = p.internalGenerate(n, output); err != nil {
-				return
-			}
+			p.internalGenerate(n, output)
 		}
+		p.identLevel--
 		output.WriteString("\n")
 	case parser.NdFuncExtern:
 		// do noth ing lol
@@ -227,6 +194,15 @@ func (p *Python) internalGenerate(n parser.Node, output io.StringWriter) (err er
 		f := n.(*parser.FuncCallNode)
 		p.funcCall(f, output)
 		output.WriteString("\n")
+	case parser.NdWhile:
+		l := n.(*parser.WhileNode)
+		output.WriteString("while ")
+		p.value(l.Condition, output)
+		output.WriteString(":\n")
+		for _, n := range l.Body {
+			output.WriteString(indent)
+			p.internalGenerate(n, output)
+		}
 
 	default:
 		return fmt.Errorf("unexpected top-level node: %s", n.Kind())
