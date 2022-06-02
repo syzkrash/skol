@@ -22,6 +22,7 @@ type NodeKind uint8
 
 const (
 	NdInteger NodeKind = iota
+	NdBoolean
 	NdFloat
 	NdString
 	NdChar
@@ -37,6 +38,7 @@ const (
 
 var nodeKinds = []string{
 	"Integer",
+	"Boolean",
 	"Float",
 	"String",
 	"Char",
@@ -68,6 +70,18 @@ func (*IntegerNode) Kind() NodeKind {
 
 func (n *IntegerNode) String() string {
 	return fmt.Sprintf("Integer{%d}", n.Int)
+}
+
+type BooleanNode struct {
+	Bool bool
+}
+
+func (*BooleanNode) Kind() NodeKind {
+	return NdBoolean
+}
+
+func (n *BooleanNode) String() string {
+	return fmt.Sprintf("Boolean{%v}", n.Bool)
 }
 
 type FloatNode struct {

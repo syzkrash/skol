@@ -131,6 +131,14 @@ func (p *Parser) value() (n Node, err error) {
 		} else {
 			err = p.selfError(tok, "unknown variable")
 		}
+	case lexer.TkPunct:
+		if tok.Raw == "*" {
+			n = &BooleanNode{true}
+		} else if tok.Raw == "/" {
+			n = &BooleanNode{false}
+		} else {
+			err = p.selfError(tok, "unexpected punctuator")
+		}
 	default:
 		err = p.selfError(tok, "expected value")
 	}

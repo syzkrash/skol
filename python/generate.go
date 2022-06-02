@@ -74,6 +74,15 @@ func (p *pythonState) integer(n *parser.IntegerNode) (err error) {
 	return
 }
 
+func (p *pythonState) boolean(n *parser.BooleanNode) (err error) {
+	if n.Bool {
+		_, err = p.out.WriteString("True")
+	} else {
+		_, err = p.out.WriteString("False")
+	}
+	return
+}
+
 func (p *pythonState) float(n *parser.FloatNode) (err error) {
 	_, err = p.out.WriteString(strconv.FormatFloat(float64(n.Float), 'g', 10, 64))
 	return
@@ -177,6 +186,8 @@ func (p *pythonState) value(n parser.Node) error {
 	switch n.Kind() {
 	case parser.NdInteger:
 		return p.integer(n.(*parser.IntegerNode))
+	case parser.NdBoolean:
+		return p.boolean(n.(*parser.BooleanNode))
 	case parser.NdFloat:
 		return p.float(n.(*parser.FloatNode))
 	case parser.NdString:

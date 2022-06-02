@@ -21,3 +21,5 @@ $ CompareInt/int A/int B/int (
   print! i
   %i: sub! i 1
 )
+
+?*(print!"If True;")
