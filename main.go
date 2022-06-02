@@ -12,8 +12,6 @@ import (
 
 	"github.com/syzkrash/skol/codegen"
 	"github.com/syzkrash/skol/common"
-	"github.com/syzkrash/skol/lexer"
-	"github.com/syzkrash/skol/parser"
 	"github.com/syzkrash/skol/python"
 )
 
@@ -79,18 +77,16 @@ func compile() {
 		return
 	}
 	defer outFile.Close()
-	err = gen.Generate(outFile)
-	if err != nil {
-		var perr *parser.ParserError
-		var lerr *lexer.LexerError
-		if errors.As(err, &perr) {
-			fmt.Println("Parser error at", perr.Where, "-", perr.Error())
-		} else if errors.As(err, &lerr) {
-			fmt.Println("Lexer error at", lerr.Where, "-", lerr.Error())
-		} else {
-			fmt.Println("Error -", err)
+
+	for {
+		err = gen.Generate(outFile)
+		if errors.Is(err, io.EOF) {
+			break
 		}
-		return
+		if err != nil {
+			fmt.Println("Error -", err)
+			return
+		}
 	}
 	if gen.CanRun() {
 		if err = gen.Run(input + ".py"); err != nil {

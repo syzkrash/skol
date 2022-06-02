@@ -1,7 +1,6 @@
 package codegen
 
 import (
-	"errors"
 	"fmt"
 	"io"
 
@@ -26,18 +25,12 @@ func NewAST(fn string, src io.RuneScanner) Generator {
 }
 
 func (g *ASTGenerator) Generate(output io.StringWriter) error {
-	for {
-		n, err := g.parser.Next()
-		if errors.Is(err, io.EOF) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		if _, err = output.WriteString(fmt.Sprint(n) + "\n"); err != nil {
-			return err
-		}
+	n, err := g.parser.Next()
+	if err != nil {
+		return err
 	}
+	_, err = output.WriteString(fmt.Sprint(n) + "\n")
+	return err
 }
 
 func (*ASTGenerator) CanRun() bool {
