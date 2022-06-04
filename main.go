@@ -14,6 +14,7 @@ import (
 	"github.com/syzkrash/skol/codegen"
 	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/python"
+	"github.com/syzkrash/skol/sim"
 )
 
 type Engine uint8
@@ -22,12 +23,14 @@ const (
 	EnUndefined Engine = iota
 	EnPy
 	EnAST
+	EnSim
 )
 
 var engines = [...]string{
 	"Undefined",
 	"Python",
 	"AST Dump",
+	"Simulation",
 }
 
 var theEngine = EnUndefined
@@ -38,6 +41,8 @@ func engineFlag(arg string) error {
 		theEngine = EnPy
 	case "ast":
 		theEngine = EnAST
+	case "sim":
+		theEngine = EnSim
 	default:
 		return fmt.Errorf("unknown engine: %s", arg)
 	}
@@ -118,6 +123,8 @@ func gen(fn string, src io.RuneScanner) codegen.Generator {
 		return python.NewPython(fn, src)
 	case EnAST:
 		return codegen.NewAST(fn, src)
+	case EnSim:
+		return sim.NewEngine(fn, src)
 	}
 	return nil
 }
