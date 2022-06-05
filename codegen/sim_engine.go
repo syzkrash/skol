@@ -6,17 +6,14 @@ import (
 
 	"github.com/syzkrash/skol/parser"
 	"github.com/syzkrash/skol/parser/nodes"
-	"github.com/syzkrash/skol/sim"
 )
 
 type SimEngine struct {
-	s *sim.Simulator
 	p *parser.Parser
 }
 
 func NewSimEngine(fn string, src io.RuneScanner) Generator {
 	return &SimEngine{
-		s: sim.NewSimulator(),
 		p: parser.NewParser(fn, src),
 	}
 }
@@ -43,7 +40,7 @@ func (s *SimEngine) Run(string) (err error) {
 		if err != nil {
 			return
 		}
-		err = s.s.Stmt(n)
+		err = s.p.Sim.Stmt(n)
 		if err != nil {
 			return
 		}

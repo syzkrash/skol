@@ -3,6 +3,8 @@ import! "operator"
 $ gt/bool A/int B/int ? "operator.gt"
 $ sub/int A/int B/int ? "operator.lt"
 $ add/int A/int B/int ? "operator.add"
+$ concat/str A/str B/str ? "operator.add"
+$ to_str/str A/any ? "str"
 $ print/void S/str ?
 
 /* CompareInt compares two integers together:
@@ -20,8 +22,7 @@ $ CompareInt/int A/int B/int (
 %i: 0
 
 * gt! max i (
-  print! "Iteration!"
-  print! i
+  print! concat! "Iteration!" to_str! i
   %i: add! i 1
 )
 

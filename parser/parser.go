@@ -14,7 +14,7 @@ import (
 
 type Parser struct {
 	lexer *lexer.Lexer
-	sim   *sim.Simulator
+	Sim   *sim.Simulator
 	Const map[string]*values.Value
 	Scope *Scope
 }
@@ -22,7 +22,7 @@ type Parser struct {
 func NewParser(fn string, src io.RuneScanner) *Parser {
 	return &Parser{
 		lexer: lexer.NewLexer(src, fn),
-		sim:   sim.NewSimulator(),
+		Sim:   sim.NewSimulator(),
 		Const: map[string]*values.Value{},
 		Scope: &Scope{
 			Parent: nil,
@@ -497,7 +497,7 @@ func (p *Parser) constant() (err error) {
 	if err != nil {
 		return err
 	}
-	v, err := p.sim.Const(n)
+	v, err := p.Sim.Const(n)
 	if err != nil {
 		return err
 	}
