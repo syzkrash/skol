@@ -8,7 +8,7 @@ import (
 
 func (p *pythonState) initEnv() {
 	newScope := &parser.Scope{
-		Parent: nil,
+		Parent: p.parser.Scope,
 		Funcs: map[string]*parser.Function{
 			"print": {
 				Name: "print",
@@ -39,5 +39,5 @@ func (p *pythonState) initEnv() {
 		}
 	}
 
-	p.parser.Scope.Parent = newScope
+	p.parser.Scope = newScope
 }
