@@ -14,7 +14,6 @@ import (
 	"github.com/syzkrash/skol/codegen"
 	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/python"
-	"github.com/syzkrash/skol/sim"
 )
 
 type Engine uint8
@@ -124,7 +123,7 @@ func gen(fn string, src io.RuneScanner) codegen.Generator {
 	case EnAST:
 		return codegen.NewAST(fn, src)
 	case EnSim:
-		return sim.NewEngine(fn, src)
+		return codegen.NewSimEngine(fn, src)
 	}
 	return nil
 }

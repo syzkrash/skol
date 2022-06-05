@@ -1,6 +1,8 @@
 // stupid fucking fuck fuck
-$ gt/bool A/int B/int ?
-$ sub/int A/int B/int ?
+import! "operator"
+$ gt/bool A/int B/int ? "operator.gt"
+$ sub/int A/int B/int ? "operator.lt"
+$ add/int A/int B/int ? "operator.add"
 $ print/void S/str ?
 
 /* CompareInt compares two integers together:
@@ -14,12 +16,13 @@ $ CompareInt/int A/int B/int (
   >0
 )
 
-%i: 10
+#max: 10
+%i: 0
 
-* gt! i 0 (
+* gt! max i (
   print! "Iteration!"
   print! i
-  %i: sub! i 1
+  %i: add! i 1
 )
 
 ?*(print!"If True;")
