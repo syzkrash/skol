@@ -386,3 +386,27 @@ func TestIfElseIf(t *testing.T) {
 		t.Fatalf("expected 1 argument in call, got %d", len(fcn.Args))
 	}
 }
+
+func TestConst(t *testing.T) {
+	code := ` #max_int: 169 %max_int_copy: max_int  `
+	src := strings.NewReader(code)
+	p := NewParser("TestConst", src)
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != nodes.NdVarDef {
+		t.Fatalf("expected %s node, got %s", nodes.NdVarDef, n.Kind())
+	}
+	v := n.(*nodes.VarDefNode)
+	if v.Var != "max_int_copy" {
+		t.Fatalf("expected variable name %s, got %s", "max_int_copy", v.Var)
+	}
+	if v.Value.Kind() != nodes.NdInteger {
+		t.Fatalf("expected value to be %s node, got %s", nodes.NdInteger, v.Value.Kind())
+	}
+	c := v.Value.(*nodes.IntegerNode)
+	if c.Int != 169 {
+		t.Fatalf("expected vale to be int %d, got %c", 169, c.Int)
+	}
+}

@@ -204,6 +204,15 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 	return nil, fmt.Errorf("%s node is not a values.Value", n.Kind())
 }
 
+func (s *Simulator) Const(n nodes.Node) (*values.Value, error) {
+	switch n.Kind() {
+	case nodes.NdInteger, nodes.NdBoolean, nodes.NdFloat, nodes.NdString, nodes.NdChar:
+		return s.Expr(n)
+	default:
+		return nil, fmt.Errorf("%s node is not constant", n.Kind())
+	}
+}
+
 func (s *Simulator) block(b []nodes.Node) error {
 	s.scope = &Scope{
 		parent: s.scope,

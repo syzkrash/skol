@@ -9,16 +9,21 @@ import (
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
+	"github.com/syzkrash/skol/sim"
 )
 
 type Parser struct {
 	lexer *lexer.Lexer
+	sim   *sim.Simulator
+	Const map[string]*values.Value
 	Scope *Scope
 }
 
 func NewParser(fn string, src io.RuneScanner) *Parser {
 	return &Parser{
 		lexer: lexer.NewLexer(src, fn),
+		sim:   sim.NewSimulator(),
+		Const: map[string]*values.Value{},
 		Scope: &Scope{
 			Parent: nil,
 			Funcs:  make(map[string]*Function),
@@ -130,6 +135,8 @@ func (p *Parser) value() (n nodes.Node, err error) {
 			n = &nodes.VarRefNode{
 				Var: tok.Raw,
 			}
+		} else if v, ok := p.Const[tok.Raw]; ok {
+			n = p.ToNode(v)
 		} else {
 			err = p.selfError(tok, "unknown variable")
 		}
@@ -463,6 +470,42 @@ func (p *Parser) loop() (n nodes.Node, err error) {
 	return
 }
 
+func (p *Parser) constant() (err error) {
+	nameToken, err := p.lexer.Next()
+	if err != nil {
+		return
+	}
+	if nameToken.Kind != lexer.TkIdent {
+		err = p.selfError(nameToken, "expected an identifier")
+		return
+	}
+
+	sept, err := p.lexer.Next()
+	if err != nil {
+		return err
+	}
+	if sept.Kind != lexer.TkPunct {
+		err = p.selfError(sept, "expected a punctuator")
+		return
+	}
+	if sept.Raw != ":" {
+		err = p.selfError(sept, "expected ':'")
+		return
+	}
+
+	n, err := p.value()
+	if err != nil {
+		return err
+	}
+	v, err := p.sim.Const(n)
+	if err != nil {
+		return err
+	}
+
+	p.Const[nameToken.Raw] = v
+	return nil
+}
+
 func (p *Parser) internalNext(tok *lexer.Token) (n nodes.Node, err error) {
 	switch tok.Kind {
 	case lexer.TkPunct:
@@ -477,6 +520,13 @@ func (p *Parser) internalNext(tok *lexer.Token) (n nodes.Node, err error) {
 		}
 		if tok.Raw == "*" {
 			return p.loop()
+		}
+		if tok.Raw == "#" {
+			err = p.constant()
+			if err != nil {
+				return
+			}
+			return p.Next()
 		}
 		if p.Scope.Parent != nil && tok.Raw[0] == '>' {
 			return p.ret()
@@ -539,4 +589,20 @@ func (p *Parser) TypeOf(n nodes.Node) (t values.ValueType, ok bool) {
 		ok = false
 	}
 	return
+}
+
+func (p *Parser) ToNode(v *values.Value) nodes.Node {
+	switch v.ValueType {
+	case values.VtBool:
+		return &nodes.BooleanNode{v.Bool}
+	case values.VtChar:
+		return &nodes.CharNode{v.Char}
+	case values.VtFloat:
+		return &nodes.FloatNode{v.Float}
+	case values.VtInteger:
+		return &nodes.IntegerNode{v.Int}
+	case values.VtString:
+		return &nodes.StringNode{v.Str}
+	}
+	panic(v.ValueType.String())
 }
