@@ -18,6 +18,10 @@ func NewSimEngine(fn string, src io.RuneScanner) Generator {
 	}
 }
 
+func (*SimEngine) CanGenerate() bool {
+	return false
+}
+
 func (*SimEngine) Generate(io.StringWriter) error {
 	return io.EOF
 }

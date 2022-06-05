@@ -90,21 +90,23 @@ func compile() {
 	}
 	defer outFile.Close()
 
-	fmt.Println("Compiling using engine:", engines[theEngine])
-	compStart := time.Now()
+	if gen.CanGenerate() {
+		fmt.Println("Compiling using engine:", engines[theEngine])
+		compStart := time.Now()
 
-	for {
-		err = gen.Generate(outFile)
-		if errors.Is(err, io.EOF) {
-			break
+		for {
+			err = gen.Generate(outFile)
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if err != nil {
+				fmt.Println("Error -", err)
+				return
+			}
 		}
-		if err != nil {
-			fmt.Println("Error -", err)
-			return
-		}
+
+		fmt.Println("Compiled in", time.Since(compStart))
 	}
-
-	fmt.Println("Compiled in", time.Since(compStart))
 
 	if gen.CanRun() {
 		fmt.Println("Running...")

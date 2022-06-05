@@ -24,6 +24,10 @@ func NewPython(fn string, input io.RuneScanner) codegen.Generator {
 	return gen
 }
 
+func (p *pythonState) CanGenerate() bool {
+	return false
+}
+
 func (p *pythonState) Generate(output io.StringWriter) error {
 	p.out = output
 	n, err := p.parser.Next()
