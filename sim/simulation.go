@@ -8,15 +8,25 @@ import (
 )
 
 type Simulator struct {
-	scope *Scope
+	Scope *Scope
 }
 
 func NewSimulator() *Simulator {
 	return &Simulator{
-		scope: &Scope{
+		Scope: &Scope{
 			parent: nil,
 			Vars:   map[string]*values.Value{},
-			Funcs:  map[string]*Funct{},
+			Funcs: map[string]*Funct{
+				"print": {
+					Args: map[string]values.ValueType{
+						"a": values.VtString,
+					},
+					Ret:      values.VtNothing,
+					Body:     []nodes.Node{},
+					IsNative: true,
+					Native:   NativePrint,
+				},
+			},
 		},
 	}
 }
@@ -29,11 +39,11 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 		if err != nil {
 			return err
 		}
-		s.scope.Vars[vdn.Var] = val
+		s.Scope.Vars[vdn.Var] = val
 		return nil
 	case nodes.NdFuncDef:
 		fdn := n.(*nodes.FuncDefNode)
-		s.scope.Funcs[fdn.Name] = &Funct{
+		s.Scope.Funcs[fdn.Name] = &Funct{
 			Args: fdn.Args,
 			Ret:  fdn.Ret,
 			Body: fdn.Body,
@@ -41,7 +51,7 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 		return nil
 	case nodes.NdFuncExtern:
 		fen := n.(*nodes.FuncExternNode)
-		s.scope.Funcs[fen.Name] = &Funct{
+		s.Scope.Funcs[fen.Name] = &Funct{
 			Args: fen.Args,
 			Ret:  fen.Ret,
 			Body: []nodes.Node{},
@@ -90,19 +100,7 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 		}
 	case nodes.NdFuncCall:
 		fcn := n.(*nodes.FuncCallNode)
-		if fcn.Func == "print" {
-			strs := []any{}
-			for _, a := range fcn.Args {
-				v, err := s.Expr(a)
-				if err != nil {
-					return err
-				}
-				strs = append(strs, v.String())
-			}
-			fmt.Println(strs...)
-			return nil
-		}
-		funct, ok := s.scope.FindFunc(fcn.Func)
+		funct, ok := s.Scope.FindFunc(fcn.Func)
 		if !ok {
 			return fmt.Errorf("unknown function: %s", fcn.Func)
 		}
@@ -118,18 +116,25 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 			}
 			argv[argn[i]] = val
 		}
-		s.scope = &Scope{
-			parent: s.scope,
+		s.Scope = &Scope{
+			parent: s.Scope,
 			Vars:   argv,
 			Funcs:  map[string]*Funct{},
 		}
-		for _, n := range funct.Body {
-			err := s.Stmt(n)
+		if funct.IsNative {
+			_, err := funct.Native(s, argv)
 			if err != nil {
 				return err
 			}
+		} else {
+			for _, n := range funct.Body {
+				err := s.Stmt(n)
+				if err != nil {
+					return err
+				}
+			}
 		}
-		s.scope = s.scope.parent
+		s.Scope = s.Scope.parent
 		return nil
 	}
 	return fmt.Errorf("%s node is not a statement", n.Kind())
@@ -149,17 +154,14 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 		return values.NewValue(n.(*nodes.CharNode).Char), nil
 	case nodes.NdVarRef:
 		vrn := n.(*nodes.VarRefNode)
-		val, ok := s.scope.FindVar(vrn.Var)
+		val, ok := s.Scope.FindVar(vrn.Var)
 		if !ok {
 			return nil, fmt.Errorf("unknown variable: %s", vrn.Var)
 		}
 		return val, nil
 	case nodes.NdFuncCall:
 		fcn := n.(*nodes.FuncCallNode)
-		if fcn.Func == "print" {
-			fmt.Println(fcn.Args)
-		}
-		funct, ok := s.scope.FindFunc(fcn.Func)
+		funct, ok := s.Scope.FindFunc(fcn.Func)
 		if !ok {
 			return nil, fmt.Errorf("unknown function: %s", fcn.Func)
 		}
@@ -178,13 +180,18 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 			}
 			argv[argn[i]] = val
 		}
-		s.scope = &Scope{
-			parent: s.scope,
+		s.Scope = &Scope{
+			parent: s.Scope,
 			Vars:   argv,
 			Funcs:  map[string]*Funct{},
 		}
 		var val *values.Value = values.Default(funct.Ret)
 		var err error
+		if funct.IsNative {
+			val, err = funct.Native(s, argv)
+			s.Scope = s.Scope.parent
+			return val, err
+		}
 		for _, n := range funct.Body {
 			if n.Kind() == nodes.NdReturn {
 				val, err = s.Expr(n)
@@ -198,7 +205,7 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 				return nil, err
 			}
 		}
-		s.scope = s.scope.parent
+		s.Scope = s.Scope.parent
 		return val, nil
 	}
 	return nil, fmt.Errorf("%s node is not a values.Value", n.Kind())
@@ -214,8 +221,8 @@ func (s *Simulator) Const(n nodes.Node) (*values.Value, error) {
 }
 
 func (s *Simulator) block(b []nodes.Node) error {
-	s.scope = &Scope{
-		parent: s.scope,
+	s.Scope = &Scope{
+		parent: s.Scope,
 		Vars:   map[string]*values.Value{},
 		Funcs:  map[string]*Funct{},
 	}
@@ -224,6 +231,6 @@ func (s *Simulator) block(b []nodes.Node) error {
 			return err
 		}
 	}
-	s.scope = s.scope.parent
+	s.Scope = s.Scope.parent
 	return nil
 }
