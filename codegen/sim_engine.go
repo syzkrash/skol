@@ -1,22 +1,22 @@
-package sim
+package codegen
 
 import (
 	"errors"
 	"io"
 
-	"github.com/syzkrash/skol/codegen"
 	"github.com/syzkrash/skol/parser"
 	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/sim"
 )
 
 type SimEngine struct {
-	s *Simulator
+	s *sim.Simulator
 	p *parser.Parser
 }
 
-func NewEngine(fn string, src io.RuneScanner) codegen.Generator {
+func NewEngine(fn string, src io.RuneScanner) Generator {
 	return &SimEngine{
-		s: NewSimulator(),
+		s: sim.NewSimulator(),
 		p: parser.NewParser(fn, src),
 	}
 }
