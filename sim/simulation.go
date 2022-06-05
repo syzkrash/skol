@@ -16,17 +16,7 @@ func NewSimulator() *Simulator {
 		Scope: &Scope{
 			parent: nil,
 			Vars:   map[string]*values.Value{},
-			Funcs: map[string]*Funct{
-				"print": {
-					Args: map[string]values.ValueType{
-						"a": values.VtString,
-					},
-					Ret:      values.VtNothing,
-					Body:     []nodes.Node{},
-					IsNative: true,
-					Native:   NativePrint,
-				},
-			},
+			Funcs:  DefaultFuncs,
 		},
 	}
 }

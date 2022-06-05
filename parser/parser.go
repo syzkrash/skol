@@ -26,7 +26,7 @@ func NewParser(fn string, src io.RuneScanner) *Parser {
 		Const: map[string]*values.Value{},
 		Scope: &Scope{
 			Parent: nil,
-			Funcs:  make(map[string]*Function),
+			Funcs:  DefaultFuncs,
 			Vars:   make(map[string]*nodes.VarDefNode),
 		},
 	}

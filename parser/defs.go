@@ -32,3 +32,21 @@ func ExternFunction(n *nodes.FuncExternNode) *Function {
 		Ret:  n.Ret,
 	}
 }
+
+var DefaultFuncs = map[string]*Function{
+	"print": {
+		Name: "print",
+		Args: map[string]values.ValueType{"a": values.VtString},
+		Ret:  values.VtNothing,
+	},
+	"to_str": {
+		Name: "to_str",
+		Args: map[string]values.ValueType{"a": values.VtAny},
+		Ret:  values.VtString,
+	},
+	"add_i": {
+		Name: "add_i",
+		Args: map[string]values.ValueType{"a": values.VtInteger, "b": values.VtInteger},
+		Ret:  values.VtInteger,
+	},
+}
