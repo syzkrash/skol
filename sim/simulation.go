@@ -10,6 +10,16 @@ type Simulator struct {
 	scope *Scope
 }
 
+func NewSimulator() *Simulator {
+	return &Simulator{
+		scope: &Scope{
+			parent: nil,
+			Vars:   map[string]*Value{},
+			Funcs:  map[string]*Funct{},
+		},
+	}
+}
+
 func (s *Simulator) Stmt(n parser.Node) error {
 	switch n.Kind() {
 	case parser.NdVarDef:

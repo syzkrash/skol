@@ -15,13 +15,7 @@ type SimEngine struct {
 
 func NewEngine(fn string, src io.RuneScanner) codegen.Generator {
 	return &SimEngine{
-		s: &Simulator{
-			scope: &Scope{
-				parent: nil,
-				Vars:   map[string]*Value{},
-				Funcs:  map[string]*Funct{},
-			},
-		},
+		s: NewSimulator(),
 		p: parser.NewParser(fn, src),
 	}
 }
