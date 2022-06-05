@@ -3,7 +3,8 @@ package sim
 import (
 	"fmt"
 
-	"github.com/syzkrash/skol/parser"
+	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/parser/values"
 )
 
 type Simulator struct {
@@ -14,40 +15,40 @@ func NewSimulator() *Simulator {
 	return &Simulator{
 		scope: &Scope{
 			parent: nil,
-			Vars:   map[string]*Value{},
+			Vars:   map[string]*values.Value{},
 			Funcs:  map[string]*Funct{},
 		},
 	}
 }
 
-func (s *Simulator) Stmt(n parser.Node) error {
+func (s *Simulator) Stmt(n nodes.Node) error {
 	switch n.Kind() {
-	case parser.NdVarDef:
-		vdn := n.(*parser.VarDefNode)
+	case nodes.NdVarDef:
+		vdn := n.(*nodes.VarDefNode)
 		val, err := s.Expr(vdn.Value)
 		if err != nil {
 			return err
 		}
 		s.scope.Vars[vdn.Var] = val
 		return nil
-	case parser.NdFuncDef:
-		fdn := n.(*parser.FuncDefNode)
+	case nodes.NdFuncDef:
+		fdn := n.(*nodes.FuncDefNode)
 		s.scope.Funcs[fdn.Name] = &Funct{
 			Args: fdn.Args,
 			Ret:  fdn.Ret,
 			Body: fdn.Body,
 		}
 		return nil
-	case parser.NdFuncExtern:
-		fen := n.(*parser.FuncExternNode)
+	case nodes.NdFuncExtern:
+		fen := n.(*nodes.FuncExternNode)
 		s.scope.Funcs[fen.Name] = &Funct{
 			Args: fen.Args,
 			Ret:  fen.Ret,
-			Body: []parser.Node{},
+			Body: []nodes.Node{},
 		}
 		return nil
-	case parser.NdIf:
-		ifn := n.(*parser.IfNode)
+	case nodes.NdIf:
+		ifn := n.(*nodes.IfNode)
 		val, err := s.Expr(ifn.Condition)
 		if err != nil {
 			return err
@@ -65,8 +66,8 @@ func (s *Simulator) Stmt(n parser.Node) error {
 			}
 		}
 		return s.block(ifn.ElseBlock)
-	case parser.NdWhile:
-		whn := n.(*parser.WhileNode)
+	case nodes.NdWhile:
+		whn := n.(*nodes.WhileNode)
 		val, err := s.Expr(whn.Condition)
 		if err != nil {
 			return err
@@ -87,8 +88,8 @@ func (s *Simulator) Stmt(n parser.Node) error {
 				return nil
 			}
 		}
-	case parser.NdFuncCall:
-		fcn := n.(*parser.FuncCallNode)
+	case nodes.NdFuncCall:
+		fcn := n.(*nodes.FuncCallNode)
 		if fcn.Func == "print" {
 			strs := []any{}
 			for _, a := range fcn.Args {
@@ -109,7 +110,7 @@ func (s *Simulator) Stmt(n parser.Node) error {
 		for n := range funct.Args {
 			argn = append(argn, n)
 		}
-		argv := map[string]*Value{}
+		argv := map[string]*values.Value{}
 		for i := 0; i < len(fcn.Args); i++ {
 			val, err := s.Expr(fcn.Args[i])
 			if err != nil {
@@ -134,27 +135,27 @@ func (s *Simulator) Stmt(n parser.Node) error {
 	return fmt.Errorf("%s node is not a statement", n.Kind())
 }
 
-func (s *Simulator) Expr(n parser.Node) (*Value, error) {
+func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 	switch n.Kind() {
-	case parser.NdInteger:
-		return NewValue(n.(*parser.IntegerNode).Int), nil
-	case parser.NdBoolean:
-		return NewValue(n.(*parser.BooleanNode).Bool), nil
-	case parser.NdFloat:
-		return NewValue(n.(*parser.FloatNode).Float), nil
-	case parser.NdString:
-		return NewValue(n.(*parser.StringNode).Str), nil
-	case parser.NdChar:
-		return NewValue(n.(*parser.CharNode).Char), nil
-	case parser.NdVarRef:
-		vrn := n.(*parser.VarRefNode)
+	case nodes.NdInteger:
+		return values.NewValue(n.(*nodes.IntegerNode).Int), nil
+	case nodes.NdBoolean:
+		return values.NewValue(n.(*nodes.BooleanNode).Bool), nil
+	case nodes.NdFloat:
+		return values.NewValue(n.(*nodes.FloatNode).Float), nil
+	case nodes.NdString:
+		return values.NewValue(n.(*nodes.StringNode).Str), nil
+	case nodes.NdChar:
+		return values.NewValue(n.(*nodes.CharNode).Char), nil
+	case nodes.NdVarRef:
+		vrn := n.(*nodes.VarRefNode)
 		val, ok := s.scope.FindVar(vrn.Var)
 		if !ok {
 			return nil, fmt.Errorf("unknown variable: %s", vrn.Var)
 		}
 		return val, nil
-	case parser.NdFuncCall:
-		fcn := n.(*parser.FuncCallNode)
+	case nodes.NdFuncCall:
+		fcn := n.(*nodes.FuncCallNode)
 		if fcn.Func == "print" {
 			fmt.Println(fcn.Args)
 		}
@@ -162,14 +163,14 @@ func (s *Simulator) Expr(n parser.Node) (*Value, error) {
 		if !ok {
 			return nil, fmt.Errorf("unknown function: %s", fcn.Func)
 		}
-		if funct.Ret == parser.VtNothing {
-			return nil, fmt.Errorf("function %s does not return a value", fcn.Func)
+		if funct.Ret == values.VtNothing {
+			return nil, fmt.Errorf("function %s does not return a values.Value", fcn.Func)
 		}
 		argn := []string{}
 		for n := range funct.Args {
 			argn = append(argn, n)
 		}
-		argv := map[string]*Value{}
+		argv := map[string]*values.Value{}
 		for i := 0; i < len(fcn.Args); i++ {
 			val, err := s.Expr(fcn.Args[i])
 			if err != nil {
@@ -182,10 +183,10 @@ func (s *Simulator) Expr(n parser.Node) (*Value, error) {
 			Vars:   argv,
 			Funcs:  map[string]*Funct{},
 		}
-		var val *Value = Default(funct.Ret)
+		var val *values.Value = values.Default(funct.Ret)
 		var err error
 		for _, n := range funct.Body {
-			if n.Kind() == parser.NdReturn {
+			if n.Kind() == nodes.NdReturn {
 				val, err = s.Expr(n)
 				if err != nil {
 					return nil, err
@@ -200,13 +201,13 @@ func (s *Simulator) Expr(n parser.Node) (*Value, error) {
 		s.scope = s.scope.parent
 		return val, nil
 	}
-	return nil, fmt.Errorf("%s node is not a value", n.Kind())
+	return nil, fmt.Errorf("%s node is not a values.Value", n.Kind())
 }
 
-func (s *Simulator) block(b []parser.Node) error {
+func (s *Simulator) block(b []nodes.Node) error {
 	s.scope = &Scope{
 		parent: s.scope,
-		Vars:   map[string]*Value{},
+		Vars:   map[string]*values.Value{},
 		Funcs:  map[string]*Funct{},
 	}
 	for _, n := range b {

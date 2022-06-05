@@ -1,6 +1,10 @@
 package python
 
-import "github.com/syzkrash/skol/parser"
+import (
+	"github.com/syzkrash/skol/parser"
+	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/parser/values"
+)
 
 func (p *pythonState) initEnv() {
 	newScope := &parser.Scope{
@@ -8,30 +12,30 @@ func (p *pythonState) initEnv() {
 		Funcs: map[string]*parser.Function{
 			"print": {
 				Name: "print",
-				Args: map[string]parser.ValueType{
-					"a": parser.VtAny,
+				Args: map[string]values.ValueType{
+					"a": values.VtAny,
 				},
-				Ret: parser.VtNothing,
+				Ret: values.VtNothing,
 			},
 			"import": {
 				Name: "import",
-				Args: map[string]parser.ValueType{
-					"module": parser.VtString,
+				Args: map[string]values.ValueType{
+					"module": values.VtString,
 				},
-				Ret: parser.VtNothing,
+				Ret: values.VtNothing,
 			},
 		},
-		Vars: map[string]*parser.VarDefNode{},
+		Vars: map[string]*nodes.VarDefNode{},
 	}
 
 	for oper, sym := range ops {
 		newScope.Funcs[oper] = &parser.Function{
 			Name: sym,
-			Args: map[string]parser.ValueType{
-				"a": parser.VtAny,
-				"b": parser.VtAny,
+			Args: map[string]values.ValueType{
+				"a": values.VtAny,
+				"b": values.VtAny,
 			},
-			Ret: parser.VtAny,
+			Ret: values.VtAny,
 		}
 	}
 

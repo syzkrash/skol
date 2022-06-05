@@ -1,13 +1,11 @@
-package sim
+package values
 
 import (
 	"fmt"
-
-	"github.com/syzkrash/skol/parser"
 )
 
 type Value struct {
-	ValueType parser.ValueType
+	ValueType ValueType
 	Int       int32
 	Bool      bool
 	Float     float32
@@ -18,56 +16,56 @@ type Value struct {
 func NewValue(v any) *Value {
 	if v == nil {
 		return &Value{
-			ValueType: parser.VtNothing,
+			ValueType: VtNothing,
 		}
 	}
 	if i, ok := v.(int32); ok {
 		return &Value{
-			ValueType: parser.VtInteger,
+			ValueType: VtInteger,
 			Int:       i,
 		}
 	}
 	if b, ok := v.(bool); ok {
 		return &Value{
-			ValueType: parser.VtBool,
+			ValueType: VtBool,
 			Bool:      b,
 		}
 	}
 	if f, ok := v.(float32); ok {
 		return &Value{
-			ValueType: parser.VtFloat,
+			ValueType: VtFloat,
 			Float:     f,
 		}
 	}
 	if s, ok := v.(string); ok {
 		return &Value{
-			ValueType: parser.VtString,
+			ValueType: VtString,
 			Str:       s,
 		}
 	}
 	if r, ok := v.(rune); ok {
 		return &Value{
-			ValueType: parser.VtChar,
+			ValueType: VtChar,
 			Char:      r,
 		}
 	}
 	panic(fmt.Sprintf("unexpected value for NewValue: %v", v))
 }
 
-func Default(t parser.ValueType) *Value {
+func Default(t ValueType) *Value {
 	v := &Value{
 		ValueType: t,
 	}
 	switch t {
-	case parser.VtInteger:
+	case VtInteger:
 		v.Int = 0
-	case parser.VtBool:
+	case VtBool:
 		v.Bool = false
-	case parser.VtFloat:
+	case VtFloat:
 		v.Float = 0.0
-	case parser.VtString:
+	case VtString:
 		v.Str = ""
-	case parser.VtChar:
+	case VtChar:
 		v.Char = '\x00'
 	}
 	return v
@@ -75,11 +73,11 @@ func Default(t parser.ValueType) *Value {
 
 func (v *Value) ToBool() bool {
 	switch v.ValueType {
-	case parser.VtBool:
+	case VtBool:
 		return v.Bool
-	case parser.VtInteger:
+	case VtInteger:
 		return v.Int > 0
-	case parser.VtNothing:
+	case VtNothing:
 		return false
 	default:
 		return true
@@ -88,17 +86,17 @@ func (v *Value) ToBool() bool {
 
 func (v *Value) String() string {
 	switch v.ValueType {
-	case parser.VtNothing:
+	case VtNothing:
 		return "Nothing"
-	case parser.VtInteger:
+	case VtInteger:
 		return fmt.Sprint(v.Int)
-	case parser.VtBool:
+	case VtBool:
 		return fmt.Sprint(v.Bool)
-	case parser.VtFloat:
+	case VtFloat:
 		return fmt.Sprint(v.Float)
-	case parser.VtString:
+	case VtString:
 		return v.Str
-	case parser.VtChar:
+	case VtChar:
 		return string(v.Char)
 	}
 	return fmt.Sprintf("<%s value>", v.ValueType)

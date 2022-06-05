@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/syzkrash/skol/parser"
+	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/parser/values"
 )
 
 const indent = "  "
@@ -25,23 +26,23 @@ var ops = map[string]string{
 	"leq": "<=",
 }
 
-func (p *pythonState) vt2pt(t parser.ValueType) string {
+func (p *pythonState) vt2pt(t values.ValueType) string {
 	switch t {
-	case parser.VtBool:
+	case values.VtBool:
 		return "bool"
-	case parser.VtChar:
+	case values.VtChar:
 		return "int"
-	case parser.VtFloat:
+	case values.VtFloat:
 		return "float"
-	case parser.VtInteger:
+	case values.VtInteger:
 		return "int"
-	case parser.VtString:
+	case values.VtString:
 		return "str"
 	}
 	return ""
 }
 
-func (p *pythonState) statement(n parser.Node) (err error) {
+func (p *pythonState) statement(n nodes.Node) (err error) {
 	defer p.out.WriteString("\n")
 
 	for i := 0; i < int(p.ind); i++ {
@@ -49,32 +50,32 @@ func (p *pythonState) statement(n parser.Node) (err error) {
 	}
 
 	switch n.Kind() {
-	case parser.NdVarDef:
-		return p.varDef(n.(*parser.VarDefNode))
-	case parser.NdFuncCall:
-		return p.callOrExpr(n.(*parser.FuncCallNode))
-	case parser.NdFuncDef:
-		return p.funcDef(n.(*parser.FuncDefNode))
-	case parser.NdReturn:
-		return p.ret(n.(*parser.ReturnNode))
-	case parser.NdIf:
-		return p.ifn(n.(*parser.IfNode))
-	case parser.NdWhile:
-		return p.while(n.(*parser.WhileNode))
+	case nodes.NdVarDef:
+		return p.varDef(n.(*nodes.VarDefNode))
+	case nodes.NdFuncCall:
+		return p.callOrExpr(n.(*nodes.FuncCallNode))
+	case nodes.NdFuncDef:
+		return p.funcDef(n.(*nodes.FuncDefNode))
+	case nodes.NdReturn:
+		return p.ret(n.(*nodes.ReturnNode))
+	case nodes.NdIf:
+		return p.ifn(n.(*nodes.IfNode))
+	case nodes.NdWhile:
+		return p.while(n.(*nodes.WhileNode))
 
-	case parser.NdFuncExtern:
+	case nodes.NdFuncExtern:
 		// special case for externs
 		return nil
 	}
 	return fmt.Errorf("%s node is not a statement", n.Kind())
 }
 
-func (p *pythonState) integer(n *parser.IntegerNode) (err error) {
+func (p *pythonState) integer(n *nodes.IntegerNode) (err error) {
 	_, err = p.out.WriteString(strconv.Itoa(int(n.Int)))
 	return
 }
 
-func (p *pythonState) boolean(n *parser.BooleanNode) (err error) {
+func (p *pythonState) boolean(n *nodes.BooleanNode) (err error) {
 	if n.Bool {
 		_, err = p.out.WriteString("True")
 	} else {
@@ -83,29 +84,29 @@ func (p *pythonState) boolean(n *parser.BooleanNode) (err error) {
 	return
 }
 
-func (p *pythonState) float(n *parser.FloatNode) (err error) {
+func (p *pythonState) float(n *nodes.FloatNode) (err error) {
 	_, err = p.out.WriteString(strconv.FormatFloat(float64(n.Float), 'g', 10, 64))
 	return
 }
 
-func (p *pythonState) string(n *parser.StringNode) (err error) {
+func (p *pythonState) string(n *nodes.StringNode) (err error) {
 	_, err = p.out.WriteString("\"" + n.Str + "\"")
 	return
 }
 
-func (p *pythonState) char(n *parser.CharNode) (err error) {
+func (p *pythonState) char(n *nodes.CharNode) (err error) {
 	_, err = p.out.WriteString(strconv.FormatInt(int64(n.Char), 10))
 	return
 }
 
-func (p *pythonState) varRef(n *parser.VarRefNode) (err error) {
+func (p *pythonState) varRef(n *nodes.VarRefNode) (err error) {
 	_, err = p.out.WriteString(n.Var)
 	return
 }
 
-func (p *pythonState) callOrExpr(n *parser.FuncCallNode) (err error) {
+func (p *pythonState) callOrExpr(n *nodes.FuncCallNode) (err error) {
 	if n.Func == "import" {
-		return p.impt(n.Args[0].(*parser.StringNode).Str)
+		return p.impt(n.Args[0].(*nodes.StringNode).Str)
 	}
 	if oper, ok := ops[n.Func]; ok {
 		return p.expr(oper, n.Args[0], n.Args[1])
@@ -113,7 +114,7 @@ func (p *pythonState) callOrExpr(n *parser.FuncCallNode) (err error) {
 	return p.funcCall(n)
 }
 
-func (p *pythonState) expr(oper string, lhs, rhs parser.Node) (err error) {
+func (p *pythonState) expr(oper string, lhs, rhs nodes.Node) (err error) {
 	_, err = p.out.WriteString("(")
 	if err != nil {
 		return
@@ -134,7 +135,7 @@ func (p *pythonState) expr(oper string, lhs, rhs parser.Node) (err error) {
 	return
 }
 
-func (p *pythonState) funcCall(n *parser.FuncCallNode) (err error) {
+func (p *pythonState) funcCall(n *nodes.FuncCallNode) (err error) {
 	_, err = p.out.WriteString(n.Func)
 	if err != nil {
 		return
@@ -182,27 +183,27 @@ func (p *pythonState) impt(mod string) (err error) {
 	return
 }
 
-func (p *pythonState) value(n parser.Node) error {
+func (p *pythonState) value(n nodes.Node) error {
 	switch n.Kind() {
-	case parser.NdInteger:
-		return p.integer(n.(*parser.IntegerNode))
-	case parser.NdBoolean:
-		return p.boolean(n.(*parser.BooleanNode))
-	case parser.NdFloat:
-		return p.float(n.(*parser.FloatNode))
-	case parser.NdString:
-		return p.string(n.(*parser.StringNode))
-	case parser.NdChar:
-		return p.char(n.(*parser.CharNode))
-	case parser.NdVarRef:
-		return p.varRef(n.(*parser.VarRefNode))
-	case parser.NdFuncCall:
-		return p.callOrExpr(n.(*parser.FuncCallNode))
+	case nodes.NdInteger:
+		return p.integer(n.(*nodes.IntegerNode))
+	case nodes.NdBoolean:
+		return p.boolean(n.(*nodes.BooleanNode))
+	case nodes.NdFloat:
+		return p.float(n.(*nodes.FloatNode))
+	case nodes.NdString:
+		return p.string(n.(*nodes.StringNode))
+	case nodes.NdChar:
+		return p.char(n.(*nodes.CharNode))
+	case nodes.NdVarRef:
+		return p.varRef(n.(*nodes.VarRefNode))
+	case nodes.NdFuncCall:
+		return p.callOrExpr(n.(*nodes.FuncCallNode))
 	}
 	return fmt.Errorf("%s node is not a value", n.Kind())
 }
 
-func (p *pythonState) varDef(n *parser.VarDefNode) (err error) {
+func (p *pythonState) varDef(n *nodes.VarDefNode) (err error) {
 	_, err = p.out.WriteString(n.Var)
 	if err != nil {
 		return
@@ -225,7 +226,7 @@ func (p *pythonState) varDef(n *parser.VarDefNode) (err error) {
 	return
 }
 
-func (p *pythonState) block(n []parser.Node) (err error) {
+func (p *pythonState) block(n []nodes.Node) (err error) {
 	p.ind++
 	for _, s := range n {
 		err = p.statement(s)
@@ -237,7 +238,7 @@ func (p *pythonState) block(n []parser.Node) (err error) {
 	return
 }
 
-func (p *pythonState) funcDef(n *parser.FuncDefNode) (err error) {
+func (p *pythonState) funcDef(n *nodes.FuncDefNode) (err error) {
 	_, err = p.out.WriteString("def ")
 	if err != nil {
 		return
@@ -301,7 +302,7 @@ func (p *pythonState) funcDef(n *parser.FuncDefNode) (err error) {
 	return p.block(n.Body)
 }
 
-func (p *pythonState) ret(n *parser.ReturnNode) (err error) {
+func (p *pythonState) ret(n *nodes.ReturnNode) (err error) {
 	_, err = p.out.WriteString("return ")
 	if err != nil {
 		return
@@ -309,7 +310,7 @@ func (p *pythonState) ret(n *parser.ReturnNode) (err error) {
 	return p.value(n.Value)
 }
 
-func (p *pythonState) ifn(n *parser.IfNode) (err error) {
+func (p *pythonState) ifn(n *nodes.IfNode) (err error) {
 	_, err = p.out.WriteString("if ")
 	if err != nil {
 		return
@@ -368,7 +369,7 @@ func (p *pythonState) ifn(n *parser.IfNode) (err error) {
 	return
 }
 
-func (p *pythonState) while(n *parser.WhileNode) (err error) {
+func (p *pythonState) while(n *nodes.WhileNode) (err error) {
 	_, err = p.out.WriteString("while ")
 	if err != nil {
 		return

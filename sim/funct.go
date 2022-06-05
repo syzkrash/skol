@@ -1,9 +1,12 @@
 package sim
 
-import "github.com/syzkrash/skol/parser"
+import (
+	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/parser/values"
+)
 
 type Funct struct {
-	Args map[string]parser.ValueType
-	Ret  parser.ValueType
-	Body []parser.Node
+	Args map[string]values.ValueType
+	Ret  values.ValueType
+	Body []nodes.Node
 }

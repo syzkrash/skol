@@ -6,6 +6,7 @@ import (
 
 	"github.com/syzkrash/skol/codegen"
 	"github.com/syzkrash/skol/parser"
+	"github.com/syzkrash/skol/parser/nodes"
 )
 
 type SimEngine struct {
@@ -33,7 +34,7 @@ func (*SimEngine) Ext() string {
 }
 
 func (s *SimEngine) Run(string) (err error) {
-	var n parser.Node
+	var n nodes.Node
 	for {
 		n, err = s.p.Next()
 		if errors.Is(err, io.EOF) {

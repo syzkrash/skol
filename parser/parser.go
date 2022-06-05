@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/syzkrash/skol/lexer"
+	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/parser/values"
 )
 
 type Parser struct {
@@ -20,7 +22,7 @@ func NewParser(fn string, src io.RuneScanner) *Parser {
 		Scope: &Scope{
 			Parent: nil,
 			Funcs:  make(map[string]*Function),
-			Vars:   make(map[string]*VarDefNode),
+			Vars:   make(map[string]*nodes.VarDefNode),
 		},
 	}
 }
@@ -50,8 +52,8 @@ func (p *Parser) otherError(where *lexer.Token, msg string, cause error) error {
 //	add! sqr! 2 sqr! 2     // add(sqr(2), sqr(2))
 //	add! a b               // add(a, b)
 //	add! mul! a a mul! bb  // add(mul(a, a), mul(b, b))
-func (p *Parser) funcCall(f *Function) (n Node, err error) {
-	args := make([]Node, len(f.Args))
+func (p *Parser) funcCall(f *Function) (n nodes.Node, err error) {
+	args := make([]nodes.Node, len(f.Args))
 	for i := 0; i < len(args); i++ {
 		v, err := p.value()
 		if err != nil {
@@ -59,25 +61,25 @@ func (p *Parser) funcCall(f *Function) (n Node, err error) {
 		}
 		args[i] = v
 	}
-	n = &FuncCallNode{
+	n = &nodes.FuncCallNode{
 		Func: f.Name,
 		Args: args,
 	}
 	return
 }
 
-// value parses a node that has a value
+// value parses a nodes.Node that has a value
 //
 // Example values:
 //
-//	123        // IntegerNode
-//	45.67      // FloatNode
-//	"hello"    // StringNode
-//	'E'        // CharNode
-//	add! 1 2   // FuncCallNode
-//	age        // VarRefNode
+//	123        // nodes.IntegerNode
+//	45.67      // nodes.FloatNode
+//	"hello"    // nodes.StringNode
+//	'E'        // nodes.CharNode
+//	add! 1 2   // nodes.FuncCallNode
+//	age        // nodes.VarRefNode
 //
-func (p *Parser) value() (n Node, err error) {
+func (p *Parser) value() (n nodes.Node, err error) {
 	tok, err := p.lexer.Next()
 	if err != nil {
 		return nil, err
@@ -92,7 +94,7 @@ func (p *Parser) value() (n Node, err error) {
 				err = p.otherError(tok, "invalid floating-point constant", err)
 			}
 
-			n = &FloatNode{
+			n = &nodes.FloatNode{
 				Float: float32(f),
 			}
 		} else {
@@ -102,18 +104,18 @@ func (p *Parser) value() (n Node, err error) {
 				err = p.otherError(tok, "invalid integer constant", err)
 			}
 
-			n = &IntegerNode{
+			n = &nodes.IntegerNode{
 				Int: int32(i),
 			}
 		}
 	case lexer.TkString:
-		n = &StringNode{
+		n = &nodes.StringNode{
 			Str: tok.Raw,
 		}
 	case lexer.TkChar:
 		rdr := strings.NewReader(tok.Raw)
 		r, _, _ := rdr.ReadRune()
-		n = &CharNode{
+		n = &nodes.CharNode{
 			Char: r,
 		}
 	case lexer.TkIdent:
@@ -125,7 +127,7 @@ func (p *Parser) value() (n Node, err error) {
 			}
 			n, err = p.funcCall(f)
 		} else if _, ok := p.Scope.FindVar(tok.Raw); ok {
-			n = &VarRefNode{
+			n = &nodes.VarRefNode{
 				Var: tok.Raw,
 			}
 		} else {
@@ -133,9 +135,9 @@ func (p *Parser) value() (n Node, err error) {
 		}
 	case lexer.TkPunct:
 		if tok.Raw == "*" {
-			n = &BooleanNode{true}
+			n = &nodes.BooleanNode{true}
 		} else if tok.Raw == "/" {
-			n = &BooleanNode{false}
+			n = &nodes.BooleanNode{false}
 		} else {
 			err = p.selfError(tok, "unexpected punctuator")
 		}
@@ -146,7 +148,7 @@ func (p *Parser) value() (n Node, err error) {
 	return
 }
 
-// varDef parses a variable definition node (VarDefNode)
+// varDef parses a variable definition nodes.Node (nodes.VarDefNode)
 //
 // Example variable definition:
 //
@@ -155,7 +157,7 @@ func (p *Parser) value() (n Node, err error) {
 //	%s: "hello"
 //	%	r	:	'E'
 //
-func (p *Parser) varDef() (n Node, err error) {
+func (p *Parser) varDef() (n nodes.Node, err error) {
 	nameToken, err := p.lexer.Next()
 	if err != nil {
 		return
@@ -184,17 +186,17 @@ func (p *Parser) varDef() (n Node, err error) {
 	}
 
 	vt, _ := p.TypeOf(val)
-	n = &VarDefNode{
+	n = &nodes.VarDefNode{
 		Var:     nameToken.Raw,
 		Value:   val,
 		VarType: vt,
 	}
-	p.Scope.Vars[nameToken.Raw] = n.(*VarDefNode)
+	p.Scope.Vars[nameToken.Raw] = n.(*nodes.VarDefNode)
 
 	return
 }
 
-func (p *Parser) funcOrExtern() (n Node, err error) {
+func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 	nameToken, err := p.lexer.Next()
 	if err != nil {
 		return
@@ -205,7 +207,7 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 	}
 
 	var typeToken *lexer.Token
-	var funcType ValueType
+	var funcType values.ValueType
 	var ok bool
 	sepToken, err := p.lexer.Next()
 	if err != nil {
@@ -220,7 +222,7 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 			err = p.selfError(typeToken, "expected Identifier, got "+typeToken.Kind.String())
 			return
 		}
-		funcType, ok = ParseType(typeToken.Raw)
+		funcType, ok = values.ParseType(typeToken.Raw)
 		if !ok {
 			err = p.selfError(typeToken, "unknown type: "+funcType.String())
 			return
@@ -229,9 +231,9 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 		p.lexer.Rollback(sepToken)
 	}
 
-	var body []Node
+	var body []nodes.Node
 	var argName *lexer.Token
-	args := map[string]ValueType{}
+	args := map[string]values.ValueType{}
 	for {
 		argName, err = p.lexer.Next()
 		if err != nil {
@@ -241,10 +243,10 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 			newScope := &Scope{
 				Parent: p.Scope,
 				Funcs:  make(map[string]*Function),
-				Vars:   make(map[string]*VarDefNode),
+				Vars:   make(map[string]*nodes.VarDefNode),
 			}
 			for n, t := range args {
-				newScope.Vars[n] = &VarDefNode{
+				newScope.Vars[n] = &nodes.VarDefNode{
 					VarType: t,
 					Var:     n,
 				}
@@ -257,13 +259,13 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 				return
 			}
 
-			n = &FuncDefNode{
+			n = &nodes.FuncDefNode{
 				Name: nameToken.Raw,
 				Args: args,
 				Ret:  funcType,
 				Body: body,
 			}
-			p.Scope.Funcs[nameToken.Raw] = DefinedFunction(n.(*FuncDefNode))
+			p.Scope.Funcs[nameToken.Raw] = DefinedFunction(n.(*nodes.FuncDefNode))
 			return
 		}
 		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '?' {
@@ -278,13 +280,13 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 			} else {
 				intern = internToken.Raw
 			}
-			n = &FuncExternNode{
+			n = &nodes.FuncExternNode{
 				Name:   nameToken.Raw,
 				Intern: intern,
 				Args:   args,
 				Ret:    funcType,
 			}
-			p.Scope.Funcs[nameToken.Raw] = ExternFunction(n.(*FuncExternNode))
+			p.Scope.Funcs[nameToken.Raw] = ExternFunction(n.(*nodes.FuncExternNode))
 			return
 		}
 		if argName.Kind != lexer.TkIdent {
@@ -307,7 +309,7 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 		if argType.Kind != lexer.TkIdent {
 			return nil, p.selfError(argType, "expected an identifier")
 		}
-		t, ok := ParseType(argType.Raw)
+		t, ok := values.ParseType(argType.Raw)
 		if !ok {
 			return nil, p.selfError(argType, "unknown type: "+argType.Raw)
 		}
@@ -315,19 +317,19 @@ func (p *Parser) funcOrExtern() (n Node, err error) {
 	}
 }
 
-func (p *Parser) ret() (n Node, err error) {
+func (p *Parser) ret() (n nodes.Node, err error) {
 	v, err := p.value()
 	if err != nil {
 		return
 	}
-	n = &ReturnNode{
+	n = &nodes.ReturnNode{
 		Value: v,
 	}
 	return
 }
 
-func (p *Parser) block() (nodes []Node, err error) {
-	var n Node
+func (p *Parser) block() (ns []nodes.Node, err error) {
+	var n nodes.Node
 	var tok *lexer.Token
 	tok, err = p.lexer.Next()
 	if err != nil {
@@ -353,12 +355,12 @@ func (p *Parser) block() (nodes []Node, err error) {
 		if err != nil {
 			break
 		}
-		nodes = append(nodes, n)
+		ns = append(ns, n)
 	}
 	return
 }
 
-func (p *Parser) condition() (n Node, err error) {
+func (p *Parser) condition() (n nodes.Node, err error) {
 	condition, err := p.value()
 	if err != nil {
 		return
@@ -366,7 +368,7 @@ func (p *Parser) condition() (n Node, err error) {
 	newScope := &Scope{
 		Parent: p.Scope,
 		Funcs:  make(map[string]*Function),
-		Vars:   make(map[string]*VarDefNode),
+		Vars:   make(map[string]*nodes.VarDefNode),
 	}
 	p.Scope = newScope
 	ifb, err := p.block()
@@ -375,11 +377,11 @@ func (p *Parser) condition() (n Node, err error) {
 	}
 
 	var (
-		elseb []Node
+		elseb []nodes.Node
 
-		elifn    []*IfSubNode
-		subcond  Node
-		subblock []Node
+		elifn    []*nodes.IfSubNode
+		subcond  nodes.Node
+		subblock []nodes.Node
 
 		tok *lexer.Token
 	)
@@ -409,7 +411,7 @@ func (p *Parser) condition() (n Node, err error) {
 			if err != nil {
 				return nil, err
 			}
-			elifn = append(elifn, &IfSubNode{
+			elifn = append(elifn, &nodes.IfSubNode{
 				Condition: subcond,
 				Block:     subblock,
 			})
@@ -424,7 +426,7 @@ func (p *Parser) condition() (n Node, err error) {
 
 	p.Scope = p.Scope.Parent
 
-	n = &IfNode{
+	n = &nodes.IfNode{
 		Condition:   condition,
 		IfBlock:     ifb,
 		ElseIfNodes: elifn,
@@ -433,7 +435,7 @@ func (p *Parser) condition() (n Node, err error) {
 	return
 }
 
-func (p *Parser) loop() (n Node, err error) {
+func (p *Parser) loop() (n nodes.Node, err error) {
 	condition, err := p.value()
 	if err != nil {
 		return
@@ -442,7 +444,7 @@ func (p *Parser) loop() (n Node, err error) {
 	newScope := &Scope{
 		Parent: p.Scope,
 		Funcs:  map[string]*Function{},
-		Vars:   map[string]*VarDefNode{},
+		Vars:   map[string]*nodes.VarDefNode{},
 	}
 	oldScope := p.Scope
 	p.Scope = newScope
@@ -454,14 +456,14 @@ func (p *Parser) loop() (n Node, err error) {
 
 	p.Scope = oldScope
 
-	n = &WhileNode{
+	n = &nodes.WhileNode{
 		Condition: condition,
 		Body:      body,
 	}
 	return
 }
 
-func (p *Parser) internalNext(tok *lexer.Token) (n Node, err error) {
+func (p *Parser) internalNext(tok *lexer.Token) (n nodes.Node, err error) {
 	switch tok.Kind {
 	case lexer.TkPunct:
 		if tok.Raw == "$" {
@@ -498,11 +500,43 @@ func (p *Parser) internalNext(tok *lexer.Token) (n Node, err error) {
 	return
 }
 
-func (p *Parser) Next() (n Node, err error) {
+func (p *Parser) Next() (n nodes.Node, err error) {
 	tok, err := p.lexer.Next()
 	if err != nil {
 		return nil, err
 	}
 	n, err = p.internalNext(tok)
+	return
+}
+
+func (p *Parser) TypeOf(n nodes.Node) (t values.ValueType, ok bool) {
+	switch n.Kind() {
+	case nodes.NdInteger:
+		t = values.VtInteger
+	case nodes.NdFloat:
+		t = values.VtFloat
+	case nodes.NdChar:
+		t = values.VtChar
+	case nodes.NdString:
+		t = values.VtString
+	case nodes.NdReturn:
+		t, ok = p.TypeOf(n.(*nodes.ReturnNode).Value)
+	case nodes.NdVarRef:
+		var v *nodes.VarDefNode
+		v, ok = p.Scope.FindVar(n.(*nodes.VarRefNode).Var)
+		if !ok {
+			return
+		}
+		t = v.VarType
+	case nodes.NdFuncCall:
+		var f *Function
+		f, ok = p.Scope.FindFunc(n.(*nodes.FuncCallNode).Func)
+		if !ok {
+			return
+		}
+		t = f.Ret
+	default:
+		ok = false
+	}
 	return
 }

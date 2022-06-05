@@ -1,12 +1,17 @@
 package parser
 
+import (
+	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/parser/values"
+)
+
 type Function struct {
 	Name string
-	Args map[string]ValueType
-	Ret  ValueType
+	Args map[string]values.ValueType
+	Ret  values.ValueType
 }
 
-func DefinedFunction(n *FuncDefNode) *Function {
+func DefinedFunction(n *nodes.FuncDefNode) *Function {
 	return &Function{
 		Name: n.Name,
 		Args: n.Args,
@@ -14,7 +19,7 @@ func DefinedFunction(n *FuncDefNode) *Function {
 	}
 }
 
-func ExternFunction(n *FuncExternNode) *Function {
+func ExternFunction(n *nodes.FuncExternNode) *Function {
 	var name string
 	if n.Intern != "" {
 		name = n.Intern

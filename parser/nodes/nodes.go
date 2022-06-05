@@ -1,8 +1,10 @@
-package parser
+package nodes
 
 import (
 	"fmt"
 	"strings"
+
+	"github.com/syzkrash/skol/parser/values"
 )
 
 func body(n []Node) (text string) {
@@ -133,7 +135,7 @@ func (n *VarRefNode) String() string {
 }
 
 type VarDefNode struct {
-	VarType ValueType
+	VarType values.ValueType
 	Var     string
 	Value   Node
 }
@@ -161,8 +163,8 @@ func (n *FuncCallNode) String() string {
 
 type FuncDefNode struct {
 	Name string
-	Args map[string]ValueType
-	Ret  ValueType
+	Args map[string]values.ValueType
+	Ret  values.ValueType
 	Body []Node
 }
 
@@ -186,8 +188,8 @@ func (n *FuncDefNode) String() string {
 type FuncExternNode struct {
 	Name   string
 	Intern string
-	Args   map[string]ValueType
-	Ret    ValueType
+	Args   map[string]values.ValueType
+	Ret    values.ValueType
 }
 
 func (*FuncExternNode) Kind() NodeKind {

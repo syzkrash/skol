@@ -1,12 +1,14 @@
 package sim
 
+import "github.com/syzkrash/skol/parser/values"
+
 type Scope struct {
 	parent *Scope
-	Vars   map[string]*Value
+	Vars   map[string]*values.Value
 	Funcs  map[string]*Funct
 }
 
-func (s *Scope) FindVar(n string) (*Value, bool) {
+func (s *Scope) FindVar(n string) (*values.Value, bool) {
 	if v, ok := s.Vars[n]; ok {
 		return v, true
 	}
