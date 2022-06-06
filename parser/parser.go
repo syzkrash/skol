@@ -198,7 +198,7 @@ func (p *Parser) varDef() (n nodes.Node, err error) {
 		Value:   val,
 		VarType: vt,
 	}
-	p.Scope.Vars[nameToken.Raw] = n.(*nodes.VarDefNode)
+	p.Scope.SetVar(nameToken.Raw, n.(*nodes.VarDefNode))
 
 	return
 }
@@ -253,10 +253,10 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 				Vars:   make(map[string]*nodes.VarDefNode),
 			}
 			for n, t := range args {
-				newScope.Vars[n] = &nodes.VarDefNode{
+				newScope.SetVar(n, &nodes.VarDefNode{
 					VarType: t,
 					Var:     n,
-				}
+				})
 			}
 			p.Scope = newScope
 
@@ -272,7 +272,7 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 				Ret:  funcType,
 				Body: body,
 			}
-			p.Scope.Funcs[nameToken.Raw] = DefinedFunction(n.(*nodes.FuncDefNode))
+			p.Scope.SetFunc(nameToken.Raw, DefinedFunction(n.(*nodes.FuncDefNode)))
 			return
 		}
 		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '?' {
@@ -293,7 +293,7 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 				Args:   args,
 				Ret:    funcType,
 			}
-			p.Scope.Funcs[nameToken.Raw] = ExternFunction(n.(*nodes.FuncExternNode))
+			p.Scope.SetFunc(nameToken.Raw, ExternFunction(n.(*nodes.FuncExternNode)))
 			return
 		}
 		if argName.Kind != lexer.TkIdent {

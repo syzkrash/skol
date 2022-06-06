@@ -36,7 +36,7 @@ func TestVarRef(t *testing.T) {
 	code := ` a `
 	src := strings.NewReader(code)
 	p := NewParser("TestVarRef", src)
-	p.Scope.Vars["a"] = &nodes.VarDefNode{} // to prevent 'unknown variable' error
+	p.Scope.SetVar("a", &nodes.VarDefNode{}) // to prevent 'unknown variable' error)
 	n, err := p.value()
 	if err != nil {
 		t.Fatal(err)
@@ -55,14 +55,14 @@ func TestFuncCall(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestFuncCall", src)
 	// to prevent 'unknown function' error
-	p.Scope.Funcs["add"] = &Function{
+	p.Scope.SetFunc("add", &Function{
 		Name: "add",
 		Args: map[string]values.ValueType{
 			"a": values.VtFloat,
 			"b": values.VtFloat,
 		},
 		Ret: values.VtFloat,
-	}
+	})
 	n, err := p.value()
 	if err != nil {
 		t.Fatal(err)
@@ -92,13 +92,13 @@ func TestIf(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIf", src)
 	// to prevent 'unknown function' error
-	p.Scope.Funcs["print"] = &Function{
+	p.Scope.SetFunc("print", &Function{
 		Name: "print",
 		Args: map[string]values.ValueType{
 			"a": values.VtAny,
 		},
 		Ret: values.VtNothing,
-	}
+	})
 	n, err := p.Next()
 	if err != nil {
 		t.Fatal(err)
@@ -131,13 +131,13 @@ func TestIfBetween(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIfBetween", src)
 	// to prevent 'unknown function' error
-	p.Scope.Funcs["print"] = &Function{
+	p.Scope.SetFunc("print", &Function{
 		Name: "print",
 		Args: map[string]values.ValueType{
 			"a": values.VtAny,
 		},
 		Ret: values.VtNothing,
-	}
+	})
 
 	// check for the if statement
 	n, err := p.Next()
@@ -188,13 +188,13 @@ func TestIfElse(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIfElse", src)
 	// to prevent 'unknown function' error
-	p.Scope.Funcs["print"] = &Function{
+	p.Scope.SetFunc("print", &Function{
 		Name: "print",
 		Args: map[string]values.ValueType{
 			"a": values.VtAny,
 		},
 		Ret: values.VtNothing,
-	}
+	})
 
 	n, err := p.Next()
 	if err != nil {
@@ -248,13 +248,13 @@ func TestIfElseIfElse(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIfElseIfElse", src)
 	// to prevent 'unknown function' error
-	p.Scope.Funcs["print"] = &Function{
+	p.Scope.SetFunc("print", &Function{
 		Name: "print",
 		Args: map[string]values.ValueType{
 			"a": values.VtAny,
 		},
 		Ret: values.VtNothing,
-	}
+	})
 
 	n, err := p.Next()
 	if err != nil {
@@ -328,13 +328,13 @@ func TestIfElseIf(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIfElseIf", src)
 	// to prevent 'unknown function' error
-	p.Scope.Funcs["print"] = &Function{
+	p.Scope.SetFunc("print", &Function{
 		Name: "print",
 		Args: map[string]values.ValueType{
 			"a": values.VtAny,
 		},
 		Ret: values.VtNothing,
-	}
+	})
 
 	n, err := p.Next()
 	if err != nil {

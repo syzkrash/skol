@@ -29,23 +29,23 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 		if err != nil {
 			return err
 		}
-		s.Scope.Vars[vdn.Var] = val
+		s.Scope.SetVar(vdn.Var, val)
 		return nil
 	case nodes.NdFuncDef:
 		fdn := n.(*nodes.FuncDefNode)
-		s.Scope.Funcs[fdn.Name] = &Funct{
+		s.Scope.SetFunc(fdn.Name, &Funct{
 			Args: fdn.Args,
 			Ret:  fdn.Ret,
 			Body: fdn.Body,
-		}
+		})
 		return nil
 	case nodes.NdFuncExtern:
 		fen := n.(*nodes.FuncExternNode)
-		s.Scope.Funcs[fen.Name] = &Funct{
+		s.Scope.SetFunc(fen.Name, &Funct{
 			Args: fen.Args,
 			Ret:  fen.Ret,
 			Body: []nodes.Node{},
-		}
+		})
 		return nil
 	case nodes.NdIf:
 		ifn := n.(*nodes.IfNode)
