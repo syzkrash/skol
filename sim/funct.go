@@ -35,6 +35,95 @@ func NativeAddI(s *Simulator, args ArgMap) (*values.Value, error) {
 	return values.NewValue(args["a"].Int + args["b"].Int), nil
 }
 
+func NativeAddF(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Float + args["b"].Float), nil
+}
+
+func NativeSubI(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Int - args["b"].Int), nil
+}
+
+func NativeSubF(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Float - args["b"].Float), nil
+}
+
+func NativeMulI(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Int * args["b"].Int), nil
+}
+
+func NativeMulF(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Float * args["b"].Float), nil
+}
+
+func NativeDivI(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Int / args["b"].Int), nil
+}
+
+func NativeDivF(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Float / args["b"].Float), nil
+}
+
+func NativeModI(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Int % args["b"].Int), nil
+}
+
+func NativeModF(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(int32(args["a"].Float) % args["b"].Int), nil
+}
+
+func NativeConcat(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Str + args["b"].Str), nil
+}
+
+func NativeNot(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(!args["a"].Bool), nil
+}
+
+func NativeOr(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Bool || args["b"].Bool), nil
+}
+
+func NativeAnd(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Bool && args["b"].Bool), nil
+}
+
+func NativeEq(s *Simulator, args ArgMap) (*values.Value, error) {
+	a := args["a"]
+	b := args["b"]
+	if a.ValueType != b.ValueType {
+		return values.NewValue(false), nil
+	}
+	switch a.ValueType {
+	case values.VtInteger:
+		return values.NewValue(a.Int == b.Int), nil
+	case values.VtBool:
+		return values.NewValue(a.Bool == b.Bool), nil
+	case values.VtFloat:
+		return values.NewValue(a.Float == b.Float), nil
+	case values.VtString:
+		return values.NewValue(a.Str == b.Str), nil
+	case values.VtChar:
+		return values.NewValue(a.Char == b.Char), nil
+	}
+	return values.NewValue(false), nil
+}
+
+func NativeGtI(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Int > args["b"].Int), nil
+}
+
+func NativeGtF(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Float > args["b"].Float), nil
+}
+
+func NativeLtI(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Int < args["b"].Int), nil
+}
+
+func NativeLtF(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Float < args["b"].Float), nil
+}
+
 var DefaultFuncs = map[string]*Funct{
 	"print": {
 		Args:     map[string]values.ValueType{"a": values.VtString},
@@ -53,5 +142,113 @@ var DefaultFuncs = map[string]*Funct{
 		Ret:      values.VtInteger,
 		IsNative: true,
 		Native:   NativeAddI,
+	},
+	"add_f": {
+		Args:     map[string]values.ValueType{"a": values.VtFloat, "b": values.VtFloat},
+		Ret:      values.VtFloat,
+		IsNative: true,
+		Native:   NativeAddF,
+	},
+	"sub_i": {
+		Args:     map[string]values.ValueType{"a": values.VtInteger, "b": values.VtInteger},
+		Ret:      values.VtInteger,
+		IsNative: true,
+		Native:   NativeSubI,
+	},
+	"sub_f": {
+		Args:     map[string]values.ValueType{"a": values.VtFloat, "b": values.VtFloat},
+		Ret:      values.VtFloat,
+		IsNative: true,
+		Native:   NativeSubF,
+	},
+	"mul_i": {
+		Args:     map[string]values.ValueType{"a": values.VtInteger, "b": values.VtInteger},
+		Ret:      values.VtInteger,
+		IsNative: true,
+		Native:   NativeMulI,
+	},
+	"mul_f": {
+		Args:     map[string]values.ValueType{"a": values.VtFloat, "b": values.VtFloat},
+		Ret:      values.VtFloat,
+		IsNative: true,
+		Native:   NativeMulF,
+	},
+	"div_i": {
+		Args:     map[string]values.ValueType{"a": values.VtInteger, "b": values.VtInteger},
+		Ret:      values.VtInteger,
+		IsNative: true,
+		Native:   NativeDivI,
+	},
+	"div_f": {
+		Args:     map[string]values.ValueType{"a": values.VtFloat, "b": values.VtFloat},
+		Ret:      values.VtFloat,
+		IsNative: true,
+		Native:   NativeDivF,
+	},
+	"mod_i": {
+		Args:     map[string]values.ValueType{"a": values.VtInteger, "b": values.VtInteger},
+		Ret:      values.VtInteger,
+		IsNative: true,
+		Native:   NativeModI,
+	},
+	"mod_f": {
+		Args:     map[string]values.ValueType{"a": values.VtFloat, "b": values.VtInteger},
+		Ret:      values.VtInteger,
+		IsNative: true,
+		Native:   NativeModF,
+	},
+	"concat": {
+		Args:     map[string]values.ValueType{"a": values.VtString, "b": values.VtString},
+		Ret:      values.VtString,
+		IsNative: true,
+		Native:   NativeConcat,
+	},
+	"not": {
+		Args:     map[string]values.ValueType{"a": values.VtBool},
+		Ret:      values.VtBool,
+		IsNative: true,
+		Native:   NativeNot,
+	},
+	"or": {
+		Args:     map[string]values.ValueType{"a": values.VtBool, "b": values.VtBool},
+		Ret:      values.VtBool,
+		IsNative: true,
+		Native:   NativeOr,
+	},
+	"and": {
+		Args:     map[string]values.ValueType{"a": values.VtBool, "b": values.VtBool},
+		Ret:      values.VtBool,
+		IsNative: true,
+		Native:   NativeAnd,
+	},
+	"eq": {
+		Args:     map[string]values.ValueType{"a": values.VtAny, "b": values.VtAny},
+		Ret:      values.VtBool,
+		IsNative: true,
+		Native:   NativeEq,
+	},
+	"gt_i": {
+		Args:     map[string]values.ValueType{"a": values.VtInteger, "b": values.VtInteger},
+		Ret:      values.VtBool,
+		IsNative: true,
+		Native:   NativeGtI,
+	},
+	"gt_f": {
+		Args:     map[string]values.ValueType{"a": values.VtFloat, "b": values.VtFloat},
+		Ret:      values.VtBool,
+		IsNative: true,
+		Native:   NativeGtF,
+	},
+	"lt_i": {
+		Args:     map[string]values.ValueType{"a": values.VtInteger, "b": values.VtInteger},
+		Ret:      values.VtBool,
+		IsNative: true,
+		Native:   NativeLtI,
+	},
+	"lt_f": {
+		Args:     map[string]values.ValueType{"a": values.VtFloat, "b": values.VtFloat},
+		Ret:      values.VtBool,
+		IsNative: true,
+		Native:   NativeLtF,
 	},
 }
