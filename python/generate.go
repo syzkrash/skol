@@ -10,22 +10,6 @@ import (
 
 const indent = "  "
 
-var ops = map[string]string{
-	"add": "+",
-	"sub": "-",
-	"mul": "*",
-	"pow": "**",
-	"div": "/",
-	"mod": "%",
-
-	"eq":  "==",
-	"neq": "!=",
-	"gt":  ">",
-	"lt":  "<",
-	"geq": ">=",
-	"leq": "<=",
-}
-
 func (p *pythonState) vt2pt(t values.ValueType) string {
 	switch t {
 	case values.VtBool:
@@ -108,8 +92,14 @@ func (p *pythonState) callOrExpr(n *nodes.FuncCallNode) (err error) {
 	if n.Func == "import" {
 		return p.impt(n.Args[0].(*nodes.StringNode).Str)
 	}
-	if oper, ok := ops[n.Func]; ok {
+	if oper, ok := operators[n.Func]; ok {
 		return p.expr(oper, n.Args[0], n.Args[1])
+	}
+	if new_name, ok := renames[n.Func]; ok {
+		// copy and change the name
+		b := *n
+		b.Func = new_name
+		return p.funcCall(&b)
 	}
 	return p.funcCall(n)
 }

@@ -4,19 +4,12 @@ print! to_str! mul_i! 6 9
 print! to_str!
   add_i! mul_i! 6 9 add_i! 6 9
 
-#iters: 10
+#iters: 11
 %i: 1
-%acc: 0
+%acc: 1
 
 * lt_i! i iters (
-  print! concat!
-    "Iteration #"
-    to_str! i
-  print! concat!
-    "Accumulator: "
-    to_str! acc
-
-  %acc: add_i! acc i
+  %acc: mul_i! acc i
   %i: add_i! i 1
 )
 

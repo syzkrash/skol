@@ -25,7 +25,7 @@ func NewPython(fn string, input io.RuneScanner) codegen.Generator {
 }
 
 func (p *pythonState) CanGenerate() bool {
-	return false
+	return true
 }
 
 func (p *pythonState) Generate(output io.StringWriter) error {

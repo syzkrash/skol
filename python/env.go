@@ -28,16 +28,5 @@ func (p *pythonState) initEnv() {
 		Vars: map[string]*nodes.VarDefNode{},
 	}
 
-	for oper, sym := range ops {
-		newScope.Funcs[oper] = &parser.Function{
-			Name: sym,
-			Args: map[string]values.ValueType{
-				"a": values.VtAny,
-				"b": values.VtAny,
-			},
-			Ret: values.VtAny,
-		}
-	}
-
 	p.parser.Scope = newScope
 }
