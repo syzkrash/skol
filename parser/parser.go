@@ -15,7 +15,6 @@ import (
 type Parser struct {
 	lexer *lexer.Lexer
 	Sim   *sim.Simulator
-	Const map[string]*values.Value
 	Scope *Scope
 }
 
@@ -23,12 +22,7 @@ func NewParser(fn string, src io.RuneScanner) *Parser {
 	return &Parser{
 		lexer: lexer.NewLexer(src, fn),
 		Sim:   sim.NewSimulator(),
-		Const: map[string]*values.Value{},
-		Scope: &Scope{
-			Parent: nil,
-			Funcs:  DefaultFuncs,
-			Vars:   make(map[string]*nodes.VarDefNode),
-		},
+		Scope: NewScope(nil),
 	}
 }
 
@@ -135,7 +129,7 @@ func (p *Parser) value() (n nodes.Node, err error) {
 			n = &nodes.VarRefNode{
 				Var: tok.Raw,
 			}
-		} else if v, ok := p.Const[tok.Raw]; ok {
+		} else if v, ok := p.Scope.FindConst(tok.Raw); ok {
 			n = p.ToNode(v)
 		} else {
 			err = p.selfError(tok, "unknown variable")
@@ -502,7 +496,9 @@ func (p *Parser) constant() (err error) {
 		return err
 	}
 
-	p.Const[nameToken.Raw] = v
+	if !p.Scope.SetConst(nameToken.Raw, v) {
+		return p.selfError(nameToken, "constant value cannot be redefined")
+	}
 	return nil
 }
 
