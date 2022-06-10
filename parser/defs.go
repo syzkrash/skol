@@ -144,4 +144,29 @@ var DefaultFuncs = map[string]*Function{
 		Args: map[string]values.ValueType{"a": values.VtFloat, "b": values.VtFloat},
 		Ret:  values.VtBool,
 	},
+	"char_at": {
+		Name: "char_at",
+		Args: map[string]values.ValueType{
+			"s": values.VtString,
+			"i": values.VtInteger,
+		},
+		Ret: values.VtChar,
+	},
+	"substr": {
+		Name: "substr",
+		Args: map[string]values.ValueType{
+			"s": values.VtString,
+			"a": values.VtInteger,
+			"b": values.VtInteger,
+		},
+		Ret: values.VtString,
+	},
+	"char_append": {
+		Name: "char_append",
+		Args: map[string]values.ValueType{
+			"s": values.VtString,
+			"c": values.VtChar,
+		},
+		Ret: values.VtString,
+	},
 }
