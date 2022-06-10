@@ -124,6 +124,41 @@ func NativeLtF(s *Simulator, args ArgMap) (*values.Value, error) {
 	return values.NewValue(args["a"].Float < args["b"].Float), nil
 }
 
+func NativeCharAt(s *Simulator, args ArgMap) (*values.Value, error) {
+	str := args["s"].Str
+	i := args["i"].Int
+	for i < 0 {
+		i += int32(len(str))
+	}
+	for i > int32(len(str)) {
+		i -= int32(len(str))
+	}
+	return values.NewValue(rune(str[i])), nil
+}
+
+func NativeSubstr(s *Simulator, args ArgMap) (*values.Value, error) {
+	str := args["s"].Str
+	a := args["a"].Int
+	b := args["b"].Int
+	for a < 0 {
+		a += int32(len(str))
+	}
+	for a > int32(len(str)) {
+		a -= int32(len(str))
+	}
+	for b < 0 {
+		b += int32(len(str))
+	}
+	for b > int32(len(str)) {
+		b -= int32(len(str))
+	}
+	return values.NewValue(str[a:b]), nil
+}
+
+func NativeCharAppend(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["s"].Str + string(args["c"].Char)), nil
+}
+
 var DefaultFuncs = map[string]*Funct{
 	"print": {
 		Args:     map[string]values.ValueType{"a": values.VtString},
@@ -250,5 +285,33 @@ var DefaultFuncs = map[string]*Funct{
 		Ret:      values.VtBool,
 		IsNative: true,
 		Native:   NativeLtF,
+	},
+	"char_at": {
+		Args: map[string]values.ValueType{
+			"s": values.VtString,
+			"i": values.VtInteger,
+		},
+		Ret:      values.VtChar,
+		IsNative: true,
+		Native:   NativeCharAt,
+	},
+	"substr": {
+		Args: map[string]values.ValueType{
+			"s": values.VtString,
+			"a": values.VtInteger,
+			"b": values.VtInteger,
+		},
+		Ret:      values.VtString,
+		IsNative: true,
+		Native:   NativeSubstr,
+	},
+	"char_append": {
+		Args: map[string]values.ValueType{
+			"s": values.VtString,
+			"c": values.VtChar,
+		},
+		Ret:      values.VtString,
+		IsNative: true,
+		Native:   NativeCharAppend,
 	},
 }
