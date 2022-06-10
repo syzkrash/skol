@@ -101,6 +101,9 @@ func (p *pythonState) callOrExpr(n *nodes.FuncCallNode) (err error) {
 		b.Func = new_name
 		return p.funcCall(&b)
 	}
+	if sgen, ok := specialGenerators[n.Func]; ok {
+		return sgen(p, n)
+	}
 	return p.funcCall(n)
 }
 
@@ -191,6 +194,36 @@ func (p *pythonState) value(n nodes.Node) error {
 		return p.callOrExpr(n.(*nodes.FuncCallNode))
 	}
 	return fmt.Errorf("%s node is not a value", n.Kind())
+}
+
+func (p *pythonState) stringOrVar(n nodes.Node) error {
+	switch n.Kind() {
+	case nodes.NdString:
+		return p.string(n.(*nodes.StringNode))
+	case nodes.NdVarRef:
+		return p.varRef(n.(*nodes.VarRefNode))
+	}
+	return fmt.Errorf("expected string or variable, got %s", n.Kind())
+}
+
+func (p *pythonState) integerOrVar(n nodes.Node) error {
+	switch n.Kind() {
+	case nodes.NdInteger:
+		return p.integer(n.(*nodes.IntegerNode))
+	case nodes.NdVarRef:
+		return p.varRef(n.(*nodes.VarRefNode))
+	}
+	return fmt.Errorf("expected integer or variable, got %s", n.Kind())
+}
+
+func (p *pythonState) charOrVar(n nodes.Node) error {
+	switch n.Kind() {
+	case nodes.NdChar:
+		return p.char(n.(*nodes.CharNode))
+	case nodes.NdVarRef:
+		return p.varRef(n.(*nodes.VarRefNode))
+	}
+	return fmt.Errorf("expected char or variable, got %s", n.Kind())
 }
 
 func (p *pythonState) varDef(n *nodes.VarDefNode) (err error) {
