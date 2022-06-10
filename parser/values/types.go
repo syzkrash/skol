@@ -11,6 +11,7 @@ const (
 	VtChar
 	VtPointer
 	VtAny
+	VtUndefined
 )
 
 var types = [...]string{
@@ -22,6 +23,7 @@ var types = [...]string{
 	"Char",
 	"Pointer",
 	"Any",
+	"Undefined",
 }
 
 func (t ValueType) String() string {
@@ -50,5 +52,3 @@ func ParseType(raw string) (t ValueType, ok bool) {
 	}
 	return
 }
-
-

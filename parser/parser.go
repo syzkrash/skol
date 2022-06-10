@@ -2,6 +2,7 @@ package parser
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -208,7 +209,7 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 	}
 
 	var typeToken *lexer.Token
-	var funcType values.ValueType
+	funcType := values.VtUndefined
 	var ok bool
 	sepToken, err := p.lexer.Next()
 	if err != nil {
@@ -258,6 +259,27 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 			body, err = p.block()
 			if err != nil {
 				return
+			}
+			deducted := funcType == values.VtUndefined
+			for _, bn := range body {
+				if bn.Kind() == nodes.NdReturn {
+					rn := bn.(*nodes.ReturnNode)
+					t, _ := p.TypeOf(rn.Value)
+					if funcType == values.VtUndefined {
+						funcType = t
+					} else if t != funcType {
+						if deducted {
+							err = p.selfError(nameToken,
+								fmt.Sprintf("inconsistent return types: deducted %s, got %s",
+									funcType, t))
+						} else {
+							err = p.selfError(nameToken,
+								fmt.Sprintf("wrong return type: want %s, got %s",
+									funcType, t))
+						}
+						return
+					}
+				}
 			}
 
 			n = &nodes.FuncDefNode{
