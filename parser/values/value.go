@@ -19,6 +19,12 @@ func NewValue(v any) *Value {
 			ValueType: VtNothing,
 		}
 	}
+	if i, ok := v.(int); ok {
+		return &Value{
+			ValueType: VtInteger,
+			Int:       int32(i),
+		}
+	}
 	if i, ok := v.(int32); ok {
 		return &Value{
 			ValueType: VtInteger,

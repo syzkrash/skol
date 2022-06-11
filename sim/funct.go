@@ -159,6 +159,10 @@ func NativeCharAppend(s *Simulator, args ArgMap) (*values.Value, error) {
 	return values.NewValue(args["s"].Str + string(args["c"].Char)), nil
 }
 
+func NativeStrLen(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(len(args["s"].Str)), nil
+}
+
 var DefaultFuncs = map[string]*Funct{
 	"print": {
 		Args:     map[string]values.ValueType{"a": values.VtString},
@@ -313,5 +317,13 @@ var DefaultFuncs = map[string]*Funct{
 		Ret:      values.VtString,
 		IsNative: true,
 		Native:   NativeCharAppend,
+	},
+	"str_len": {
+		Args: map[string]values.ValueType{
+			"s": values.VtString,
+		},
+		Ret:      values.VtInteger,
+		IsNative: true,
+		Native:   NativeStrLen,
 	},
 }

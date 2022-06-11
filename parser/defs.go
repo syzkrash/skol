@@ -169,4 +169,11 @@ var DefaultFuncs = map[string]*Function{
 		},
 		Ret: values.VtString,
 	},
+	"str_len": {
+		Name: "str_len",
+		Args: map[string]values.ValueType{
+			"s": values.VtString,
+		},
+		Ret: values.VtInteger,
+	},
 }
