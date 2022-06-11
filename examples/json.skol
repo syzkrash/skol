@@ -26,8 +26,9 @@ $NextChar/char(
 $NextString/int(
   %c: NextChar!
 
-  *not! eq! c '"' (
+  *and! not! eq! c '"' not! IsEOF!(
     %StringLit: char_append! StringLit c
+    %c: NextChar!
   )
 
   >TkString
@@ -47,12 +48,16 @@ $NextToken/int(
 
   ?eq! c '"' (>NextString!)
 
+  print! concat! "Illegal character: " to_str! c
+
   >TkInvalid
 )
 
 $Main(
-  *not! IsEOF!(
-    print! NextChar!
+  %Tok: NextToken!
+  *not! eq! Tok TkInvalid (
+    print! Tok
+    %Tok: NextToken!
   )
 )
 
