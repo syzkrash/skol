@@ -3,6 +3,7 @@ package python
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
@@ -74,7 +75,7 @@ func (p *pythonState) float(n *nodes.FloatNode) (err error) {
 }
 
 func (p *pythonState) string(n *nodes.StringNode) (err error) {
-	_, err = p.out.WriteString("\"" + n.Str + "\"")
+	_, err = p.out.WriteString("\"" + strings.ReplaceAll(n.Str, "\"", "\\\"") + "\"")
 	return
 }
 
