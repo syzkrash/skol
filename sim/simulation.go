@@ -183,20 +183,16 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 			return val, err
 		}
 		for _, n := range funct.Body {
-			if n.Kind() == nodes.NdReturn {
-				val, err = s.Expr(n.(*nodes.ReturnNode).Value)
-				if err != nil {
-					return nil, err
-				}
-				break
-			}
-			err := s.Stmt(n)
+			val, err = s.stmtInFunc(n)
 			if err != nil {
 				return nil, err
 			}
+			if val != nil {
+				s.Scope = s.Scope.parent
+				return val, err
+			}
 		}
-		s.Scope = s.Scope.parent
-		return val, nil
+		return nil, fmt.Errorf("function %s did not return", fcn.Func)
 	}
 	return nil, fmt.Errorf("%s is not a value", n)
 }
@@ -223,4 +219,77 @@ func (s *Simulator) block(b []nodes.Node) error {
 	}
 	s.Scope = s.Scope.parent
 	return nil
+}
+
+func (s *Simulator) stmtInFunc(n nodes.Node) (*values.Value, error) {
+	switch n.Kind() {
+	case nodes.NdVarDef, nodes.NdFuncDef, nodes.NdFuncExtern, nodes.NdFuncCall:
+		return nil, s.Stmt(n)
+	case nodes.NdIf:
+		ifn := n.(*nodes.IfNode)
+		val, err := s.Expr(ifn.Condition)
+		if err != nil {
+			return nil, err
+		}
+		if val.ToBool() {
+			return s.blockInFunc(ifn.IfBlock)
+		}
+		for _, branch := range ifn.ElseIfNodes {
+			val, err = s.Expr(branch.Condition)
+			if err != nil {
+				return nil, err
+			}
+			if val.ToBool() {
+				return s.blockInFunc(branch.Block)
+			}
+		}
+		return s.blockInFunc(ifn.ElseBlock)
+	case nodes.NdWhile:
+		whn := n.(*nodes.WhileNode)
+		val, err := s.Expr(whn.Condition)
+		if err != nil {
+			return nil, err
+		}
+		if !val.ToBool() {
+			return nil, nil
+		}
+		for {
+			val, err = s.blockInFunc(whn.Body)
+			if err != nil {
+				return nil, err
+			}
+			if val != nil {
+				return val, nil
+			}
+			val, err = s.Expr(whn.Condition)
+			if err != nil {
+				return nil, err
+			}
+			if !val.ToBool() {
+				return nil, nil
+			}
+		}
+	case nodes.NdReturn:
+		return s.Expr(n.(*nodes.ReturnNode).Value)
+	}
+	return nil, fmt.Errorf("%s is not a statement", n)
+}
+
+func (s *Simulator) blockInFunc(b []nodes.Node) (*values.Value, error) {
+	s.Scope = &Scope{
+		parent: s.Scope,
+		Vars:   map[string]*values.Value{},
+		Funcs:  map[string]*Funct{},
+	}
+	for _, n := range b {
+		v, err := s.stmtInFunc(n)
+		if err != nil {
+			return nil, err
+		}
+		if v != nil {
+			return v, nil
+		}
+	}
+	s.Scope = s.Scope.parent
+	return nil, nil
 }
