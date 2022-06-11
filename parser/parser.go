@@ -242,11 +242,7 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 			return nil, err
 		}
 		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '(' {
-			newScope := &Scope{
-				Parent: p.Scope,
-				Funcs:  make(map[string]*Function),
-				Vars:   make(map[string]*nodes.VarDefNode),
-			}
+			newScope := NewScope(p.Scope)
 			for _, a := range args {
 				newScope.SetVar(a.Name, &nodes.VarDefNode{
 					VarType: a.Type,
@@ -388,12 +384,7 @@ func (p *Parser) condition() (n nodes.Node, err error) {
 	if err != nil {
 		return
 	}
-	newScope := &Scope{
-		Parent: p.Scope,
-		Funcs:  make(map[string]*Function),
-		Vars:   make(map[string]*nodes.VarDefNode),
-	}
-	p.Scope = newScope
+	p.Scope = NewScope(p.Scope)
 	ifb, err := p.block()
 	if err != nil {
 		return
@@ -464,21 +455,13 @@ func (p *Parser) loop() (n nodes.Node, err error) {
 		return
 	}
 
-	newScope := &Scope{
-		Parent: p.Scope,
-		Funcs:  map[string]*Function{},
-		Vars:   map[string]*nodes.VarDefNode{},
-	}
-	oldScope := p.Scope
-	p.Scope = newScope
-
+	p.Scope = NewScope(p.Scope)
 	body, err := p.block()
 	if err != nil {
 		return
 	}
 
-	p.Scope = oldScope
-
+	p.Scope = p.Scope.Parent
 	n = &nodes.WhileNode{
 		Condition: condition,
 		Body:      body,

@@ -1,12 +1,12 @@
 #TkInvalid: -1
-#TkLBrace: 1
-#TkRBrace: 2
+#TkLBrace:   1
+#TkRBrace:   2
 #TkLBracket: 3
 #TkRBracket: 4
-#TkColon: 5
-#TkComma: 6
-#TkString: 7
-#TkNumber: 8
+#TkColon:    5
+#TkComma:    6
+#TkString:   7
+#TkNumber:   8
 
 %Source: "{\"name\":\"John\",\"age\":24}"
 %Pos: 0
@@ -53,12 +53,65 @@ $NextToken/int(
   >TkInvalid
 )
 
-$Main(
-  %Tok: NextToken!
-  *not! eq! Tok TkInvalid (
-    print! Tok
+// skol doesn't have custom types, so we're just pretending to return a parsed
+// value. Check issue #19
+#ValInvalid: -1
+#ValNumber:   1
+#ValString:   2
+#ValArray:    3
+#ValObject:   4
+
+$NextValue/int?
+$NextValueFrom/int Tok/int?
+
+$NextObject/int(
+  **( // infinite loop: either reach RBrace or EOF
     %Tok: NextToken!
+    ? eq! Tok TkRBrace (>ValObject)
+    :?not! eq! Tok TkString (>ValInvalid)
+    %Key: StringLit
+
+    %Tok: NextToken!
+    ?not! eq! Tok TkColon (>ValInvalid)
+
+    %Value: NextValue!
+    ?eq! Value ValInvalid (>ValInvalid)
+
+    print! concat! "Key: " Key
+    print! concat! "Value: " to_str! Value
   )
+  >ValObject // theoretically never reached
+)
+
+$NextArray/int(
+  **( // infinite loop; refer to NextObject
+    %Tok: NextToken!
+    ?eq! Tok TkRBracket (>ValArray)
+
+    %Value: NextValueFrom! Tok
+    ?eq! Value ValInvalid (>ValInvalid)
+
+    print! concat! "Array entry: " to_str! Value
+  )
+  >ValArray // again, theoretically never reached
+)
+
+$NextValue/int(
+  %Tok: NextToken!
+  >NextValueFrom! Tok
+)
+
+$NextValueFrom/int Tok/int(
+  ?eq! Tok TkLBrace   (>NextObject!)
+  ?eq! Tok TkLBracket (>NextArray!)
+  ?eq! Tok TkString   (>ValString)
+  ?eq! Tok TkNumber   (>ValNumber)
+
+  >ValInvalid
+)
+
+$Main(
+  print! to_str! NextValue!
 )
 
 Main!
