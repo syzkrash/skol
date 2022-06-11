@@ -10,17 +10,13 @@ func (p *pythonState) initEnv() {
 	newScope.Funcs = map[string]*parser.Function{
 		"print": {
 			Name: "print",
-			Args: map[string]values.ValueType{
-				"a": values.VtAny,
-			},
-			Ret: values.VtNothing,
+			Args: []values.FuncArg{{"a", values.VtAny}},
+			Ret:  values.VtNothing,
 		},
 		"import": {
 			Name: "import",
-			Args: map[string]values.ValueType{
-				"module": values.VtString,
-			},
-			Ret: values.VtNothing,
+			Args: []values.FuncArg{{"module", values.VtString}},
+			Ret:  values.VtNothing,
 		},
 	}
 	p.parser.Scope = newScope

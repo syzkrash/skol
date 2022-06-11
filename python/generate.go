@@ -277,12 +277,12 @@ func (p *pythonState) funcDef(n *nodes.FuncDefNode) (err error) {
 	}
 
 	i := len(n.Args)
-	for a, t := range n.Args {
-		_, err = p.out.WriteString(a)
+	for _, a := range n.Args {
+		_, err = p.out.WriteString(a.Name)
 		if err != nil {
 			return
 		}
-		if pyType := p.vt2pt(t); pyType != "" {
+		if pyType := p.vt2pt(a.Type); pyType != "" {
 			_, err = p.out.WriteString(": ")
 			if err != nil {
 				return

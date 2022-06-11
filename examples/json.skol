@@ -1,0 +1,59 @@
+#TkInvalid: -1
+#TkLBrace: 1
+#TkRBrace: 2
+#TkLBracket: 3
+#TkRBracket: 4
+#TkColon: 5
+#TkComma: 6
+#TkString: 7
+#TkNumber: 8
+
+%Source: "{\"name\":\"John\",\"age\":24}"
+%Pos: 0
+
+$IsEOF/bool(
+  >eq! Pos str_len! Source
+)
+
+$NextChar/char(
+  %c: char_at! Source Pos
+  %Pos: add_i! Pos 1
+  >c
+)
+
+%StringLit: ""
+
+$NextString/int(
+  %c: NextChar!
+
+  *not! eq! c '"' (
+    %StringLit: char_append! StringLit c
+  )
+
+  >TkString
+)
+
+$NextToken/int(
+  ?IsEOF!(>TkInvalid)
+
+  %c: NextChar!
+
+  ?eq! c '{' (>TkLBrace)
+  ?eq! c '}' (>TkRBrace)
+  ?eq! c '[' (>TkLBracket)
+  ?eq! c ']' (>TkRBracket)
+  ?eq! c ':' (>TkColon)
+  ?eq! c ',' (>TkComma)
+
+  ?eq! c '"' (>NextString!)
+
+  >TkInvalid
+)
+
+$Main(
+  *not! IsEOF!(
+    print! NextChar!
+  )
+)
+
+Main!

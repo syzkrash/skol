@@ -163,7 +163,7 @@ func (n *FuncCallNode) String() string {
 
 type FuncDefNode struct {
 	Name string
-	Args map[string]values.ValueType
+	Args []values.FuncArg
 	Ret  values.ValueType
 	Body []Node
 }
@@ -174,10 +174,10 @@ func (*FuncDefNode) Kind() NodeKind {
 
 func (n *FuncDefNode) String() string {
 	argText := ""
-	for n, t := range n.Args {
-		argText += t.String()
+	for _, a := range n.Args {
+		argText += a.Type.String()
 		argText += " "
-		argText += n
+		argText += a.Name
 		argText += " "
 	}
 	argText = strings.TrimSuffix(argText, " ")
@@ -188,7 +188,7 @@ func (n *FuncDefNode) String() string {
 type FuncExternNode struct {
 	Name   string
 	Intern string
-	Args   map[string]values.ValueType
+	Args   []values.FuncArg
 	Ret    values.ValueType
 }
 
@@ -198,10 +198,10 @@ func (*FuncExternNode) Kind() NodeKind {
 
 func (n *FuncExternNode) String() string {
 	argText := ""
-	for n, t := range n.Args {
-		argText += t.String()
+	for _, a := range n.Args {
+		argText += a.Type.String()
 		argText += " "
-		argText += n
+		argText += a.Name
 		argText += " "
 	}
 	argText = strings.TrimSuffix(argText, " ")

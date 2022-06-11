@@ -94,17 +94,13 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 		if !ok {
 			return fmt.Errorf("unknown function: %s", fcn.Func)
 		}
-		argn := []string{}
-		for n := range funct.Args {
-			argn = append(argn, n)
-		}
 		argv := map[string]*values.Value{}
 		for i := 0; i < len(fcn.Args); i++ {
 			val, err := s.Expr(fcn.Args[i])
 			if err != nil {
 				return err
 			}
-			argv[argn[i]] = val
+			argv[funct.Args[i].Name] = val
 		}
 		s.Scope = &Scope{
 			parent: s.Scope,
@@ -158,17 +154,13 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 		if funct.Ret == values.VtNothing {
 			return nil, fmt.Errorf("function %s does not return a values.Value", fcn.Func)
 		}
-		argn := []string{}
-		for n := range funct.Args {
-			argn = append(argn, n)
-		}
 		argv := map[string]*values.Value{}
 		for i := 0; i < len(fcn.Args); i++ {
 			val, err := s.Expr(fcn.Args[i])
 			if err != nil {
 				return nil, err
 			}
-			argv[argn[i]] = val
+			argv[funct.Args[i].Name] = val
 		}
 		s.Scope = &Scope{
 			parent: s.Scope,

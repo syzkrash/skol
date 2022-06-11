@@ -235,7 +235,7 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 
 	var body []nodes.Node
 	var argName *lexer.Token
-	args := map[string]values.ValueType{}
+	args := []values.FuncArg{}
 	for {
 		argName, err = p.lexer.Next()
 		if err != nil {
@@ -247,10 +247,10 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 				Funcs:  make(map[string]*Function),
 				Vars:   make(map[string]*nodes.VarDefNode),
 			}
-			for n, t := range args {
-				newScope.SetVar(n, &nodes.VarDefNode{
-					VarType: t,
-					Var:     n,
+			for _, a := range args {
+				newScope.SetVar(a.Name, &nodes.VarDefNode{
+					VarType: a.Type,
+					Var:     a.Name,
 				})
 			}
 			p.Scope = newScope
@@ -336,7 +336,7 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 		if !ok {
 			return nil, p.selfError(argType, "unknown type: "+argType.Raw)
 		}
-		args[argName.Raw] = t
+		args = append(args, values.FuncArg{Name: argName.Raw, Type: t})
 	}
 }
 

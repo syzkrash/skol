@@ -57,11 +57,8 @@ func TestFuncCall(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("add", &Function{
 		Name: "add",
-		Args: map[string]values.ValueType{
-			"a": values.VtFloat,
-			"b": values.VtFloat,
-		},
-		Ret: values.VtFloat,
+		Args: []values.FuncArg{{"a", values.VtFloat}, {"b", values.VtFloat}},
+		Ret:  values.VtFloat,
 	})
 	n, err := p.value()
 	if err != nil {
@@ -94,10 +91,8 @@ func TestIf(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
-		Args: map[string]values.ValueType{
-			"a": values.VtAny,
-		},
-		Ret: values.VtNothing,
+		Args: []values.FuncArg{{"a", values.VtAny}},
+		Ret:  values.VtNothing,
 	})
 	n, err := p.Next()
 	if err != nil {
@@ -133,10 +128,8 @@ func TestIfBetween(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
-		Args: map[string]values.ValueType{
-			"a": values.VtAny,
-		},
-		Ret: values.VtNothing,
+		Args: []values.FuncArg{{"a", values.VtAny}},
+		Ret:  values.VtNothing,
 	})
 
 	// check for the if statement
@@ -190,10 +183,8 @@ func TestIfElse(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
-		Args: map[string]values.ValueType{
-			"a": values.VtAny,
-		},
-		Ret: values.VtNothing,
+		Args: []values.FuncArg{{"a", values.VtAny}},
+		Ret:  values.VtNothing,
 	})
 
 	n, err := p.Next()
@@ -250,10 +241,8 @@ func TestIfElseIfElse(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
-		Args: map[string]values.ValueType{
-			"a": values.VtAny,
-		},
-		Ret: values.VtNothing,
+		Args: []values.FuncArg{{"a", values.VtAny}},
+		Ret:  values.VtNothing,
 	})
 
 	n, err := p.Next()
@@ -330,10 +319,8 @@ func TestIfElseIf(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
-		Args: map[string]values.ValueType{
-			"a": values.VtAny,
-		},
-		Ret: values.VtNothing,
+		Args: []values.FuncArg{{"a", values.VtAny}},
+		Ret:  values.VtNothing,
 	})
 
 	n, err := p.Next()
