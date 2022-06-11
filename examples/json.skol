@@ -24,12 +24,17 @@ $NextChar/char(
 %StringLit: ""
 
 $NextString/int(
+  %StringLit: ""
+
   %c: NextChar!
 
   *and! not! eq! c '"' not! IsEOF!(
     %StringLit: char_append! StringLit c
     %c: NextChar!
   )
+
+  print! concat! "Parsed string of length:" to_str! str_len! StringLit
+  print! StringLit
 
   >TkString
 )
@@ -45,6 +50,8 @@ $NextToken/int(
   ?eq! c ']' (>TkRBracket)
   ?eq! c ':' (>TkColon)
   ?eq! c ',' (>TkComma)
+
+  // TODO: number literals
 
   ?eq! c '"' (>NextString!)
 
@@ -76,6 +83,9 @@ $NextObject/int(
 
     %Value: NextValue!
     ?eq! Value ValInvalid (>ValInvalid)
+
+    %Tok: NextToken!
+    ?not! eq! Tok TkComma (>ValInvalid)
 
     print! concat! "Key: " Key
     print! concat! "Value: " to_str! Value
