@@ -127,7 +127,7 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 		s.Scope = s.Scope.parent
 		return nil
 	}
-	return fmt.Errorf("%s node is not a statement", n.Kind())
+	return fmt.Errorf("%s is not a statement", n)
 }
 
 func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
@@ -184,7 +184,7 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 		}
 		for _, n := range funct.Body {
 			if n.Kind() == nodes.NdReturn {
-				val, err = s.Expr(n)
+				val, err = s.Expr(n.(*nodes.ReturnNode).Value)
 				if err != nil {
 					return nil, err
 				}
@@ -198,7 +198,7 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 		s.Scope = s.Scope.parent
 		return val, nil
 	}
-	return nil, fmt.Errorf("%s node is not a values.Value", n.Kind())
+	return nil, fmt.Errorf("%s is not a value", n)
 }
 
 func (s *Simulator) Const(n nodes.Node) (*values.Value, error) {
