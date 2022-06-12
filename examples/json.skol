@@ -15,6 +15,10 @@ $IsEOF/bool(
   >eq! Pos str_len! Source
 )
 
+$IsDigit/bool c/char(
+  >and! or! gt_c! c '0' eq! c '0' or! lt_c! c '9' eq! c '9'
+)
+
 $NextChar/char(
   %c: char_at! Source Pos
   %Pos: add_i! Pos 1
@@ -33,10 +37,19 @@ $NextString/int(
     %c: NextChar!
   )
 
-  print! concat! "Parsed string of length:" to_str! str_len! StringLit
-  print! StringLit
-
   >TkString
+)
+
+$NextNumber/int(
+  *not! IsEOF! (
+    %c: NextChar!
+    ?not! IsDigit! c (
+      %Pos: sub_i! Pos 1
+      >TkNumber
+    )
+    // TODO: implement character arithmetic for this
+  )
+  >TkNumber
 )
 
 $NextToken/int(
@@ -51,8 +64,7 @@ $NextToken/int(
   ?eq! c ':' (>TkColon)
   ?eq! c ',' (>TkComma)
 
-  // TODO: number literals
-
+  ?IsDigit! c (>NextNumber!)
   ?eq! c '"' (>NextString!)
 
   print! concat! "Illegal character: " to_str! c
@@ -75,20 +87,32 @@ $NextObject/int(
   **( // infinite loop: either reach RBrace or EOF
     %Tok: NextToken!
     ? eq! Tok TkRBrace (>ValObject)
-    :?not! eq! Tok TkString (>ValInvalid)
+    :?not! eq! Tok TkString (
+      print! "Expected a string"
+      >ValInvalid
+    )
     %Key: StringLit
+    print! concat! "Key: " Key
 
     %Tok: NextToken!
-    ?not! eq! Tok TkColon (>ValInvalid)
+    ?not! eq! Tok TkColon (
+      print! "Expected a colon"
+      >ValInvalid
+    )
 
     %Value: NextValue!
-    ?eq! Value ValInvalid (>ValInvalid)
+    ?eq! Value ValInvalid (
+      print! "Got invalid value"
+      >ValInvalid
+    )
+    print! concat! "Value: " to_str! Value
 
     %Tok: NextToken!
-    ?not! eq! Tok TkComma (>ValInvalid)
-
-    print! concat! "Key: " Key
-    print! concat! "Value: " to_str! Value
+    ? eq! Tok TkRBrace (>ValObject)
+    :?not! eq! Tok TkComma (
+      print! "Expected comma"
+      >ValInvalid
+    )
   )
   >ValObject // theoretically never reached
 )
