@@ -116,12 +116,20 @@ func NativeGtF(s *Simulator, args ArgMap) (*values.Value, error) {
 	return values.NewValue(args["a"].Float > args["b"].Float), nil
 }
 
+func NativeGtC(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Char > args["b"].Char), nil
+}
+
 func NativeLtI(s *Simulator, args ArgMap) (*values.Value, error) {
 	return values.NewValue(args["a"].Int < args["b"].Int), nil
 }
 
 func NativeLtF(s *Simulator, args ArgMap) (*values.Value, error) {
 	return values.NewValue(args["a"].Float < args["b"].Float), nil
+}
+
+func NativeLtC(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Char < args["b"].Char), nil
 }
 
 func NativeCharAt(s *Simulator, args ArgMap) (*values.Value, error) {
@@ -133,7 +141,10 @@ func NativeCharAt(s *Simulator, args ArgMap) (*values.Value, error) {
 	for i > int32(len(str)) {
 		i -= int32(len(str))
 	}
-	return values.NewValue(rune(str[i])), nil
+	return &values.Value{
+		ValueType: values.VtChar,
+		Char:      str[i],
+	}, nil
 }
 
 func NativeSubstr(s *Simulator, args ArgMap) (*values.Value, error) {
@@ -278,6 +289,12 @@ var DefaultFuncs = map[string]*Funct{
 		IsNative: true,
 		Native:   NativeGtF,
 	},
+	"gt_c": {
+		Args:     []values.FuncArg{{"a", values.VtChar}, {"b", values.VtChar}},
+		Ret:      values.VtBool,
+		IsNative: true,
+		Native:   NativeGtC,
+	},
 	"lt_i": {
 		Args:     []values.FuncArg{{"a", values.VtInteger}, {"b", values.VtInteger}},
 		Ret:      values.VtBool,
@@ -289,6 +306,12 @@ var DefaultFuncs = map[string]*Funct{
 		Ret:      values.VtBool,
 		IsNative: true,
 		Native:   NativeLtF,
+	},
+	"lt_c": {
+		Args:     []values.FuncArg{{"a", values.VtChar}, {"b", values.VtChar}},
+		Ret:      values.VtBool,
+		IsNative: true,
+		Native:   NativeLtC,
 	},
 	"char_at": {
 		Args:     []values.FuncArg{{"s", values.VtString}, {"i", values.VtInteger}},
