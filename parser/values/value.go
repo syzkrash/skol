@@ -10,7 +10,7 @@ type Value struct {
 	Bool      bool
 	Float     float32
 	Str       string
-	Char      rune
+	Char      byte
 }
 
 func NewValue(v any) *Value {
@@ -49,10 +49,10 @@ func NewValue(v any) *Value {
 			Str:       s,
 		}
 	}
-	if r, ok := v.(rune); ok {
+	if c, ok := v.(byte); ok {
 		return &Value{
 			ValueType: VtChar,
-			Char:      r,
+			Char:      c,
 		}
 	}
 	panic(fmt.Sprintf("unexpected value for NewValue: %v", v))

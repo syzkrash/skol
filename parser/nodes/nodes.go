@@ -111,7 +111,7 @@ func (n *StringNode) String() string {
 }
 
 type CharNode struct {
-	Char rune
+	Char byte
 }
 
 func (*CharNode) Kind() NodeKind {

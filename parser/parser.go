@@ -116,7 +116,7 @@ func (p *Parser) value() (n nodes.Node, err error) {
 		rdr := strings.NewReader(tok.Raw)
 		r, _, _ := rdr.ReadRune()
 		n = &nodes.CharNode{
-			Char: r,
+			Char: byte(r),
 		}
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
