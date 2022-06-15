@@ -39,12 +39,20 @@ func NativeAddF(s *Simulator, args ArgMap) (*values.Value, error) {
 	return values.NewValue(args["a"].Float + args["b"].Float), nil
 }
 
+func NativeAddC(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Char + args["b"].Char), nil
+}
+
 func NativeSubI(s *Simulator, args ArgMap) (*values.Value, error) {
 	return values.NewValue(args["a"].Int - args["b"].Int), nil
 }
 
 func NativeSubF(s *Simulator, args ArgMap) (*values.Value, error) {
 	return values.NewValue(args["a"].Float - args["b"].Float), nil
+}
+
+func NativeSubC(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(args["a"].Char - args["b"].Char), nil
 }
 
 func NativeMulI(s *Simulator, args ArgMap) (*values.Value, error) {
@@ -174,6 +182,10 @@ func NativeStrLen(s *Simulator, args ArgMap) (*values.Value, error) {
 	return values.NewValue(len(args["s"].Str)), nil
 }
 
+func NativeCtoI(s *Simulator, args ArgMap) (*values.Value, error) {
+	return values.NewValue(int(args["c"].Char)), nil
+}
+
 var DefaultFuncs = map[string]*Funct{
 	"print": {
 		Args:     []values.FuncArg{{"a", values.VtString}},
@@ -199,6 +211,12 @@ var DefaultFuncs = map[string]*Funct{
 		IsNative: true,
 		Native:   NativeAddF,
 	},
+	"add_c": {
+		Args:     []values.FuncArg{{"a", values.VtChar}, {"b", values.VtChar}},
+		Ret:      values.VtChar,
+		IsNative: true,
+		Native:   NativeAddC,
+	},
 	"sub_i": {
 		Args:     []values.FuncArg{{"a", values.VtInteger}, {"b", values.VtInteger}},
 		Ret:      values.VtInteger,
@@ -210,6 +228,12 @@ var DefaultFuncs = map[string]*Funct{
 		Ret:      values.VtFloat,
 		IsNative: true,
 		Native:   NativeSubF,
+	},
+	"sub_c": {
+		Args:     []values.FuncArg{{"a", values.VtChar}, {"b", values.VtChar}},
+		Ret:      values.VtChar,
+		IsNative: true,
+		Native:   NativeSubC,
 	},
 	"mul_i": {
 		Args:     []values.FuncArg{{"a", values.VtInteger}, {"b", values.VtInteger}},
@@ -336,5 +360,11 @@ var DefaultFuncs = map[string]*Funct{
 		Ret:      values.VtInteger,
 		IsNative: true,
 		Native:   NativeStrLen,
+	},
+	"ctoi": {
+		Args:     []values.FuncArg{{"c", values.VtChar}},
+		Ret:      values.VtInteger,
+		IsNative: true,
+		Native:   NativeCtoI,
 	},
 }

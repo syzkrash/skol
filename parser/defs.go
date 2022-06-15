@@ -59,6 +59,11 @@ var DefaultFuncs = map[string]*Function{
 		Args: []values.FuncArg{{"a", values.VtFloat}, {"b", values.VtFloat}},
 		Ret:  values.VtFloat,
 	},
+	"add_c": {
+		Name: "add_c",
+		Args: []values.FuncArg{{"a", values.VtChar}, {"b", values.VtChar}},
+		Ret:  values.VtChar,
+	},
 	"sub_i": {
 		Name: "sub_i",
 		Args: []values.FuncArg{{"a", values.VtInteger}, {"b", values.VtInteger}},
@@ -68,6 +73,11 @@ var DefaultFuncs = map[string]*Function{
 		Name: "sub_f",
 		Args: []values.FuncArg{{"a", values.VtFloat}, {"b", values.VtFloat}},
 		Ret:  values.VtFloat,
+	},
+	"sub_c": {
+		Name: "sub_c",
+		Args: []values.FuncArg{{"a", values.VtChar}, {"b", values.VtChar}},
+		Ret:  values.VtChar,
 	},
 	"mul_i": {
 		Name: "mul_i",
@@ -181,5 +191,10 @@ var DefaultFuncs = map[string]*Function{
 			{"ver", values.VtFloat},
 		},
 		Ret: values.VtNothing,
+	},
+	"ctoi": {
+		Name: "ctoi",
+		Args: []values.FuncArg{{"c", values.VtChar}},
+		Ret:  values.VtInteger,
 	},
 }

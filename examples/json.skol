@@ -42,14 +42,17 @@ $NextString/int(
   >TkString
 )
 
+%NumberLit: 0
+
 $NextNumber/int(
+  %NumberLit: 0
   *not! IsEOF! (
+    %NumberLit: add_i! mul_i! NumberLit 10 ctoi! sub_c! c '0'
     %c: NextChar!
     ?not! IsDigit! c (
       %Pos: sub_i! Pos 1
       >TkNumber
     )
-    // TODO: implement character arithmetic for this
   )
   >TkNumber
 )
@@ -85,6 +88,11 @@ $NextToken/int(
 $NextValue/int?
 $NextValueFrom/int Tok/int?
 
+$PrintValue Val/int(
+  ?eq! Val ValString (print! StringLit)
+  ?eq! Val ValNumber (print! to_str! NumberLit)
+)
+
 $NextObject/int(
   **( // infinite loop: either reach RBrace or EOF
     %Tok: NextToken!
@@ -94,7 +102,8 @@ $NextObject/int(
       >ValInvalid
     )
     %Key: StringLit
-    print! concat! "Key: " Key
+    print! "Key: "
+    print! Key
 
     %Tok: NextToken!
     ?not! eq! Tok TkColon (
@@ -107,7 +116,8 @@ $NextObject/int(
       print! "Got invalid value"
       >ValInvalid
     )
-    print! concat! "Value: " to_str! Value
+    print! "Value: "
+    PrintValue! Value
 
     %Tok: NextToken!
     ? eq! Tok TkRBrace (>ValObject)
@@ -147,7 +157,7 @@ $NextValueFrom/int Tok/int(
 )
 
 $Main(
-  print! to_str! NextValue!
+  to_str! NextValue!
 )
 
 Main!
