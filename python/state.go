@@ -17,7 +17,7 @@ type pythonState struct {
 
 func NewPython(fn string, input io.RuneScanner) codegen.Generator {
 	gen := &pythonState{
-		parser: parser.NewParser(fn, input),
+		parser: parser.NewParser(fn, input, "python"),
 		ind:    0,
 	}
 	gen.initEnv()

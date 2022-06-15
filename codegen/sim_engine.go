@@ -14,7 +14,7 @@ type SimEngine struct {
 
 func NewSimEngine(fn string, src io.RuneScanner) Generator {
 	return &SimEngine{
-		p: parser.NewParser(fn, src),
+		p: parser.NewParser(fn, src, "sim"),
 	}
 }
 

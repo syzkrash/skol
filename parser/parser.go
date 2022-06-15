@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
@@ -14,16 +15,18 @@ import (
 )
 
 type Parser struct {
-	lexer *lexer.Lexer
-	Sim   *sim.Simulator
-	Scope *Scope
+	lexer  *lexer.Lexer
+	engine string
+	Sim    *sim.Simulator
+	Scope  *Scope
 }
 
-func NewParser(fn string, src io.RuneScanner) *Parser {
+func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
 	return &Parser{
-		lexer: lexer.NewLexer(src, fn),
-		Sim:   sim.NewSimulator(),
-		Scope: NewScope(nil),
+		lexer:  lexer.NewLexer(src, fn),
+		engine: eng,
+		Sim:    sim.NewSimulator(),
+		Scope:  NewScope(nil),
 	}
 }
 
@@ -541,6 +544,31 @@ func (p *Parser) internalNext(tok *lexer.Token) (n nodes.Node, err error) {
 				return
 			}
 			n, err = p.funcCall(f)
+			fn := n.(*nodes.FuncCallNode)
+			var eng, ver *values.Value
+			if fn.Func == "skol" {
+				if len(fn.Args) < 1 {
+					err = p.selfError(tok, "not enough arguments for engine check")
+					return
+				}
+				eng, err = p.Sim.Const(fn.Args[0])
+				if err != nil {
+					return
+				}
+				ver, err = p.Sim.Const(fn.Args[1])
+				if err != nil {
+					return
+				}
+				if !strings.EqualFold(eng.Str, p.engine) {
+					err = p.selfError(tok, "this file requires the "+eng.Str+" engine")
+					return
+				}
+				if ver.Float > common.VersionF {
+					err = p.selfError(tok, "this file requires skol "+fmt.Sprint(ver.Float))
+					return
+				}
+				n, err = p.Next()
+			}
 		} else {
 			err = p.selfError(tok, "unexpected top-level identifier: "+tok.Raw)
 		}

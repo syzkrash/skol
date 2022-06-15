@@ -174,4 +174,12 @@ var DefaultFuncs = map[string]*Function{
 		Args: []values.FuncArg{{"s", values.VtString}},
 		Ret:  values.VtInteger,
 	},
+	"skol": {
+		Name: "skol",
+		Args: []values.FuncArg{
+			{"engine", values.VtString},
+			{"ver", values.VtFloat},
+		},
+		Ret: values.VtNothing,
+	},
 }
