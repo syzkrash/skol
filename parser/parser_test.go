@@ -11,7 +11,7 @@ import (
 func TestVarDef(t *testing.T) {
 	code := ` %a: 'E'  `
 	src := strings.NewReader(code)
-	p := NewParser("TestVarDef", src)
+	p := NewParser("TestVarDef", src, "test")
 	n, err := p.Next()
 	if err != nil {
 		t.Fatal(err)
@@ -35,7 +35,7 @@ func TestVarDef(t *testing.T) {
 func TestVarRef(t *testing.T) {
 	code := ` a `
 	src := strings.NewReader(code)
-	p := NewParser("TestVarRef", src)
+	p := NewParser("TestVarRef", src, "test")
 	p.Scope.SetVar("a", &nodes.VarDefNode{}) // to prevent 'unknown variable' error)
 	n, err := p.value()
 	if err != nil {
@@ -53,7 +53,7 @@ func TestVarRef(t *testing.T) {
 func TestFuncCall(t *testing.T) {
 	code := `	add!	1.2 3.4`
 	src := strings.NewReader(code)
-	p := NewParser("TestFuncCall", src)
+	p := NewParser("TestFuncCall", src, "test")
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("add", &Function{
 		Name: "add",
@@ -87,7 +87,7 @@ func TestFuncCall(t *testing.T) {
 func TestIf(t *testing.T) {
 	code := `	?1(print!"hello world") `
 	src := strings.NewReader(code)
-	p := NewParser("TestIf", src)
+	p := NewParser("TestIf", src, "test")
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
@@ -124,7 +124,7 @@ func TestIf(t *testing.T) {
 func TestIfBetween(t *testing.T) {
 	code := `	?1(print!"hello world")print!"bye world" `
 	src := strings.NewReader(code)
-	p := NewParser("TestIfBetween", src)
+	p := NewParser("TestIfBetween", src, "test")
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
@@ -179,7 +179,7 @@ func TestIfBetween(t *testing.T) {
 func TestIfElse(t *testing.T) {
 	code := `	?1(print!"hello world"):(print!"bye world") `
 	src := strings.NewReader(code)
-	p := NewParser("TestIfElse", src)
+	p := NewParser("TestIfElse", src, "test")
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
@@ -237,7 +237,7 @@ func TestIfElse(t *testing.T) {
 func TestIfElseIfElse(t *testing.T) {
 	code := `	?1(print!"hello world"):?0(print!"world?"):(print!"bye world") `
 	src := strings.NewReader(code)
-	p := NewParser("TestIfElseIfElse", src)
+	p := NewParser("TestIfElseIfElse", src, "test")
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
@@ -315,7 +315,7 @@ func TestIfElseIfElse(t *testing.T) {
 func TestIfElseIf(t *testing.T) {
 	code := `	?1(print!"hello world"):?1(print!"bye world?") `
 	src := strings.NewReader(code)
-	p := NewParser("TestIfElseIf", src)
+	p := NewParser("TestIfElseIf", src, "test")
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
@@ -377,7 +377,7 @@ func TestIfElseIf(t *testing.T) {
 func TestConst(t *testing.T) {
 	code := ` #max_int: 169 %max_int_copy: max_int  `
 	src := strings.NewReader(code)
-	p := NewParser("TestConst", src)
+	p := NewParser("TestConst", src, "test")
 	n, err := p.Next()
 	if err != nil {
 		t.Fatal(err)
