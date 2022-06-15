@@ -1,18 +1,23 @@
-print! to_str! add_i! 1 2
-print! to_str! add_f! 1.2 3.4
-print! to_str! mul_i! 6 9
-print! to_str!
-  add_i! mul_i! 6 9 add_i! 6 9
-
-#iters: 11
-%i: 1
-%acc: 1
-
-* lt_i! i iters (
-  %acc: mul_i! acc i
-  %i: add_i! i 1
+// fact calculates the factorial of whole number n
+$fact/i n/i
+(
+  %acc: 1
+  %i: 0
+  *lt_i! i n
+  (
+    %i: add_i! i 1
+    %acc: mul_i! acc i
+  )
+  >acc
 )
 
-print! concat!
-  "The factorial of 10 is: "
-  to_str! acc
+#ten: 10
+
+$main
+(
+  print!
+    concat! "The factorial of 10 is: "
+    to_str! fact! ten
+)
+
+main!
