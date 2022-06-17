@@ -8,6 +8,7 @@ import (
 )
 
 type Generator interface {
+	CanGenerate() bool
 	Generate(io.StringWriter) error
 	CanRun() bool
 	Ext() string
@@ -20,8 +21,12 @@ type ASTGenerator struct {
 
 func NewAST(fn string, src io.RuneScanner) Generator {
 	return &ASTGenerator{
-		parser: parser.NewParser(fn, src),
+		parser: parser.NewParser(fn, src, "ast"),
 	}
+}
+
+func (*ASTGenerator) CanGenerate() bool {
+	return true
 }
 
 func (g *ASTGenerator) Generate(output io.StringWriter) error {

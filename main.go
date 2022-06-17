@@ -22,12 +22,14 @@ const (
 	EnUndefined Engine = iota
 	EnPy
 	EnAST
+	EnSim
 )
 
 var engines = [...]string{
 	"Undefined",
 	"Python",
 	"AST Dump",
+	"Simulation",
 }
 
 var theEngine = EnUndefined
@@ -38,6 +40,8 @@ func engineFlag(arg string) error {
 		theEngine = EnPy
 	case "ast":
 		theEngine = EnAST
+	case "sim":
+		theEngine = EnSim
 	default:
 		return fmt.Errorf("unknown engine: %s", arg)
 	}
@@ -86,21 +90,23 @@ func compile() {
 	}
 	defer outFile.Close()
 
-	fmt.Println("Compiling using engine:", engines[theEngine])
-	compStart := time.Now()
+	if gen.CanGenerate() {
+		fmt.Println("Compiling using engine:", engines[theEngine])
+		compStart := time.Now()
 
-	for {
-		err = gen.Generate(outFile)
-		if errors.Is(err, io.EOF) {
-			break
+		for {
+			err = gen.Generate(outFile)
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if err != nil {
+				fmt.Println("Error -", err)
+				return
+			}
 		}
-		if err != nil {
-			fmt.Println("Error -", err)
-			return
-		}
+
+		fmt.Println("Compiled in", time.Since(compStart))
 	}
-
-	fmt.Println("Compiled in", time.Since(compStart))
 
 	if gen.CanRun() {
 		fmt.Println("Running...")
@@ -118,6 +124,8 @@ func gen(fn string, src io.RuneScanner) codegen.Generator {
 		return python.NewPython(fn, src)
 	case EnAST:
 		return codegen.NewAST(fn, src)
+	case EnSim:
+		return codegen.NewSimEngine(fn, src)
 	}
 	return nil
 }

@@ -1,39 +1,23 @@
 package python
 
-import "github.com/syzkrash/skol/parser"
+import (
+	"github.com/syzkrash/skol/parser"
+	"github.com/syzkrash/skol/parser/values"
+)
 
 func (p *pythonState) initEnv() {
-	newScope := &parser.Scope{
-		Parent: nil,
-		Funcs: map[string]*parser.Function{
-			"print": {
-				Name: "print",
-				Args: map[string]parser.ValueType{
-					"a": parser.VtAny,
-				},
-				Ret: parser.VtNothing,
-			},
-			"import": {
-				Name: "import",
-				Args: map[string]parser.ValueType{
-					"module": parser.VtString,
-				},
-				Ret: parser.VtNothing,
-			},
+	newScope := parser.NewScope(p.parser.Scope)
+	newScope.Funcs = map[string]*parser.Function{
+		"print": {
+			Name: "print",
+			Args: []values.FuncArg{{"a", values.VtAny}},
+			Ret:  values.VtNothing,
 		},
-		Vars: map[string]*parser.VarDefNode{},
+		"import": {
+			Name: "import",
+			Args: []values.FuncArg{{"module", values.VtString}},
+			Ret:  values.VtNothing,
+		},
 	}
-
-	for oper, sym := range ops {
-		newScope.Funcs[oper] = &parser.Function{
-			Name: sym,
-			Args: map[string]parser.ValueType{
-				"a": parser.VtAny,
-				"b": parser.VtAny,
-			},
-			Ret: parser.VtAny,
-		}
-	}
-
-	p.parser.Scope.Parent = newScope
+	p.parser.Scope = newScope
 }

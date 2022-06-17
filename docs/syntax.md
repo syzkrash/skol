@@ -2,6 +2,17 @@
 
 This is a reference guide for the syntax of the skol language.
 
+## Comments
+
+skol uses C-like comments:
+
+```c
+// this is a line comment.
+
+/* this is a block comment.
+   block comments cannot be nested. */
+```
+
 ## Variable Definition
 
 ```hs
@@ -111,3 +122,60 @@ $ NumCompare A/f B/f (
 
 The above function returns `1` is `A` is greater than `B`, `-1` if `B` is grater
 than `A`, and `0` if the numbers are equal.
+
+## Loop
+
+```hs
+$fact/i n/i
+(
+  %acc: 1
+  %i: 0
+  *lt_i! i n
+  (
+    %i: add_i! i 1
+    %acc: mul_i! acc i
+  )
+  >acc
+)
+
+#ten: 10
+print!
+  concat! "The factorial of 10 is: "
+  to_str! fact! ten
+```
+
+In skol, there only exists a `while` loop in the form of `*`. As long as the
+condition after `*` evaluates to `true` (or `*` in actual skol code), the code
+inside the block after it will be repeated. The example above shows not only the
+`while` loop, but also function definitions and calls, variable definitions and
+references as well as a constant definition.
+
+## Literals
+
+The literals are quite similar to other languages. Here's a quick rundown:
+
+* `'a'` is a __character__ literal, __not__ a string.
+* `"hello"` is a string literal.
+* `123`, `12.3` and `0xD34D` are all numeric literals.
+* `*` is the boolean `true` and `/` is `false`.
+
+Note that skol does not use `true` and `false` for boolean literals. Use `*`
+and `/` instead.
+
+A cool side note is that due to the boolean literal syntax and loop syntax
+using the same punctuator, an infinite loop is simply defined with `**`:
+
+```hs
+**
+(
+  print! "You have been hax!"
+)
+```
+
+## Conclusion
+
+If you wish to see skol in action, feel free to view the [JSON][json] and
+[calculator][calc] examples.
+
+[json]: /examples/json.skol
+[calc]: /examples/calculator.skol

@@ -1,0 +1,163 @@
+skol! "sim" 0.3
+
+#TkInvalid: -1
+#TkLBrace:   1
+#TkRBrace:   2
+#TkLBracket: 3
+#TkRBracket: 4
+#TkColon:    5
+#TkComma:    6
+#TkString:   7
+#TkNumber:   8
+
+%Source: "{\"name\":\"John\",\"age\":24}"
+%Pos: 0
+
+$IsEOF/bool(
+  >eq! Pos str_len! Source
+)
+
+$IsDigit/bool c/char(
+  >and! or! gt_c! c '0' eq! c '0' or! lt_c! c '9' eq! c '9'
+)
+
+$NextChar/char(
+  %c: char_at! Source Pos
+  %Pos: add_i! Pos 1
+  >c
+)
+
+%StringLit: ""
+
+$NextString/int(
+  %StringLit: ""
+
+  %c: NextChar!
+
+  *and! not! eq! c '"' not! IsEOF!(
+    %StringLit: char_append! StringLit c
+    %c: NextChar!
+  )
+
+  >TkString
+)
+
+%NumberLit: 0
+
+$NextNumber/int(
+  %NumberLit: 0
+  *not! IsEOF! (
+    %NumberLit: add_i! mul_i! NumberLit 10 ctoi! sub_c! c '0'
+    %c: NextChar!
+    ?not! IsDigit! c (
+      %Pos: sub_i! Pos 1
+      >TkNumber
+    )
+  )
+  >TkNumber
+)
+
+$NextToken/int(
+  ?IsEOF!(>TkInvalid)
+
+  %c: NextChar!
+
+  ?eq! c '{' (>TkLBrace)
+  ?eq! c '}' (>TkRBrace)
+  ?eq! c '[' (>TkLBracket)
+  ?eq! c ']' (>TkRBracket)
+  ?eq! c ':' (>TkColon)
+  ?eq! c ',' (>TkComma)
+
+  ?IsDigit! c (>NextNumber!)
+  ?eq! c '"' (>NextString!)
+
+  print! concat! "Illegal character: " to_str! c
+
+  >TkInvalid
+)
+
+// skol doesn't have custom types, so we're just pretending to return a parsed
+// value. Check issue #19
+#ValInvalid: -1
+#ValNumber:   1
+#ValString:   2
+#ValArray:    3
+#ValObject:   4
+
+$NextValue/int?
+$NextValueFrom/int Tok/int?
+
+$PrintValue Val/int(
+  ?eq! Val ValString (print! StringLit)
+  ?eq! Val ValNumber (print! to_str! NumberLit)
+)
+
+$NextObject/int(
+  **( // infinite loop: either reach RBrace or EOF
+    %Tok: NextToken!
+    ? eq! Tok TkRBrace (>ValObject)
+    :?not! eq! Tok TkString (
+      print! "Expected a string"
+      >ValInvalid
+    )
+    %Key: StringLit
+    print! "Key: "
+    print! Key
+
+    %Tok: NextToken!
+    ?not! eq! Tok TkColon (
+      print! "Expected a colon"
+      >ValInvalid
+    )
+
+    %Value: NextValue!
+    ?eq! Value ValInvalid (
+      print! "Got invalid value"
+      >ValInvalid
+    )
+    print! "Value: "
+    PrintValue! Value
+
+    %Tok: NextToken!
+    ? eq! Tok TkRBrace (>ValObject)
+    :?not! eq! Tok TkComma (
+      print! "Expected comma"
+      >ValInvalid
+    )
+  )
+  >ValObject // theoretically never reached
+)
+
+$NextArray/int(
+  **( // infinite loop; refer to NextObject
+    %Tok: NextToken!
+    ?eq! Tok TkRBracket (>ValArray)
+
+    %Value: NextValueFrom! Tok
+    ?eq! Value ValInvalid (>ValInvalid)
+
+    print! concat! "Array entry: " to_str! Value
+  )
+  >ValArray // again, theoretically never reached
+)
+
+$NextValue/int(
+  %Tok: NextToken!
+  >NextValueFrom! Tok
+)
+
+$NextValueFrom/int Tok/int(
+  ?eq! Tok TkLBrace   (>NextObject!)
+  ?eq! Tok TkLBracket (>NextArray!)
+  ?eq! Tok TkString   (>ValString)
+  ?eq! Tok TkNumber   (>ValNumber)
+
+  >ValInvalid
+)
+
+$Main(
+  to_str! NextValue!
+)
+
+Main!
