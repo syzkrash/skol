@@ -3,8 +3,12 @@ name: Go Test
 on:
   push:
     branches: [ nightly ]
+    paths:
+      - "**.go"
   pull_request:
     branches: [ nightly ]
+    paths:
+      - "**.go"
 
 jobs:
 
