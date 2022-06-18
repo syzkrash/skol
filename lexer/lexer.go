@@ -45,7 +45,7 @@ func (l *Lexer) nextIdent(c rune) (tok *Token, err error) {
 		if err != nil {
 			return
 		}
-		if !isIdent(c) {
+		if !isIdent(c) && !isDigit(c) {
 			if err = l.src.UnreadRune(); err != nil {
 				return
 			}

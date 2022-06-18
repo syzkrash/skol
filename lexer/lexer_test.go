@@ -6,7 +6,7 @@ import (
 )
 
 func TestIdent(t *testing.T) {
-	code := `  hello  `
+	code := `  hello0  `
 	read := strings.NewReader(code)
 	lex := NewLexer(read, "TestIdent")
 	tok, err := lex.Next()
@@ -16,8 +16,8 @@ func TestIdent(t *testing.T) {
 	if tok.Kind != TkIdent {
 		t.Fatalf("Incorrect TokenKind! Want Ident but got %s!", tok.Kind)
 	}
-	if tok.Raw != "hello" {
-		t.Fatalf("Incorrect string! Want `hello` but got `%s`!", tok.Raw)
+	if tok.Raw != "hello0" {
+		t.Fatalf("Incorrect string! Want `hello0` but got `%s`!", tok.Raw)
 	}
 }
 

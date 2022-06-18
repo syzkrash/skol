@@ -137,7 +137,7 @@ func (p *Parser) value() (n nodes.Node, err error) {
 		} else if v, ok := p.Scope.FindConst(tok.Raw); ok {
 			n = p.ToNode(v)
 		} else {
-			err = p.selfError(tok, "unknown variable")
+			err = p.selfError(tok, "unknown variable: "+tok.Raw)
 		}
 	case lexer.TkPunct:
 		if tok.Raw == "*" {

@@ -399,7 +399,7 @@ func TestConst(t *testing.T) {
 }
 
 func TestStruct(t *testing.T) {
-	code := `@VectorTwo(x/i y/i)`
+	code := `@V2I(x/i y/i)`
 	src := strings.NewReader(code)
 	p := NewParser("TestStruct", src, "test")
 	n, err := p.Next()
@@ -410,8 +410,8 @@ func TestStruct(t *testing.T) {
 		t.Fatalf("expected Struct node, got %s", n.Kind())
 	}
 	s := n.(*nodes.StructNode)
-	if s.Name != "VectorTwo" {
-		t.Fatalf("expected 'VectorTwo' struct, got '%s' instead", s.Name)
+	if s.Name != "V2I" {
+		t.Fatalf("expected 'V2I' struct, got '%s' instead", s.Name)
 	}
 	if len(s.Type.Structure) != 2 {
 		t.Fatalf("expected 2 fields, got %d", len(s.Type.Structure))
@@ -419,7 +419,7 @@ func TestStruct(t *testing.T) {
 }
 
 func TestNewStruct(t *testing.T) {
-	code := `@VDI(x/i y/i)%pos:@VDI0 0`
+	code := `@V2I(x/i y/i)%pos:@V2I 0 0`
 	src := strings.NewReader(code)
 	p := NewParser("TestStruct", src, "test")
 	n, err := p.Next()
@@ -430,8 +430,8 @@ func TestNewStruct(t *testing.T) {
 		t.Fatalf("expected Struct node, got %s", n.Kind())
 	}
 	s := n.(*nodes.StructNode)
-	if s.Name != "VDI" {
-		t.Fatalf("expected 'VDI' struct, got '%s' instead", s.Name)
+	if s.Name != "V2I" {
+		t.Fatalf("expected 'V2I' struct, got '%s' instead", s.Name)
 	}
 	if len(s.Type.Structure) != 2 {
 		t.Fatalf("expected 2 fields, got %d", len(s.Type.Structure))
