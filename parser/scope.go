@@ -70,3 +70,11 @@ func (s *Scope) SetConst(n string, v *values.Value) bool {
 	s.Consts[n] = v
 	return true
 }
+
+func (s *Scope) FindType(n string) (*values.Type, bool) {
+	t, ok := s.Types[n]
+	if s.Parent != nil && !ok {
+		return s.Parent.FindType(n)
+	}
+	return t, ok
+}

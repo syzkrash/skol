@@ -81,6 +81,7 @@ func (p *Parser) funcCall(f *Function) (n nodes.Node, err error) {
 //	'E'        // nodes.CharNode
 //	add! 1 2   // nodes.FuncCallNode
 //	age        // nodes.VarRefNode
+//	@VectorTwo 1.2 3.4 // nodes.NewStructNode
 //
 func (p *Parser) value() (n nodes.Node, err error) {
 	tok, err := p.lexer.Next()
@@ -143,6 +144,32 @@ func (p *Parser) value() (n nodes.Node, err error) {
 			n = &nodes.BooleanNode{true}
 		} else if tok.Raw == "/" {
 			n = &nodes.BooleanNode{false}
+		} else if tok.Raw == "@" {
+			tok, err = p.lexer.Next()
+			if err != nil {
+				return
+			}
+			if tok.Kind != lexer.TkIdent {
+				err = p.selfError(tok, "expected Identifier, got "+tok.Kind.String())
+				return
+			}
+			t, ok := p.Scope.FindType(tok.Raw)
+			if !ok {
+				err = p.selfError(tok, "unknown type: "+tok.Raw)
+				return
+			}
+			args := make([]nodes.Node, len(t.Structure))
+			for i := range t.Structure {
+				n, err = p.value()
+				if err != nil {
+					return
+				}
+				args[i] = n
+			}
+			n = &nodes.NewStructNode{
+				Type: t,
+				Args: args,
+			}
 		} else {
 			err = p.selfError(tok, "unexpected punctuator")
 		}

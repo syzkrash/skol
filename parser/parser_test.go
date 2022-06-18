@@ -417,3 +417,44 @@ func TestStruct(t *testing.T) {
 		t.Fatalf("expected 2 fields, got %d", len(s.Type.Structure))
 	}
 }
+
+func TestNewStruct(t *testing.T) {
+	code := `@VDI(x/i y/i)%pos:@VDI0 0`
+	src := strings.NewReader(code)
+	p := NewParser("TestStruct", src, "test")
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != nodes.NdStruct {
+		t.Fatalf("expected Struct node, got %s", n.Kind())
+	}
+	s := n.(*nodes.StructNode)
+	if s.Name != "VDI" {
+		t.Fatalf("expected 'VDI' struct, got '%s' instead", s.Name)
+	}
+	if len(s.Type.Structure) != 2 {
+		t.Fatalf("expected 2 fields, got %d", len(s.Type.Structure))
+	}
+	n, err = p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != nodes.NdVarDef {
+		t.Fatalf("expected VarDef node, got %s", n.Kind())
+	}
+	v := n.(*nodes.VarDefNode)
+	if v.Value.Kind() != nodes.NdNewStruct {
+		t.Fatalf("expected NewStruct node, got %s", n.Kind())
+	}
+	ns := v.Value.(*nodes.NewStructNode)
+	if !ns.Type.Equals(s.Type) {
+		t.Fatalf("type mismatch between definition and instance")
+	}
+	if len(ns.Args) != 2 {
+		t.Fatalf("expected 2 arguments for instance, got %d", len(ns.Args))
+	}
+	if ns.Args[0].Kind() != nodes.NdInteger {
+		t.Fatalf("expected Integer node, got %s", ns.Args[0].Kind())
+	}
+}

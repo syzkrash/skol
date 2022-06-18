@@ -37,6 +37,7 @@ const (
 	NdIf
 	NdWhile
 	NdStruct
+	NdNewStruct
 )
 
 var nodeKinds = []string{
@@ -54,6 +55,7 @@ var nodeKinds = []string{
 	"If",
 	"While",
 	"Struct",
+	"NewStruct",
 }
 
 func (k NodeKind) String() string {
@@ -266,4 +268,13 @@ type StructNode struct {
 
 func (*StructNode) Kind() NodeKind {
 	return NdStruct
+}
+
+type NewStructNode struct {
+	Type *values.Type
+	Args []Node
+}
+
+func (*NewStructNode) Kind() NodeKind {
+	return NdNewStruct
 }
