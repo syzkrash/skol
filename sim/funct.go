@@ -12,7 +12,7 @@ type NativeFunc func(*Simulator, ArgMap) (*values.Value, error)
 
 type Funct struct {
 	Args     []values.FuncArg
-	Ret      values.ValueType
+	Ret      *values.Type
 	Body     []nodes.Node
 	IsNative bool
 	Native   NativeFunc
@@ -32,133 +32,115 @@ func NativeToString(s *Simulator, args ArgMap) (*values.Value, error) {
 }
 
 func NativeAddI(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Int + args["b"].Int), nil
+	return values.NewValue(args["a"].Int() + args["b"].Int()), nil
 }
 
 func NativeAddF(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Float + args["b"].Float), nil
+	return values.NewValue(args["a"].Float() + args["b"].Float()), nil
 }
 
 func NativeAddC(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Char + args["b"].Char), nil
+	return values.NewValue(args["a"].Char() + args["b"].Char()), nil
 }
 
 func NativeSubI(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Int - args["b"].Int), nil
+	return values.NewValue(args["a"].Int() - args["b"].Int()), nil
 }
 
 func NativeSubF(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Float - args["b"].Float), nil
+	return values.NewValue(args["a"].Float() - args["b"].Float()), nil
 }
 
 func NativeSubC(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Char - args["b"].Char), nil
+	return values.NewValue(args["a"].Char() - args["b"].Char()), nil
 }
 
 func NativeMulI(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Int * args["b"].Int), nil
+	return values.NewValue(args["a"].Int() * args["b"].Int()), nil
 }
 
 func NativeMulF(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Float * args["b"].Float), nil
+	return values.NewValue(args["a"].Float() * args["b"].Float()), nil
 }
 
 func NativeDivI(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Int / args["b"].Int), nil
+	return values.NewValue(args["a"].Int() / args["b"].Int()), nil
 }
 
 func NativeDivF(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Float / args["b"].Float), nil
+	return values.NewValue(args["a"].Float() / args["b"].Float()), nil
 }
 
 func NativeModI(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Int % args["b"].Int), nil
+	return values.NewValue(args["a"].Int() % args["b"].Int()), nil
 }
 
 func NativeModF(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(int32(args["a"].Float) % args["b"].Int), nil
+	return values.NewValue(int32(args["a"].Float()) % args["b"].Int()), nil
 }
 
 func NativeConcat(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Str + args["b"].Str), nil
+	return values.NewValue(args["a"].String() + args["b"].String()), nil
 }
 
 func NativeNot(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(!args["a"].Bool), nil
+	return values.NewValue(!args["a"].Bool()), nil
 }
 
 func NativeOr(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Bool || args["b"].Bool), nil
+	return values.NewValue(args["a"].Bool() || args["b"].Bool()), nil
 }
 
 func NativeAnd(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Bool && args["b"].Bool), nil
+	return values.NewValue(args["a"].Bool() && args["b"].Bool()), nil
 }
 
 func NativeEq(s *Simulator, args ArgMap) (*values.Value, error) {
 	a := args["a"]
 	b := args["b"]
-	if a.ValueType != b.ValueType {
-		return values.NewValue(false), nil
-	}
-	switch a.ValueType {
-	case values.VtInteger:
-		return values.NewValue(a.Int == b.Int), nil
-	case values.VtBool:
-		return values.NewValue(a.Bool == b.Bool), nil
-	case values.VtFloat:
-		return values.NewValue(a.Float == b.Float), nil
-	case values.VtString:
-		return values.NewValue(a.Str == b.Str), nil
-	case values.VtChar:
-		return values.NewValue(a.Char == b.Char), nil
-	}
-	return values.NewValue(false), nil
+	return values.NewValue(a.Data == b.Data), nil
 }
 
 func NativeGtI(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Int > args["b"].Int), nil
+	return values.NewValue(args["a"].Int() > args["b"].Int()), nil
 }
 
 func NativeGtF(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Float > args["b"].Float), nil
+	return values.NewValue(args["a"].Data.(float32) > args["b"].Float()), nil
 }
 
 func NativeGtC(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Char > args["b"].Char), nil
+	return values.NewValue(args["a"].Char() > args["b"].Char()), nil
 }
 
 func NativeLtI(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Int < args["b"].Int), nil
+	return values.NewValue(args["a"].Int() < args["b"].Int()), nil
 }
 
 func NativeLtF(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Float < args["b"].Float), nil
+	return values.NewValue(args["a"].Float() < args["b"].Float()), nil
 }
 
 func NativeLtC(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["a"].Char < args["b"].Char), nil
+	return values.NewValue(args["a"].Char() < args["b"].Char()), nil
 }
 
 func NativeCharAt(s *Simulator, args ArgMap) (*values.Value, error) {
-	str := args["s"].Str
-	i := args["i"].Int
+	str := args["s"].String()
+	i := args["i"].Int()
 	for i < 0 {
 		i += int32(len(str))
 	}
 	for i > int32(len(str)) {
 		i -= int32(len(str))
 	}
-	return &values.Value{
-		ValueType: values.VtChar,
-		Char:      str[i],
-	}, nil
+	return &values.Value{values.Char, str[i]}, nil
 }
 
 func NativeSubstr(s *Simulator, args ArgMap) (*values.Value, error) {
-	str := args["s"].Str
-	a := args["a"].Int
-	b := args["b"].Int
+	str := args["s"].String()
+	a := args["a"].Int()
+	b := args["b"].Int()
 	for a < 0 {
 		a += int32(len(str))
 	}
@@ -175,195 +157,195 @@ func NativeSubstr(s *Simulator, args ArgMap) (*values.Value, error) {
 }
 
 func NativeCharAppend(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(args["s"].Str + string(args["c"].Char)), nil
+	return values.NewValue(args["s"].String() + string(args["c"].Char())), nil
 }
 
 func NativeStrLen(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(len(args["s"].Str)), nil
+	return values.NewValue(len(args["s"].String())), nil
 }
 
 func NativeCtoI(s *Simulator, args ArgMap) (*values.Value, error) {
-	return values.NewValue(int(args["c"].Char)), nil
+	return values.NewValue(int(args["c"].Char())), nil
 }
 
 var DefaultFuncs = map[string]*Funct{
 	"print": {
-		Args:     []values.FuncArg{{"a", values.VtString}},
-		Ret:      values.VtNothing,
+		Args:     []values.FuncArg{{"a", values.String}},
+		Ret:      values.Nothing,
 		IsNative: true,
 		Native:   NativePrint,
 	},
 	"to_str": {
-		Args:     []values.FuncArg{{"a", values.VtAny}},
-		Ret:      values.VtString,
+		Args:     []values.FuncArg{{"a", values.Any}},
+		Ret:      values.String,
 		IsNative: true,
 		Native:   NativeToString,
 	},
 	"add_i": {
-		Args:     []values.FuncArg{{"a", values.VtInteger}, {"b", values.VtInteger}},
-		Ret:      values.VtInteger,
+		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
+		Ret:      values.Int,
 		IsNative: true,
 		Native:   NativeAddI,
 	},
 	"add_f": {
-		Args:     []values.FuncArg{{"a", values.VtFloat}, {"b", values.VtFloat}},
-		Ret:      values.VtFloat,
+		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
+		Ret:      values.Float,
 		IsNative: true,
 		Native:   NativeAddF,
 	},
 	"add_c": {
-		Args:     []values.FuncArg{{"a", values.VtChar}, {"b", values.VtChar}},
-		Ret:      values.VtChar,
+		Args:     []values.FuncArg{{"a", values.Char}, {"b", values.Char}},
+		Ret:      values.Char,
 		IsNative: true,
 		Native:   NativeAddC,
 	},
 	"sub_i": {
-		Args:     []values.FuncArg{{"a", values.VtInteger}, {"b", values.VtInteger}},
-		Ret:      values.VtInteger,
+		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
+		Ret:      values.Int,
 		IsNative: true,
 		Native:   NativeSubI,
 	},
 	"sub_f": {
-		Args:     []values.FuncArg{{"a", values.VtFloat}, {"b", values.VtFloat}},
-		Ret:      values.VtFloat,
+		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
+		Ret:      values.Float,
 		IsNative: true,
 		Native:   NativeSubF,
 	},
 	"sub_c": {
-		Args:     []values.FuncArg{{"a", values.VtChar}, {"b", values.VtChar}},
-		Ret:      values.VtChar,
+		Args:     []values.FuncArg{{"a", values.Char}, {"b", values.Char}},
+		Ret:      values.Char,
 		IsNative: true,
 		Native:   NativeSubC,
 	},
 	"mul_i": {
-		Args:     []values.FuncArg{{"a", values.VtInteger}, {"b", values.VtInteger}},
-		Ret:      values.VtInteger,
+		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
+		Ret:      values.Int,
 		IsNative: true,
 		Native:   NativeMulI,
 	},
 	"mul_f": {
-		Args:     []values.FuncArg{{"a", values.VtFloat}, {"b", values.VtFloat}},
-		Ret:      values.VtFloat,
+		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
+		Ret:      values.Float,
 		IsNative: true,
 		Native:   NativeMulF,
 	},
 	"div_i": {
-		Args:     []values.FuncArg{{"a", values.VtInteger}, {"b", values.VtInteger}},
-		Ret:      values.VtInteger,
+		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
+		Ret:      values.Int,
 		IsNative: true,
 		Native:   NativeDivI,
 	},
 	"div_f": {
-		Args:     []values.FuncArg{{"a", values.VtFloat}, {"b", values.VtFloat}},
-		Ret:      values.VtFloat,
+		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
+		Ret:      values.Float,
 		IsNative: true,
 		Native:   NativeDivF,
 	},
 	"mod_i": {
-		Args:     []values.FuncArg{{"a", values.VtInteger}, {"b", values.VtInteger}},
-		Ret:      values.VtInteger,
+		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
+		Ret:      values.Int,
 		IsNative: true,
 		Native:   NativeModI,
 	},
 	"mod_f": {
-		Args:     []values.FuncArg{{"a", values.VtFloat}, {"b", values.VtInteger}},
-		Ret:      values.VtInteger,
+		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Int}},
+		Ret:      values.Int,
 		IsNative: true,
 		Native:   NativeModF,
 	},
 	"concat": {
-		Args:     []values.FuncArg{{"a", values.VtString}, {"b", values.VtString}},
-		Ret:      values.VtString,
+		Args:     []values.FuncArg{{"a", values.String}, {"b", values.String}},
+		Ret:      values.String,
 		IsNative: true,
 		Native:   NativeConcat,
 	},
 	"not": {
-		Args:     []values.FuncArg{{"a", values.VtBool}},
-		Ret:      values.VtBool,
+		Args:     []values.FuncArg{{"a", values.Bool}},
+		Ret:      values.Bool,
 		IsNative: true,
 		Native:   NativeNot,
 	},
 	"or": {
-		Args:     []values.FuncArg{{"a", values.VtBool}, {"b", values.VtBool}},
-		Ret:      values.VtBool,
+		Args:     []values.FuncArg{{"a", values.Bool}, {"b", values.Bool}},
+		Ret:      values.Bool,
 		IsNative: true,
 		Native:   NativeOr,
 	},
 	"and": {
-		Args:     []values.FuncArg{{"a", values.VtBool}, {"b", values.VtBool}},
-		Ret:      values.VtBool,
+		Args:     []values.FuncArg{{"a", values.Bool}, {"b", values.Bool}},
+		Ret:      values.Bool,
 		IsNative: true,
 		Native:   NativeAnd,
 	},
 	"eq": {
-		Args:     []values.FuncArg{{"a", values.VtAny}, {"b", values.VtAny}},
-		Ret:      values.VtBool,
+		Args:     []values.FuncArg{{"a", values.Any}, {"b", values.Any}},
+		Ret:      values.Bool,
 		IsNative: true,
 		Native:   NativeEq,
 	},
 	"gt_i": {
-		Args:     []values.FuncArg{{"a", values.VtInteger}, {"b", values.VtInteger}},
-		Ret:      values.VtBool,
+		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
+		Ret:      values.Bool,
 		IsNative: true,
 		Native:   NativeGtI,
 	},
 	"gt_f": {
-		Args:     []values.FuncArg{{"a", values.VtFloat}, {"b", values.VtFloat}},
-		Ret:      values.VtBool,
+		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
+		Ret:      values.Bool,
 		IsNative: true,
 		Native:   NativeGtF,
 	},
 	"gt_c": {
-		Args:     []values.FuncArg{{"a", values.VtChar}, {"b", values.VtChar}},
-		Ret:      values.VtBool,
+		Args:     []values.FuncArg{{"a", values.Char}, {"b", values.Char}},
+		Ret:      values.Bool,
 		IsNative: true,
 		Native:   NativeGtC,
 	},
 	"lt_i": {
-		Args:     []values.FuncArg{{"a", values.VtInteger}, {"b", values.VtInteger}},
-		Ret:      values.VtBool,
+		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
+		Ret:      values.Bool,
 		IsNative: true,
 		Native:   NativeLtI,
 	},
 	"lt_f": {
-		Args:     []values.FuncArg{{"a", values.VtFloat}, {"b", values.VtFloat}},
-		Ret:      values.VtBool,
+		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
+		Ret:      values.Bool,
 		IsNative: true,
 		Native:   NativeLtF,
 	},
 	"lt_c": {
-		Args:     []values.FuncArg{{"a", values.VtChar}, {"b", values.VtChar}},
-		Ret:      values.VtBool,
+		Args:     []values.FuncArg{{"a", values.Char}, {"b", values.Char}},
+		Ret:      values.Bool,
 		IsNative: true,
 		Native:   NativeLtC,
 	},
 	"char_at": {
-		Args:     []values.FuncArg{{"s", values.VtString}, {"i", values.VtInteger}},
-		Ret:      values.VtChar,
+		Args:     []values.FuncArg{{"s", values.String}, {"i", values.Int}},
+		Ret:      values.Char,
 		IsNative: true,
 		Native:   NativeCharAt,
 	},
 	"substr": {
-		Args:     []values.FuncArg{{"s", values.VtString}, {"a", values.VtInteger}, {"b", values.VtInteger}},
-		Ret:      values.VtString,
+		Args:     []values.FuncArg{{"s", values.String}, {"a", values.Int}, {"b", values.Int}},
+		Ret:      values.String,
 		IsNative: true,
 		Native:   NativeSubstr,
 	},
 	"char_append": {
-		Args:     []values.FuncArg{{"s", values.VtString}, {"c", values.VtChar}},
-		Ret:      values.VtString,
+		Args:     []values.FuncArg{{"s", values.String}, {"c", values.Char}},
+		Ret:      values.String,
 		IsNative: true,
 		Native:   NativeCharAppend,
 	},
 	"str_len": {
-		Args:     []values.FuncArg{{"s", values.VtString}},
-		Ret:      values.VtInteger,
+		Args:     []values.FuncArg{{"s", values.String}},
+		Ret:      values.Int,
 		IsNative: true,
 		Native:   NativeStrLen,
 	},
 	"ctoi": {
-		Args:     []values.FuncArg{{"c", values.VtChar}},
-		Ret:      values.VtInteger,
+		Args:     []values.FuncArg{{"c", values.Char}},
+		Ret:      values.Int,
 		IsNative: true,
 		Native:   NativeCtoI,
 	},

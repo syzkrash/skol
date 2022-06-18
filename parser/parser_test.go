@@ -57,8 +57,8 @@ func TestFuncCall(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("add", &Function{
 		Name: "add",
-		Args: []values.FuncArg{{"a", values.VtFloat}, {"b", values.VtFloat}},
-		Ret:  values.VtFloat,
+		Args: []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
+		Ret:  values.Float,
 	})
 	n, err := p.value()
 	if err != nil {
@@ -91,8 +91,8 @@ func TestIf(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.VtAny}},
-		Ret:  values.VtNothing,
+		Args: []values.FuncArg{{"a", values.Any}},
+		Ret:  values.Nothing,
 	})
 	n, err := p.Next()
 	if err != nil {
@@ -103,7 +103,7 @@ func TestIf(t *testing.T) {
 	}
 	ifn := n.(*nodes.IfNode)
 	if ifn.Condition.Kind() != nodes.NdInteger {
-		t.Fatalf("expected Integer, got %s", n.Kind())
+		t.Fatalf("expected Int, got %s", n.Kind())
 	}
 	if len(ifn.IfBlock) < 1 {
 		t.Fatalf("expected 1 Node in block, got %d", len(ifn.IfBlock))
@@ -128,8 +128,8 @@ func TestIfBetween(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.VtAny}},
-		Ret:  values.VtNothing,
+		Args: []values.FuncArg{{"a", values.Any}},
+		Ret:  values.Nothing,
 	})
 
 	// check for the if statement
@@ -142,7 +142,7 @@ func TestIfBetween(t *testing.T) {
 	}
 	ifn := n.(*nodes.IfNode)
 	if ifn.Condition.Kind() != nodes.NdInteger {
-		t.Fatalf("expected Integer, got %s", n.Kind())
+		t.Fatalf("expected Int, got %s", n.Kind())
 	}
 	if len(ifn.IfBlock) < 1 {
 		t.Fatalf("expected 1 Node in block, got %d", len(ifn.IfBlock))
@@ -183,8 +183,8 @@ func TestIfElse(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.VtAny}},
-		Ret:  values.VtNothing,
+		Args: []values.FuncArg{{"a", values.Any}},
+		Ret:  values.Nothing,
 	})
 
 	n, err := p.Next()
@@ -198,7 +198,7 @@ func TestIfElse(t *testing.T) {
 	}
 	ifn := n.(*nodes.IfNode)
 	if ifn.Condition.Kind() != nodes.NdInteger {
-		t.Fatalf("expected Integer, got %s", n.Kind())
+		t.Fatalf("expected Int, got %s", n.Kind())
 	}
 
 	// check the IfBlock
@@ -241,8 +241,8 @@ func TestIfElseIfElse(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.VtAny}},
-		Ret:  values.VtNothing,
+		Args: []values.FuncArg{{"a", values.Any}},
+		Ret:  values.Nothing,
 	})
 
 	n, err := p.Next()
@@ -256,7 +256,7 @@ func TestIfElseIfElse(t *testing.T) {
 	}
 	ifn := n.(*nodes.IfNode)
 	if ifn.Condition.Kind() != nodes.NdInteger {
-		t.Fatalf("expected Integer, got %s", n.Kind())
+		t.Fatalf("expected Int, got %s", n.Kind())
 	}
 
 	// check the IfBlock
@@ -319,8 +319,8 @@ func TestIfElseIf(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.SetFunc("print", &Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.VtAny}},
-		Ret:  values.VtNothing,
+		Args: []values.FuncArg{{"a", values.Any}},
+		Ret:  values.Nothing,
 	})
 
 	n, err := p.Next()
@@ -334,7 +334,7 @@ func TestIfElseIf(t *testing.T) {
 	}
 	ifn := n.(*nodes.IfNode)
 	if ifn.Condition.Kind() != nodes.NdInteger {
-		t.Fatalf("expected Integer, got %s", n.Kind())
+		t.Fatalf("expected Int, got %s", n.Kind())
 	}
 
 	// check the IfBlock
@@ -395,5 +395,25 @@ func TestConst(t *testing.T) {
 	c := v.Value.(*nodes.IntegerNode)
 	if c.Int != 169 {
 		t.Fatalf("expected vale to be int %d, got %c", 169, c.Int)
+	}
+}
+
+func TestStruct(t *testing.T) {
+	code := `@VectorTwo(x/i y/i)`
+	src := strings.NewReader(code)
+	p := NewParser("TestStruct", src, "test")
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != nodes.NdStruct {
+		t.Fatalf("expected Struct node, got %s", n.Kind())
+	}
+	s := n.(*nodes.StructNode)
+	if s.Name != "VectorTwo" {
+		t.Fatalf("expected 'VectorTwo' struct, got '%s' instead", s.Name)
+	}
+	if len(s.Type.Structure) != 2 {
+		t.Fatalf("expected 2 fields, got %d", len(s.Type.Structure))
 	}
 }

@@ -36,6 +36,7 @@ const (
 	NdReturn
 	NdIf
 	NdWhile
+	NdStruct
 )
 
 var nodeKinds = []string{
@@ -52,6 +53,7 @@ var nodeKinds = []string{
 	"Return",
 	"If",
 	"While",
+	"Struct",
 }
 
 func (k NodeKind) String() string {
@@ -135,7 +137,7 @@ func (n *VarRefNode) String() string {
 }
 
 type VarDefNode struct {
-	VarType values.ValueType
+	VarType *values.Type
 	Var     string
 	Value   Node
 }
@@ -164,7 +166,7 @@ func (n *FuncCallNode) String() string {
 type FuncDefNode struct {
 	Name string
 	Args []values.FuncArg
-	Ret  values.ValueType
+	Ret  *values.Type
 	Body []Node
 }
 
@@ -189,7 +191,7 @@ type FuncExternNode struct {
 	Name   string
 	Intern string
 	Args   []values.FuncArg
-	Ret    values.ValueType
+	Ret    *values.Type
 }
 
 func (*FuncExternNode) Kind() NodeKind {
@@ -255,4 +257,13 @@ func (*WhileNode) Kind() NodeKind {
 
 func (n *WhileNode) String() string {
 	return fmt.Sprintf("While{%s(%s)}", n.Condition, body(n.Body))
+}
+
+type StructNode struct {
+	Name string
+	Type *values.Type
+}
+
+func (*StructNode) Kind() NodeKind {
+	return NdStruct
 }

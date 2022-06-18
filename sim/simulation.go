@@ -151,7 +151,7 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 		if !ok {
 			return nil, fmt.Errorf("unknown function: %s", fcn.Func)
 		}
-		if funct.Ret == values.VtNothing {
+		if funct.Ret.Equals(values.Nothing) {
 			return nil, fmt.Errorf("function %s does not return a values.Value", fcn.Func)
 		}
 		argv := map[string]*values.Value{}

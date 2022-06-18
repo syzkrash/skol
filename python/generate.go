@@ -11,17 +11,17 @@ import (
 
 const indent = "  "
 
-func (p *pythonState) vt2pt(t values.ValueType) string {
+func (p *pythonState) vt2pt(t *values.Type) string {
 	switch t {
-	case values.VtBool:
+	case values.Bool:
 		return "bool"
-	case values.VtChar:
+	case values.Char:
 		return "int"
-	case values.VtFloat:
+	case values.Float:
 		return "float"
-	case values.VtInteger:
+	case values.Int:
 		return "int"
-	case values.VtString:
+	case values.String:
 		return "str"
 	}
 	return ""

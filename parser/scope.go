@@ -10,6 +10,7 @@ type Scope struct {
 	Funcs  map[string]*Function
 	Vars   map[string]*nodes.VarDefNode
 	Consts map[string]*values.Value
+	Types  map[string]*values.Type
 }
 
 func NewScope(parent *Scope) *Scope {
@@ -18,6 +19,7 @@ func NewScope(parent *Scope) *Scope {
 		Funcs:  DefaultFuncs,
 		Vars:   make(map[string]*nodes.VarDefNode),
 		Consts: make(map[string]*values.Value),
+		Types:  make(map[string]*values.Type),
 	}
 }
 
