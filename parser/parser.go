@@ -82,6 +82,7 @@ func (p *Parser) funcCall(f *Function) (n nodes.Node, err error) {
 //	add! 1 2   // nodes.FuncCallNode
 //	age        // nodes.VarRefNode
 //	@VectorTwo 1.2 3.4 // nodes.NewStructNode
+//	pos#x      // nodes.SelectorNode
 //
 func (p *Parser) value() (n nodes.Node, err error) {
 	tok, err := p.lexer.Next()
@@ -131,8 +132,31 @@ func (p *Parser) value() (n nodes.Node, err error) {
 			}
 			n, err = p.funcCall(f)
 		} else if _, ok := p.Scope.FindVar(tok.Raw); ok {
-			n = &nodes.VarRefNode{
-				Var: tok.Raw,
+			n = &nodes.SelectorNode{
+				Parent: nil,
+				Child:  tok.Raw,
+			}
+			for {
+				tok, err = p.lexer.Next()
+				if errors.Is(err, io.EOF) {
+					err = nil
+					return
+				}
+				if err != nil {
+					return
+				}
+				if tok.Kind != lexer.TkPunct && tok.Raw != "#" {
+					p.lexer.Rollback(tok)
+					break
+				}
+				tok, err = p.lexer.Next()
+				if err != nil {
+					return
+				}
+				n = &nodes.SelectorNode{
+					Parent: n,
+					Child:  tok.Raw,
+				}
 			}
 		} else if v, ok := p.Scope.FindConst(tok.Raw); ok {
 			n = p.ToNode(v)

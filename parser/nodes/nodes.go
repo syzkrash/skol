@@ -38,6 +38,7 @@ const (
 	NdWhile
 	NdStruct
 	NdNewStruct
+	NdSelector
 )
 
 var nodeKinds = []string{
@@ -56,6 +57,7 @@ var nodeKinds = []string{
 	"While",
 	"Struct",
 	"NewStruct",
+	"Selector",
 }
 
 func (k NodeKind) String() string {
@@ -277,4 +279,21 @@ type NewStructNode struct {
 
 func (*NewStructNode) Kind() NodeKind {
 	return NdNewStruct
+}
+
+type SelectorNode struct {
+	Parent Node
+	Child  string
+}
+
+func (*SelectorNode) Kind() NodeKind {
+	return NdSelector
+}
+
+func (n *SelectorNode) String() string {
+	txt := n.Child
+	if n.Parent != nil {
+		txt += fmt.Sprintf(" -> %s", n.Parent)
+	}
+	return txt
 }

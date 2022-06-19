@@ -41,12 +41,16 @@ func TestVarRef(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n.Kind() != nodes.NdVarRef {
-		t.Fatalf("expected %s node, got %s", nodes.NdVarRef, n.Kind())
+	if n.Kind() != nodes.NdSelector {
+		t.Fatalf("expected Selector node, got %s", n.Kind())
 	}
-	v := n.(*nodes.VarRefNode)
-	if v.Var != "a" {
-		t.Fatalf("expected variable name %s, got %s", "a", v.Var)
+	t.Logf("Got selector: %s", n)
+	s := n.(*nodes.SelectorNode)
+	if s.Parent != nil {
+		t.Fatalf("expected nil parent, got %s node", s.Parent.Kind())
+	}
+	if s.Child != "a" {
+		t.Fatalf("expected 'a' child, got '%s'", s.Child)
 	}
 }
 
@@ -456,5 +460,54 @@ func TestNewStruct(t *testing.T) {
 	}
 	if ns.Args[0].Kind() != nodes.NdInteger {
 		t.Fatalf("expected Integer node, got %s", ns.Args[0].Kind())
+	}
+}
+
+func TestSelector(t *testing.T) {
+	code := ` %my_var: a#b#c `
+	src := strings.NewReader(code)
+	p := NewParser("TestSelector", src, "test")
+	b := &values.Type{values.PStruct, []*values.Field{{"c", values.Int}}}
+	a := &values.Type{values.PStruct, []*values.Field{{"b", b}}}
+	p.Scope.SetVar("a", &nodes.VarDefNode{a, "a", &nodes.NewStructNode{}})
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != nodes.NdVarDef {
+		t.Fatalf("expected VarDef node, got %s", n.Kind())
+	}
+	v := n.(*nodes.VarDefNode)
+	n = v.Value
+	if n.Kind() != nodes.NdSelector {
+		t.Fatalf("expected Selector node, got %s", n.Kind())
+	}
+	t.Logf("Got selector: %s", n)
+	s := n.(*nodes.SelectorNode)
+	if s.Parent == nil {
+		t.Fatal("expected parent, got nil")
+	}
+	if s.Parent.Kind() != nodes.NdSelector {
+		t.Fatalf("expected Selector parent, got %s", s.Parent.Kind())
+	}
+	if s.Child != "c" {
+		t.Fatalf("expected 'c' child, got '%s'", s.Child)
+	}
+	s = s.Parent.(*nodes.SelectorNode)
+	if s.Parent == nil {
+		t.Fatal("expected parent, got nil")
+	}
+	if s.Parent.Kind() != nodes.NdSelector {
+		t.Fatalf("expected Selector parent, got %s", s.Parent.Kind())
+	}
+	if s.Child != "b" {
+		t.Fatalf("expected 'b' child, got '%s'", s.Child)
+	}
+	s = s.Parent.(*nodes.SelectorNode)
+	if s.Parent != nil {
+		t.Fatalf("expected nil parent, got %s node", s.Parent.Kind())
+	}
+	if s.Child != "a" {
+		t.Fatalf("expected 'a' child, got '%s'", s.Child)
 	}
 }
