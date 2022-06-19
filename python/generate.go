@@ -84,11 +84,6 @@ func (p *pythonState) char(n *nodes.CharNode) (err error) {
 	return
 }
 
-func (p *pythonState) varRef(n *nodes.VarRefNode) (err error) {
-	_, err = p.out.WriteString(n.Var)
-	return
-}
-
 func (p *pythonState) callOrExpr(n *nodes.FuncCallNode) (err error) {
 	if n.Func == "import" {
 		return p.impt(n.Args[0].(*nodes.StringNode).Str)
@@ -189,8 +184,6 @@ func (p *pythonState) value(n nodes.Node) error {
 		return p.string(n.(*nodes.StringNode))
 	case nodes.NdChar:
 		return p.char(n.(*nodes.CharNode))
-	case nodes.NdVarRef:
-		return p.varRef(n.(*nodes.VarRefNode))
 	case nodes.NdFuncCall:
 		return p.callOrExpr(n.(*nodes.FuncCallNode))
 	}
@@ -201,8 +194,6 @@ func (p *pythonState) stringOrVar(n nodes.Node) error {
 	switch n.Kind() {
 	case nodes.NdString:
 		return p.string(n.(*nodes.StringNode))
-	case nodes.NdVarRef:
-		return p.varRef(n.(*nodes.VarRefNode))
 	}
 	return fmt.Errorf("expected string or variable, got %s", n.Kind())
 }
@@ -211,8 +202,6 @@ func (p *pythonState) integerOrVar(n nodes.Node) error {
 	switch n.Kind() {
 	case nodes.NdInteger:
 		return p.integer(n.(*nodes.IntegerNode))
-	case nodes.NdVarRef:
-		return p.varRef(n.(*nodes.VarRefNode))
 	}
 	return fmt.Errorf("expected integer or variable, got %s", n.Kind())
 }
@@ -221,8 +210,6 @@ func (p *pythonState) charOrVar(n nodes.Node) error {
 	switch n.Kind() {
 	case nodes.NdChar:
 		return p.char(n.(*nodes.CharNode))
-	case nodes.NdVarRef:
-		return p.varRef(n.(*nodes.VarRefNode))
 	}
 	return fmt.Errorf("expected char or variable, got %s", n.Kind())
 }

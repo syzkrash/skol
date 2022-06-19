@@ -493,7 +493,7 @@ func TestSelector(t *testing.T) {
 	if s.Child != "c" {
 		t.Fatalf("expected 'c' child, got '%s'", s.Child)
 	}
-	s = s.Parent.(*nodes.SelectorNode)
+	s = s.Parent
 	if s.Parent == nil {
 		t.Fatal("expected parent, got nil")
 	}
@@ -503,11 +503,31 @@ func TestSelector(t *testing.T) {
 	if s.Child != "b" {
 		t.Fatalf("expected 'b' child, got '%s'", s.Child)
 	}
-	s = s.Parent.(*nodes.SelectorNode)
+	s = s.Parent
 	if s.Parent != nil {
 		t.Fatalf("expected nil parent, got %s node", s.Parent.Kind())
 	}
 	if s.Child != "a" {
 		t.Fatalf("expected 'a' child, got '%s'", s.Child)
+	}
+}
+
+func TestSelectorType(t *testing.T) {
+	code := ` %my_var: a#b#c `
+	src := strings.NewReader(code)
+	p := NewParser("TestSelector", src, "test")
+	b := &values.Type{values.PStruct, []*values.Field{{"c", values.Int}}}
+	a := &values.Type{values.PStruct, []*values.Field{{"b", b}}}
+	p.Scope.SetVar("a", &nodes.VarDefNode{a, "a", &nodes.NewStructNode{}})
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != nodes.NdVarDef {
+		t.Fatalf("expected VarDef node, got %s", n.Kind())
+	}
+	v := n.(*nodes.VarDefNode)
+	if !v.VarType.Equals(values.Int) {
+		t.Fatalf("decuced type is not compatible with int: %s", v.VarType)
 	}
 }

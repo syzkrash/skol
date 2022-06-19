@@ -154,7 +154,7 @@ func (p *Parser) value() (n nodes.Node, err error) {
 					return
 				}
 				n = &nodes.SelectorNode{
-					Parent: n,
+					Parent: n.(*nodes.SelectorNode),
 					Child:  tok.Raw,
 				}
 			}
@@ -750,13 +750,33 @@ func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, ok bool) {
 		t = values.String
 	case nodes.NdReturn:
 		t, ok = p.TypeOf(n.(*nodes.ReturnNode).Value)
-	case nodes.NdVarRef:
+	case nodes.NdSelector:
+		s := n.(*nodes.SelectorNode)
+		path := []string{s.Child}
+		for s.Parent != nil {
+			s = s.Parent
+			path = append([]string{s.Child}, path...)
+		}
 		var v *nodes.VarDefNode
-		v, ok = p.Scope.FindVar(n.(*nodes.VarRefNode).Var)
+		v, ok = p.Scope.FindVar(path[0])
 		if !ok {
 			return
 		}
 		t = v.VarType
+	outer:
+		for _, p := range path[1:] {
+			if t.Prim != values.PStruct {
+				break
+			}
+			for _, f := range t.Structure {
+				if f.Name == p {
+					t = f.Type
+					continue outer
+				}
+			}
+			ok = false
+			return
+		}
 	case nodes.NdFuncCall:
 		var f *Function
 		f, ok = p.Scope.FindFunc(n.(*nodes.FuncCallNode).Func)

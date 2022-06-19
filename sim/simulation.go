@@ -138,13 +138,6 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 		return values.NewValue(n.(*nodes.StringNode).Str), nil
 	case nodes.NdChar:
 		return values.NewValue(n.(*nodes.CharNode).Char), nil
-	case nodes.NdVarRef:
-		vrn := n.(*nodes.VarRefNode)
-		val, ok := s.Scope.FindVar(vrn.Var)
-		if !ok {
-			return nil, fmt.Errorf("unknown variable: %s", vrn.Var)
-		}
-		return val, nil
 	case nodes.NdFuncCall:
 		fcn := n.(*nodes.FuncCallNode)
 		funct, ok := s.Scope.FindFunc(fcn.Func)

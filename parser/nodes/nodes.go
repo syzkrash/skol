@@ -28,7 +28,6 @@ const (
 	NdFloat
 	NdString
 	NdChar
-	NdVarRef
 	NdVarDef
 	NdFuncCall
 	NdFuncDef
@@ -126,18 +125,6 @@ func (*CharNode) Kind() NodeKind {
 
 func (n *CharNode) String() string {
 	return fmt.Sprintf("Char{%c}", n.Char)
-}
-
-type VarRefNode struct {
-	Var string
-}
-
-func (*VarRefNode) Kind() NodeKind {
-	return NdVarRef
-}
-
-func (n *VarRefNode) String() string {
-	return fmt.Sprintf("VarRef{%s}", n.Var)
 }
 
 type VarDefNode struct {
@@ -282,7 +269,7 @@ func (*NewStructNode) Kind() NodeKind {
 }
 
 type SelectorNode struct {
-	Parent Node
+	Parent *SelectorNode
 	Child  string
 }
 
