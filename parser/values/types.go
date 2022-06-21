@@ -22,9 +22,18 @@ type Field struct {
 	Type *Type
 }
 
+type Structure struct {
+	Name   string
+	Fields []*Field
+}
+
 type Type struct {
 	Prim      Primitive
-	Structure []*Field
+	Structure *Structure
+}
+
+func Struct(name string, fields []*Field) *Type {
+	return &Type{PStruct, &Structure{name, fields}}
 }
 
 var (
@@ -45,10 +54,10 @@ func (a *Type) Equals(b *Type) bool {
 	// two structure types are equal if they contain the same fields, allowing for
 	// semi-generic code
 	aMap := map[string]*Type{}
-	for _, f := range a.Structure {
+	for _, f := range a.Structure.Fields {
 		aMap[f.Name] = f.Type
 	}
-	for _, f := range b.Structure {
+	for _, f := range b.Structure.Fields {
 		bt, ok := aMap[f.Name]
 		if !ok {
 			return false

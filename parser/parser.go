@@ -127,7 +127,7 @@ func (p *Parser) value() (n nodes.Node, err error) {
 		if tok.Raw[len(tok.Raw)-1] == '!' {
 			f, ok := p.Scope.FindFunc(tok.Raw[:len(tok.Raw)-1])
 			if !ok {
-				err = p.selfError(tok, "unknown function")
+				err = p.selfError(tok, "unknown function: "+tok.Raw)
 				return
 			}
 			n, err = p.funcCall(f)
@@ -182,8 +182,8 @@ func (p *Parser) value() (n nodes.Node, err error) {
 				err = p.selfError(tok, "unknown type: "+tok.Raw)
 				return
 			}
-			args := make([]nodes.Node, len(t.Structure))
-			for i := range t.Structure {
+			args := make([]nodes.Node, len(t.Structure.Fields))
+			for i := range t.Structure.Fields {
 				n, err = p.value()
 				if err != nil {
 					return
@@ -241,7 +241,11 @@ func (p *Parser) varDef() (n nodes.Node, err error) {
 		return nil, err
 	}
 
-	vt, _ := p.TypeOf(val)
+	vt, err := p.TypeOf(val)
+	if err != nil {
+		err = fmt.Errorf("could not deduce type of %s: %s", val, err)
+		return
+	}
 	n = &nodes.VarDefNode{
 		Var:     nameToken.Raw,
 		Value:   val,
@@ -280,7 +284,7 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 		}
 		funcType, ok = p.ParseType(typeToken.Raw)
 		if !ok {
-			err = p.selfError(typeToken, "unknown type: "+funcType.String())
+			err = p.selfError(typeToken, "unknown type: "+typeToken.Raw)
 			return
 		}
 	} else {
@@ -331,7 +335,9 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 					}
 				}
 			}
-
+			if funcType.Prim == values.PUndefined {
+				funcType = values.Nothing
+			}
 			n = &nodes.FuncDefNode{
 				Name: nameToken.Raw,
 				Args: args,
@@ -352,6 +358,9 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 				p.lexer.Rollback(internToken)
 			} else {
 				intern = internToken.Raw
+			}
+			if funcType.Prim == values.PUndefined {
+				funcType = values.Nothing
 			}
 			n = &nodes.FuncExternNode{
 				Name:   nameToken.Raw,
@@ -629,7 +638,7 @@ func (p *Parser) structn() (n nodes.Node, err error) {
 		}
 		fields = append(fields, &values.Field{nameTk.Raw, fType})
 	}
-	t := &values.Type{values.PStruct, fields}
+	t := values.Struct(nameTk.Raw, fields)
 	n = &nodes.StructNode{
 		Name: nameTk.Raw,
 		Type: t,
@@ -650,6 +659,8 @@ func (p *Parser) ParseType(raw string) (*values.Type, bool) {
 		return values.Char, true
 	case "string", "str", "s":
 		return values.String, true
+	case "any", "a":
+		return values.Any, true
 	}
 	if stype, ok := p.Scope.Types[raw]; ok {
 		return stype, true
@@ -738,7 +749,7 @@ func (p *Parser) Next() (n nodes.Node, err error) {
 	return
 }
 
-func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, ok bool) {
+func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, err error) {
 	switch n.Kind() {
 	case nodes.NdInteger:
 		t = values.Int
@@ -748,44 +759,36 @@ func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, ok bool) {
 		t = values.Char
 	case nodes.NdString:
 		t = values.String
-	case nodes.NdReturn:
-		t, ok = p.TypeOf(n.(*nodes.ReturnNode).Value)
+	case nodes.NdNewStruct:
+		t = n.(*nodes.NewStructNode).Type
 	case nodes.NdSelector:
 		s := n.(*nodes.SelectorNode)
-		path := []string{s.Child}
-		for s.Parent != nil {
-			s = s.Parent
-			path = append([]string{s.Child}, path...)
-		}
-		var v *nodes.VarDefNode
-		v, ok = p.Scope.FindVar(path[0])
+		path := s.Path()
+		v, ok := p.Scope.FindVar(path[0])
 		if !ok {
-			return
+			err = fmt.Errorf("unknown variable: %s", path[0])
 		}
 		t = v.VarType
+		if len(path) == 1 {
+			return
+		}
 	outer:
-		for _, p := range path[1:] {
+		for _, e := range path[1:] {
 			if t.Prim != values.PStruct {
-				break
+				err = fmt.Errorf("can only select fields on structures")
+				return
 			}
-			for _, f := range t.Structure {
-				if f.Name == p {
+			for _, f := range t.Structure.Fields {
+				if f.Name == e {
 					t = f.Type
 					continue outer
 				}
 			}
-			ok = false
+			err = fmt.Errorf("'%s' value does not contain field '%s'", t, e)
 			return
 		}
-	case nodes.NdFuncCall:
-		var f *Function
-		f, ok = p.Scope.FindFunc(n.(*nodes.FuncCallNode).Func)
-		if !ok {
-			return
-		}
-		t = f.Ret
 	default:
-		ok = false
+		err = fmt.Errorf("%s node is not a value", n.Kind())
 	}
 	return
 }

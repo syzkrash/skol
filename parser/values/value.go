@@ -50,7 +50,7 @@ func Default(t *Type) *Value {
 		return &Value{t, ""}
 	case PStruct:
 		v := map[string]*Value{}
-		for _, f := range t.Structure {
+		for _, f := range t.Structure.Fields {
 			v[f.Name] = Default(f.Type)
 		}
 		return &Value{t, v}

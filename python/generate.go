@@ -27,12 +27,49 @@ func (p *pythonState) vt2pt(t *values.Type) string {
 	return ""
 }
 
+func (p *pythonState) class(s *nodes.StructNode) (err error) {
+	_, err = p.out.WriteString("class " + s.Name + ":\n" + indent + "def __init__(self, ")
+	if err != nil {
+		return
+	}
+	if len(s.Type.Structure.Fields) > 1 {
+		for _, f := range s.Type.Structure.Fields[:len(s.Type.Structure.Fields)-1] {
+			_, err = p.out.WriteString(f.Name)
+			if err != nil {
+				return
+			}
+			_, err = p.out.WriteString(", ")
+			if err != nil {
+				return
+			}
+		}
+	}
+	f := s.Type.Structure.Fields[len(s.Type.Structure.Fields)-1]
+	_, err = p.out.WriteString(f.Name)
+	if err != nil {
+		return
+	}
+	_, err = p.out.WriteString("):\n")
+	if err != nil {
+		return
+	}
+	for _, f := range s.Type.Structure.Fields {
+		_, err = p.out.WriteString(indent + indent + "self." + f.Name + " = " + f.Name + "\n")
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
 func (p *pythonState) statement(n nodes.Node) (err error) {
 	defer p.out.WriteString("\n")
 
 	for i := 0; i < int(p.ind); i++ {
 		p.out.WriteString(indent)
 	}
+
+	p.out.WriteString(fmt.Sprintf("#%s\n", n))
 
 	switch n.Kind() {
 	case nodes.NdVarDef:
@@ -47,7 +84,8 @@ func (p *pythonState) statement(n nodes.Node) (err error) {
 		return p.ifn(n.(*nodes.IfNode))
 	case nodes.NdWhile:
 		return p.while(n.(*nodes.WhileNode))
-
+	case nodes.NdStruct:
+		return p.class(n.(*nodes.StructNode))
 	case nodes.NdFuncExtern:
 		// special case for externs
 		return nil
@@ -172,7 +210,49 @@ func (p *pythonState) impt(mod string) (err error) {
 	return
 }
 
+func (p *pythonState) instantiate(n *nodes.NewStructNode) (err error) {
+	_, err = p.out.WriteString(n.Type.Structure.Name)
+	if err != nil {
+		return
+	}
+	_, err = p.out.WriteString("(")
+	if err != nil {
+		return
+	}
+	for _, a := range n.Args {
+		err = p.value(a)
+		if err != nil {
+			return
+		}
+	}
+	_, err = p.out.WriteString(")")
+	return
+}
+
+func (p *pythonState) selector(s *nodes.SelectorNode) (err error) {
+	path := []string{s.Child}
+	for s.Parent != nil {
+		s = s.Parent
+		path = append([]string{s.Child}, path...)
+	}
+	if len(path) > 1 {
+		for _, n := range path[:len(path)-1] {
+			_, err = p.out.WriteString(n)
+			if err != nil {
+				return
+			}
+			_, err = p.out.WriteString(".")
+			if err != nil {
+				return
+			}
+		}
+	}
+	_, err = p.out.WriteString(path[len(path)-1])
+	return
+}
+
 func (p *pythonState) value(n nodes.Node) error {
+	fmt.Printf("Python: generating value: %s\n", n.Kind())
 	switch n.Kind() {
 	case nodes.NdInteger:
 		return p.integer(n.(*nodes.IntegerNode))
@@ -186,7 +266,12 @@ func (p *pythonState) value(n nodes.Node) error {
 		return p.char(n.(*nodes.CharNode))
 	case nodes.NdFuncCall:
 		return p.callOrExpr(n.(*nodes.FuncCallNode))
+	case nodes.NdNewStruct:
+		return p.instantiate(n.(*nodes.NewStructNode))
+	case nodes.NdSelector:
+		return p.selector(n.(*nodes.SelectorNode))
 	}
+	fmt.Printf("Python: not a value: %s\n", n.Kind())
 	return fmt.Errorf("%s node is not a value", n.Kind())
 }
 

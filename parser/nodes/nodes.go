@@ -46,7 +46,6 @@ var nodeKinds = []string{
 	"Float",
 	"String",
 	"Char",
-	"VarRef",
 	"VarDef",
 	"FuncCall",
 	"FuncDef",
@@ -275,6 +274,13 @@ type SelectorNode struct {
 
 func (*SelectorNode) Kind() NodeKind {
 	return NdSelector
+}
+
+func (n *SelectorNode) Path() []string {
+	if n.Parent == nil {
+		return []string{n.Child}
+	}
+	return append(n.Parent.Path(), n.Child)
 }
 
 func (n *SelectorNode) String() string {

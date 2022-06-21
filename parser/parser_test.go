@@ -417,8 +417,8 @@ func TestStruct(t *testing.T) {
 	if s.Name != "V2I" {
 		t.Fatalf("expected 'V2I' struct, got '%s' instead", s.Name)
 	}
-	if len(s.Type.Structure) != 2 {
-		t.Fatalf("expected 2 fields, got %d", len(s.Type.Structure))
+	if len(s.Type.Structure.Fields) != 2 {
+		t.Fatalf("expected 2 fields, got %d", len(s.Type.Structure.Fields))
 	}
 }
 
@@ -437,8 +437,8 @@ func TestNewStruct(t *testing.T) {
 	if s.Name != "V2I" {
 		t.Fatalf("expected 'V2I' struct, got '%s' instead", s.Name)
 	}
-	if len(s.Type.Structure) != 2 {
-		t.Fatalf("expected 2 fields, got %d", len(s.Type.Structure))
+	if len(s.Type.Structure.Fields) != 2 {
+		t.Fatalf("expected 2 fields, got %d", len(s.Type.Structure.Fields))
 	}
 	n, err = p.Next()
 	if err != nil {
@@ -467,8 +467,8 @@ func TestSelector(t *testing.T) {
 	code := ` %my_var: a#b#c `
 	src := strings.NewReader(code)
 	p := NewParser("TestSelector", src, "test")
-	b := &values.Type{values.PStruct, []*values.Field{{"c", values.Int}}}
-	a := &values.Type{values.PStruct, []*values.Field{{"b", b}}}
+	b := values.Struct("b", []*values.Field{{"c", values.Int}})
+	a := values.Struct("a", []*values.Field{{"b", b}})
 	p.Scope.SetVar("a", &nodes.VarDefNode{a, "a", &nodes.NewStructNode{}})
 	n, err := p.Next()
 	if err != nil {
@@ -516,8 +516,8 @@ func TestSelectorType(t *testing.T) {
 	code := ` %my_var: a#b#c `
 	src := strings.NewReader(code)
 	p := NewParser("TestSelector", src, "test")
-	b := &values.Type{values.PStruct, []*values.Field{{"c", values.Int}}}
-	a := &values.Type{values.PStruct, []*values.Field{{"b", b}}}
+	b := values.Struct("b", []*values.Field{{"c", values.Int}})
+	a := values.Struct("a", []*values.Field{{"b", b}})
 	p.Scope.SetVar("a", &nodes.VarDefNode{a, "a", &nodes.NewStructNode{}})
 	n, err := p.Next()
 	if err != nil {

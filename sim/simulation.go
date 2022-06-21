@@ -178,8 +178,22 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 			}
 		}
 		return nil, fmt.Errorf("function %s did not return", fcn.Func)
+	case nodes.NdNewStruct:
+		nsn := n.(*nodes.NewStructNode)
+		var v *values.Value
+		fields := map[string]*values.Value{}
+		for i, f := range nsn.Args {
+			v, err := s.Expr(f)
+			if err != nil {
+				return nil, err
+			}
+			fields[nsn.Type.Structure.Fields[i].Name] = v
+		}
+		v = &values.Value{nsn.Type, fields}
+		return v, nil
 	}
-	return nil, fmt.Errorf("%s is not a value", n)
+	fmt.Printf("Simulator: not a value: %s\n", n.Kind())
+	return nil, fmt.Errorf("%s node is not a value", n.Kind())
 }
 
 func (s *Simulator) Const(n nodes.Node) (*values.Value, error) {
