@@ -767,6 +767,7 @@ func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, err error) {
 		v, ok := p.Scope.FindVar(path[0])
 		if !ok {
 			err = fmt.Errorf("unknown variable: %s", path[0])
+			return
 		}
 		t = v.VarType
 		if len(path) == 1 {

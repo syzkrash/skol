@@ -48,8 +48,11 @@ var (
 )
 
 func (a *Type) Equals(b *Type) bool {
-	if a.Prim != PAny && b.Prim != PAny && a.Prim != b.Prim {
+	if a.Prim != PAny && a.Prim != b.Prim {
 		return false
+	}
+	if a.Prim != PStruct {
+		return true
 	}
 	// two structure types are equal if they contain the same fields, allowing for
 	// semi-generic code
