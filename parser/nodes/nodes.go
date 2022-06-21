@@ -284,9 +284,5 @@ func (n *SelectorNode) Path() []string {
 }
 
 func (n *SelectorNode) String() string {
-	txt := n.Child
-	if n.Parent != nil {
-		txt += fmt.Sprintf(" -> %s", n.Parent)
-	}
-	return txt
+	return strings.Join(n.Path(), "->")
 }
