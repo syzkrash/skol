@@ -63,13 +63,12 @@ func (p *pythonState) class(s *nodes.StructNode) (err error) {
 }
 
 func (p *pythonState) statement(n nodes.Node) (err error) {
+	p.out.WriteString(fmt.Sprintf("#%s\n", n))
 	defer p.out.WriteString("\n")
 
 	for i := 0; i < int(p.ind); i++ {
 		p.out.WriteString(indent)
 	}
-
-	p.out.WriteString(fmt.Sprintf("#%s\n", n))
 
 	switch n.Kind() {
 	case nodes.NdVarDef:
@@ -129,12 +128,6 @@ func (p *pythonState) callOrExpr(n *nodes.FuncCallNode) (err error) {
 	if oper, ok := operators[n.Func]; ok {
 		return p.expr(oper, n.Args[0], n.Args[1])
 	}
-	if new_name, ok := renames[n.Func]; ok {
-		// copy and change the name
-		b := *n
-		b.Func = new_name
-		return p.funcCall(&b)
-	}
 	if sgen, ok := specialGenerators[n.Func]; ok {
 		return sgen(p, n)
 	}
@@ -163,9 +156,21 @@ func (p *pythonState) expr(oper string, lhs, rhs nodes.Node) (err error) {
 }
 
 func (p *pythonState) funcCall(n *nodes.FuncCallNode) (err error) {
-	_, err = p.out.WriteString(n.Func)
-	if err != nil {
-		return
+	if nn, rename := renames[n.Func]; rename {
+		_, err = p.out.WriteString(nn)
+		if err != nil {
+			return
+		}
+	} else {
+		f, ok := p.parser.Scope.FindFunc(n.Func)
+		if !ok {
+			err = fmt.Errorf("unknown function: %s", n.Func)
+			return
+		}
+		_, err = p.out.WriteString(f.Name)
+		if err != nil {
+			return
+		}
 	}
 	_, err = p.out.WriteString("(")
 	if err != nil {

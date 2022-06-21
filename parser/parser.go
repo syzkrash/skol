@@ -55,7 +55,7 @@ func (p *Parser) otherError(where *lexer.Token, msg string, cause error) error {
 //	add! sqr! 2 sqr! 2     // add(sqr(2), sqr(2))
 //	add! a b               // add(a, b)
 //	add! mul! a a mul! bb  // add(mul(a, a), mul(b, b))
-func (p *Parser) funcCall(f *Function) (n nodes.Node, err error) {
+func (p *Parser) funcCall(fn string, f *Function) (n nodes.Node, err error) {
 	args := make([]nodes.Node, len(f.Args))
 	for i := 0; i < len(args); i++ {
 		v, err := p.value()
@@ -65,7 +65,7 @@ func (p *Parser) funcCall(f *Function) (n nodes.Node, err error) {
 		args[i] = v
 	}
 	n = &nodes.FuncCallNode{
-		Func: f.Name,
+		Func: fn,
 		Args: args,
 	}
 	return
@@ -125,12 +125,13 @@ func (p *Parser) value() (n nodes.Node, err error) {
 		}
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
-			f, ok := p.Scope.FindFunc(tok.Raw[:len(tok.Raw)-1])
+			fn := tok.Raw[:len(tok.Raw)-1]
+			f, ok := p.Scope.FindFunc(fn)
 			if !ok {
-				err = p.selfError(tok, "unknown function: "+tok.Raw)
+				err = p.selfError(tok, "unknown function: "+fn)
 				return
 			}
-			n, err = p.funcCall(f)
+			n, err = p.funcCall(fn, f)
 		} else if _, ok := p.Scope.FindVar(tok.Raw); ok {
 			n = &nodes.SelectorNode{
 				Parent: nil,
@@ -145,7 +146,7 @@ func (p *Parser) value() (n nodes.Node, err error) {
 				if err != nil {
 					return
 				}
-				if tok.Kind != lexer.TkPunct && tok.Raw != "#" {
+				if tok.Kind != lexer.TkPunct || tok.Raw != "#" {
 					p.lexer.Rollback(tok)
 					break
 				}
@@ -699,12 +700,13 @@ func (p *Parser) internalNext(tok *lexer.Token) (n nodes.Node, err error) {
 		err = p.selfError(tok, "unexpected top-level punctuator: "+tok.Raw)
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
-			f, ok := p.Scope.FindFunc(tok.Raw[:len(tok.Raw)-1])
+			fnm := tok.Raw[:len(tok.Raw)-1]
+			f, ok := p.Scope.FindFunc(fnm)
 			if !ok {
-				err = p.selfError(tok, "unknown function: "+tok.Raw)
+				err = p.selfError(tok, "unknown function: "+fnm)
 				return
 			}
-			n, err = p.funcCall(f)
+			n, err = p.funcCall(fnm, f)
 			fn := n.(*nodes.FuncCallNode)
 			var eng, ver *values.Value
 			if fn.Func == "skol" {
@@ -761,6 +763,14 @@ func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, err error) {
 		t = values.String
 	case nodes.NdNewStruct:
 		t = n.(*nodes.NewStructNode).Type
+	case nodes.NdFuncCall:
+		fn := n.(*nodes.FuncCallNode).Func
+		f, ok := p.Scope.FindFunc(fn)
+		if !ok {
+			err = fmt.Errorf("unknown function: %s", fn)
+			return
+		}
+		t = f.Ret
 	case nodes.NdSelector:
 		s := n.(*nodes.SelectorNode)
 		path := s.Path()

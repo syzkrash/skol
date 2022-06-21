@@ -40,6 +40,7 @@ func (l *Lexer) nextIdent(c rune) (tok *Token, err error) {
 	for {
 		c, _, err = l.src.ReadRune()
 		if errors.Is(err, io.EOF) {
+			err = nil
 			goto finish
 		}
 		if err != nil {
