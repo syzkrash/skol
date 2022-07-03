@@ -9,6 +9,7 @@ import (
 
 type Simulator struct {
 	Scope *Scope
+	Calls []string
 }
 
 func NewSimulator() *Simulator {
@@ -18,6 +19,7 @@ func NewSimulator() *Simulator {
 			Vars:   map[string]*values.Value{},
 			Funcs:  DefaultFuncs,
 		},
+		Calls: []string{},
 	}
 }
 
@@ -107,6 +109,7 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 			Vars:   argv,
 			Funcs:  map[string]*Funct{},
 		}
+		s.Calls = append(s.Calls, fcn.Func)
 		if funct.IsNative {
 			_, err := funct.Native(s, argv)
 			if err != nil {
@@ -120,6 +123,7 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 				}
 			}
 		}
+		s.Calls = s.Calls[:len(s.Calls)-1]
 		s.Scope = s.Scope.parent
 		return nil
 	}
@@ -160,6 +164,7 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 			Vars:   argv,
 			Funcs:  map[string]*Funct{},
 		}
+		s.Calls = append(s.Calls, fcn.Func)
 		var val *values.Value = values.Default(funct.Ret)
 		var err error
 		if funct.IsNative {
@@ -177,6 +182,7 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 				return val, err
 			}
 		}
+		s.Calls = s.Calls[:len(s.Calls)-1]
 		return nil, fmt.Errorf("function %s did not return", fcn.Func)
 	case nodes.NdNewStruct:
 		nsn := n.(*nodes.NewStructNode)
@@ -190,6 +196,28 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 			fields[nsn.Type.Structure.Fields[i].Name] = v
 		}
 		v = &values.Value{nsn.Type, fields}
+		return v, nil
+	case nodes.NdSelector:
+		sn := n.(*nodes.SelectorNode)
+		p := sn.Path()
+		var v *values.Value
+		var ok bool
+		v, ok = s.Scope.FindVar(p[0])
+		if !ok {
+			return nil, fmt.Errorf("variable %s not found", p[0])
+		}
+		if len(p) == 1 {
+			return v, nil
+		}
+		for _, name := range p[1:] {
+			if v != nil && v.Type.Prim != values.PStruct {
+				return nil, fmt.Errorf("non-struct types do not have fields")
+			}
+			v, ok = v.Struct()[name]
+			if !ok {
+				return nil, fmt.Errorf("field %s not found", name)
+			}
+		}
 		return v, nil
 	}
 	fmt.Printf("Simulator: not a value: %s\n", n.Kind())
