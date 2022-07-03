@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
 )
@@ -469,7 +470,7 @@ func TestSelector(t *testing.T) {
 	p := NewParser("TestSelector", src, "test")
 	b := values.Struct("b", []*values.Field{{"c", values.Int}})
 	a := values.Struct("a", []*values.Field{{"b", b}})
-	p.Scope.SetVar("a", &nodes.VarDefNode{a, "a", &nodes.NewStructNode{}})
+	p.Scope.SetVar("a", &nodes.VarDefNode{a, "a", &nodes.NewStructNode{}, lexer.Position{"TestSelector", 0, 0}})
 	n, err := p.Next()
 	if err != nil {
 		t.Fatal(err)
@@ -518,7 +519,7 @@ func TestSelectorType(t *testing.T) {
 	p := NewParser("TestSelector", src, "test")
 	b := values.Struct("b", []*values.Field{{"c", values.Int}})
 	a := values.Struct("a", []*values.Field{{"b", b}})
-	p.Scope.SetVar("a", &nodes.VarDefNode{a, "a", &nodes.NewStructNode{}})
+	p.Scope.SetVar("a", &nodes.VarDefNode{a, "a", &nodes.NewStructNode{}, lexer.Position{"TestSelectorType", 0, 0}})
 	n, err := p.Next()
 	if err != nil {
 		t.Fatal(err)

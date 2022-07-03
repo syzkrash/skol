@@ -55,7 +55,7 @@ func (p *Parser) otherError(where *lexer.Token, msg string, cause error) error {
 //	add! sqr! 2 sqr! 2     // add(sqr(2), sqr(2))
 //	add! a b               // add(a, b)
 //	add! mul! a a mul! bb  // add(mul(a, a), mul(b, b))
-func (p *Parser) funcCall(fn string, f *Function) (n nodes.Node, err error) {
+func (p *Parser) funcCall(fn string, f *Function, pos lexer.Position) (n nodes.Node, err error) {
 	args := make([]nodes.Node, len(f.Args))
 	for i := 0; i < len(args); i++ {
 		v, err := p.value()
@@ -67,6 +67,7 @@ func (p *Parser) funcCall(fn string, f *Function) (n nodes.Node, err error) {
 	n = &nodes.FuncCallNode{
 		Func: fn,
 		Args: args,
+		Pos:  pos,
 	}
 	return
 }
@@ -101,6 +102,7 @@ func (p *Parser) value() (n nodes.Node, err error) {
 
 			n = &nodes.FloatNode{
 				Float: float32(f),
+				Pos:   tok.Where,
 			}
 		} else {
 			var i int64
@@ -111,17 +113,20 @@ func (p *Parser) value() (n nodes.Node, err error) {
 
 			n = &nodes.IntegerNode{
 				Int: int32(i),
+				Pos: tok.Where,
 			}
 		}
 	case lexer.TkString:
 		n = &nodes.StringNode{
 			Str: tok.Raw,
+			Pos: tok.Where,
 		}
 	case lexer.TkChar:
 		rdr := strings.NewReader(tok.Raw)
 		r, _, _ := rdr.ReadRune()
 		n = &nodes.CharNode{
 			Char: byte(r),
+			Pos:  tok.Where,
 		}
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
@@ -131,11 +136,12 @@ func (p *Parser) value() (n nodes.Node, err error) {
 				err = p.selfError(tok, "unknown function: "+fn)
 				return
 			}
-			n, err = p.funcCall(fn, f)
+			n, err = p.funcCall(fn, f, tok.Where)
 		} else if _, ok := p.Scope.FindVar(tok.Raw); ok {
 			n = &nodes.SelectorNode{
 				Parent: nil,
 				Child:  tok.Raw,
+				Pos:    tok.Where,
 			}
 			for {
 				tok, err = p.lexer.Next()
@@ -157,18 +163,19 @@ func (p *Parser) value() (n nodes.Node, err error) {
 				n = &nodes.SelectorNode{
 					Parent: n.(*nodes.SelectorNode),
 					Child:  tok.Raw,
+					Pos:    n.Where(),
 				}
 			}
 		} else if v, ok := p.Scope.FindConst(tok.Raw); ok {
-			n = p.ToNode(v)
+			n = p.ToNode(v, tok.Where)
 		} else {
 			err = p.selfError(tok, "unknown variable: "+tok.Raw)
 		}
 	case lexer.TkPunct:
 		if tok.Raw == "*" {
-			n = &nodes.BooleanNode{true}
+			n = &nodes.BooleanNode{true, tok.Where}
 		} else if tok.Raw == "/" {
-			n = &nodes.BooleanNode{false}
+			n = &nodes.BooleanNode{false, tok.Where}
 		} else if tok.Raw == "@" {
 			tok, err = p.lexer.Next()
 			if err != nil {
@@ -194,6 +201,7 @@ func (p *Parser) value() (n nodes.Node, err error) {
 			n = &nodes.NewStructNode{
 				Type: t,
 				Args: args,
+				Pos:  tok.Where,
 			}
 		} else {
 			err = p.selfError(tok, "unexpected punctuator")
@@ -251,6 +259,7 @@ func (p *Parser) varDef() (n nodes.Node, err error) {
 		Var:     nameToken.Raw,
 		Value:   val,
 		VarType: vt,
+		Pos:     nameToken.Where,
 	}
 	p.Scope.SetVar(nameToken.Raw, n.(*nodes.VarDefNode))
 
@@ -344,6 +353,7 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 				Args: args,
 				Ret:  funcType,
 				Body: body,
+				Pos:  nameToken.Where,
 			}
 			p.Scope.SetFunc(nameToken.Raw, DefinedFunction(n.(*nodes.FuncDefNode)))
 			return
@@ -368,6 +378,7 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 				Intern: intern,
 				Args:   args,
 				Ret:    funcType,
+				Pos:    nameToken.Where,
 			}
 			p.Scope.SetFunc(nameToken.Raw, ExternFunction(n.(*nodes.FuncExternNode)))
 			return
@@ -407,6 +418,7 @@ func (p *Parser) ret() (n nodes.Node, err error) {
 	}
 	n = &nodes.ReturnNode{
 		Value: v,
+		Pos:   v.Where(),
 	}
 	return
 }
@@ -509,6 +521,7 @@ func (p *Parser) condition() (n nodes.Node, err error) {
 		IfBlock:     ifb,
 		ElseIfNodes: elifn,
 		ElseBlock:   elseb,
+		Pos:         condition.Where(),
 	}
 	return
 }
@@ -529,6 +542,7 @@ func (p *Parser) loop() (n nodes.Node, err error) {
 	n = &nodes.WhileNode{
 		Condition: condition,
 		Body:      body,
+		Pos:       condition.Where(),
 	}
 	return
 }
@@ -643,6 +657,7 @@ func (p *Parser) structn() (n nodes.Node, err error) {
 	n = &nodes.StructNode{
 		Name: nameTk.Raw,
 		Type: t,
+		Pos:  nameTk.Where,
 	}
 	p.Scope.Types[nameTk.Raw] = t
 	return
@@ -706,7 +721,7 @@ func (p *Parser) internalNext(tok *lexer.Token) (n nodes.Node, err error) {
 				err = p.selfError(tok, "unknown function: "+fnm)
 				return
 			}
-			n, err = p.funcCall(fnm, f)
+			n, err = p.funcCall(fnm, f, tok.Where)
 			fn := n.(*nodes.FuncCallNode)
 			var eng, ver *values.Value
 			if fn.Func == "skol" {
@@ -804,18 +819,18 @@ func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, err error) {
 	return
 }
 
-func (p *Parser) ToNode(v *values.Value) nodes.Node {
+func (p *Parser) ToNode(v *values.Value, pos lexer.Position) nodes.Node {
 	switch v.Type.Prim {
 	case values.PBool:
-		return &nodes.BooleanNode{v.Data.(bool)}
+		return &nodes.BooleanNode{v.Data.(bool), pos}
 	case values.PChar:
-		return &nodes.CharNode{v.Data.(byte)}
+		return &nodes.CharNode{v.Data.(byte), pos}
 	case values.PFloat:
-		return &nodes.FloatNode{v.Data.(float32)}
+		return &nodes.FloatNode{v.Data.(float32), pos}
 	case values.PInt:
-		return &nodes.IntegerNode{v.Data.(int32)}
+		return &nodes.IntegerNode{v.Data.(int32), pos}
 	case values.PString:
-		return &nodes.StringNode{v.Data.(string)}
+		return &nodes.StringNode{v.Data.(string), pos}
 	}
 	panic(v.Type.String())
 }
