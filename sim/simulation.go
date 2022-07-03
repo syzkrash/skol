@@ -3,13 +3,26 @@ package sim
 import (
 	"fmt"
 
+	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
 )
 
 type Simulator struct {
 	Scope *Scope
-	Calls []string
+	Calls []*Call
+}
+
+func (s *Simulator) Error(msg string, n nodes.Node) error {
+	return &SimError{
+		msg:   msg,
+		Node:  n,
+		Calls: s.Calls,
+	}
+}
+
+func (s *Simulator) Errorf(n nodes.Node, format string, a ...any) error {
+	return s.Error(fmt.Sprintf(format, a...), n)
 }
 
 func NewSimulator() *Simulator {
@@ -19,8 +32,16 @@ func NewSimulator() *Simulator {
 			Vars:   map[string]*values.Value{},
 			Funcs:  DefaultFuncs,
 		},
-		Calls: []string{},
+		Calls: []*Call{},
 	}
+}
+
+func (s *Simulator) pushCall(name string, where lexer.Position) {
+	s.Calls = append(s.Calls, &Call{false, name, where})
+}
+
+func (s *Simulator) popCall() {
+	s.Calls = s.Calls[:len(s.Calls)-1]
 }
 
 func (s *Simulator) Stmt(n nodes.Node) error {
@@ -94,7 +115,7 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 		fcn := n.(*nodes.FuncCallNode)
 		funct, ok := s.Scope.FindFunc(fcn.Func)
 		if !ok {
-			return fmt.Errorf("unknown function: %s", fcn.Func)
+			return s.Errorf(n, "unknown function: %s", fcn.Func)
 		}
 		argv := map[string]*values.Value{}
 		for i := 0; i < len(fcn.Args); i++ {
@@ -109,7 +130,7 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 			Vars:   argv,
 			Funcs:  map[string]*Funct{},
 		}
-		s.Calls = append(s.Calls, fcn.Func)
+		s.pushCall(fcn.Func, fcn.Where())
 		if funct.IsNative {
 			_, err := funct.Native(s, argv)
 			if err != nil {
@@ -123,11 +144,11 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 				}
 			}
 		}
-		s.Calls = s.Calls[:len(s.Calls)-1]
+		s.popCall()
 		s.Scope = s.Scope.parent
 		return nil
 	}
-	return fmt.Errorf("%s is not a statement", n)
+	return s.Errorf(n, "%s is not a statement", n)
 }
 
 func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
@@ -146,10 +167,10 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 		fcn := n.(*nodes.FuncCallNode)
 		funct, ok := s.Scope.FindFunc(fcn.Func)
 		if !ok {
-			return nil, fmt.Errorf("unknown function: %s", fcn.Func)
+			return nil, s.Errorf(n, "unknown function: %s", fcn.Func)
 		}
 		if funct.Ret.Equals(values.Nothing) {
-			return nil, fmt.Errorf("function %s does not return a values.Value", fcn.Func)
+			return nil, s.Errorf(n, "function %s does not return a values.Value", fcn.Func)
 		}
 		argv := map[string]*values.Value{}
 		for i := 0; i < len(fcn.Args); i++ {
@@ -164,7 +185,7 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 			Vars:   argv,
 			Funcs:  map[string]*Funct{},
 		}
-		s.Calls = append(s.Calls, fcn.Func)
+		s.pushCall(fcn.Func, fcn.Where())
 		var val *values.Value = values.Default(funct.Ret)
 		var err error
 		if funct.IsNative {
@@ -182,8 +203,8 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 				return val, err
 			}
 		}
-		s.Calls = s.Calls[:len(s.Calls)-1]
-		return nil, fmt.Errorf("function %s did not return", fcn.Func)
+		s.popCall()
+		return nil, s.Errorf(n, "function %s did not return", fcn.Func)
 	case nodes.NdNewStruct:
 		nsn := n.(*nodes.NewStructNode)
 		var v *values.Value
@@ -204,24 +225,24 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 		var ok bool
 		v, ok = s.Scope.FindVar(p[0])
 		if !ok {
-			return nil, fmt.Errorf("variable %s not found", p[0])
+			return nil, s.Errorf(n, "variable %s not found", p[0])
 		}
 		if len(p) == 1 {
 			return v, nil
 		}
 		for _, name := range p[1:] {
 			if v != nil && v.Type.Prim != values.PStruct {
-				return nil, fmt.Errorf("non-struct types do not have fields")
+				return nil, s.Errorf(n, "non-struct types do not have fields")
 			}
 			v, ok = v.Struct()[name]
 			if !ok {
-				return nil, fmt.Errorf("field %s not found", name)
+				return nil, s.Errorf(n, "field %s not found", name)
 			}
 		}
 		return v, nil
 	}
 	fmt.Printf("Simulator: not a value: %s\n", n.Kind())
-	return nil, fmt.Errorf("%s node is not a value", n.Kind())
+	return nil, s.Errorf(n, "%s node is not a value", n.Kind())
 }
 
 func (s *Simulator) Const(n nodes.Node) (*values.Value, error) {
@@ -229,7 +250,7 @@ func (s *Simulator) Const(n nodes.Node) (*values.Value, error) {
 	case nodes.NdInteger, nodes.NdBoolean, nodes.NdFloat, nodes.NdString, nodes.NdChar:
 		return s.Expr(n)
 	default:
-		return nil, fmt.Errorf("%s node is not constant", n.Kind())
+		return nil, s.Errorf(n, "%s node is not constant", n.Kind())
 	}
 }
 
@@ -299,7 +320,7 @@ func (s *Simulator) stmtInFunc(n nodes.Node) (*values.Value, error) {
 	case nodes.NdReturn:
 		return s.Expr(n.(*nodes.ReturnNode).Value)
 	}
-	return nil, fmt.Errorf("%s is not a statement", n)
+	return nil, s.Errorf(n, "%s is not a statement", n)
 }
 
 func (s *Simulator) blockInFunc(b []nodes.Node) (*values.Value, error) {

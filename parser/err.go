@@ -1,6 +1,10 @@
 package parser
 
-import "github.com/syzkrash/skol/lexer"
+import (
+	"fmt"
+
+	"github.com/syzkrash/skol/lexer"
+)
 
 type ParserError struct {
 	Where *lexer.Token
@@ -9,9 +13,17 @@ type ParserError struct {
 }
 
 func (e *ParserError) Error() string {
-	return e.Where.Where.String() + " - " + e.msg
+	return e.msg
 }
 
 func (e *ParserError) Unwrap() error {
 	return e.cause
+}
+
+func (e *ParserError) Print() {
+	fmt.Println("\x1b[31m\x1b[1mParser error:\x1b[0m")
+	fmt.Println("   ", e.msg)
+	fmt.Println("\x1b[1mCaused by:\x1b[0m")
+	fmt.Println("   ", e.Where)
+	fmt.Println()
 }

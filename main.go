@@ -112,7 +112,11 @@ func compile() {
 		fmt.Println("Running...")
 		fmt.Println("----------")
 		if err = gen.Run(input + ".py"); err != nil {
-			fmt.Println(err)
+			if perr, ok := err.(common.Printable); ok {
+				perr.Print()
+			} else {
+				fmt.Println(err)
+			}
 			return
 		}
 	}
