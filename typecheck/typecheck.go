@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/parser"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
@@ -41,6 +42,28 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 			if !param.Type.Equals(atype) {
 				return typeError(fcn.Args[i], param.Type, atype,
 					"wrong argument type in function call")
+			}
+		}
+
+		// we can check for the skol function since it'd be typechecked by now
+		if fcn.Func == "skol" {
+			verVal, err := t.Parser.Sim.Expr(fcn.Args[0])
+			if err != nil {
+				return err
+			}
+			engVal, err := t.Parser.Sim.Expr(fcn.Args[1])
+			if err != nil {
+				return err
+			}
+			if verVal.Data.(float32) < common.VersionF {
+				return common.Error(n,
+					"this script requires skol %d or above",
+					verVal.Data.(float32))
+			}
+			if engVal.Data.(string) != t.Parser.Engine {
+				return common.Error(n,
+					"this script required the %s engine",
+					engVal.Data.(string))
 			}
 		}
 
