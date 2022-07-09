@@ -83,14 +83,15 @@ func compile() {
 	}
 
 	gen := gen(input, bytes.NewReader(code))
-	outFile, err := os.Create(input + gen.Ext())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer outFile.Close()
 
 	if gen.CanGenerate() {
+		outFile, err := os.Create(input + gen.Ext())
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		defer outFile.Close()
+
 		fmt.Println("Compiling using engine:", engines[theEngine])
 		compStart := time.Now()
 
