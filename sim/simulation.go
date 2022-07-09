@@ -147,6 +147,9 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 		s.popCall()
 		s.Scope = s.Scope.parent
 		return nil
+	case nodes.NdStruct:
+		// do nothing -- types are handled entirely inside the parser
+		return nil
 	}
 	return s.Errorf(n, "%s is not a statement", n)
 }

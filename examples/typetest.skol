@@ -1,4 +1,14 @@
 skol! "sim" 0.3
 
-print! to_str! 123
-print! ""
+// a vector of 2 ints
+@Vec2i(
+  x/int
+  y/int
+)
+
+// some Vec2i instance
+// this will cause my_vec to be a Vec2i forever
+%my_vec: @Vec2i 12 34
+
+// this will cause an error
+%my_vec: 1234
