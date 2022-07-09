@@ -660,7 +660,7 @@ func (p *Parser) structn() (n nodes.Node, err error) {
 			err = p.selfError(typeTk, "unknown type: "+typeTk.Raw)
 			return
 		}
-		fields = append(fields, &values.Field{nameTk.Raw, fType})
+		fields = append(fields, &values.Field{fNameTk.Raw, fType})
 	}
 	t := values.Struct(nameTk.Raw, fields)
 	n = &nodes.StructNode{
