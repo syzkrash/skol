@@ -768,6 +768,8 @@ func (p *Parser) Next() (n nodes.Node, err error) {
 
 func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, err error) {
 	switch n.Kind() {
+	case nodes.NdBoolean:
+		t = values.Bool
 	case nodes.NdInteger:
 		t = values.Int
 	case nodes.NdFloat:

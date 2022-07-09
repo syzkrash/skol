@@ -95,3 +95,23 @@ func (t *Type) String() string {
 	}
 	panic(fmt.Sprintf("type with invalid primitive: %d", t.Prim))
 }
+
+func (t *Type) Name() string {
+	switch t.Prim {
+	case PStruct:
+		return "Structure " + t.Structure.Name
+	default:
+		return []string{
+			"Nothing",
+			"Integer",
+			"Boolean",
+			"Float",
+			"Character",
+			"String",
+			"Structure", // never gonna happen but whatever
+			"Array",
+			"Any",
+			"Undefined",
+		}[t.Prim]
+	}
+}

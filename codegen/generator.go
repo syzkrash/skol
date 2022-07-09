@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/syzkrash/skol/parser"
+	"github.com/syzkrash/skol/typecheck"
 )
 
 type Generator interface {
@@ -16,12 +16,12 @@ type Generator interface {
 }
 
 type ASTGenerator struct {
-	parser *parser.Parser
+	checker *typecheck.Typechecker
 }
 
 func NewAST(fn string, src io.RuneScanner) Generator {
 	return &ASTGenerator{
-		parser: parser.NewParser(fn, src, "ast"),
+		checker: typecheck.NewTypechecker(src, fn, "ast"),
 	}
 }
 
@@ -30,7 +30,7 @@ func (*ASTGenerator) CanGenerate() bool {
 }
 
 func (g *ASTGenerator) Generate(output io.StringWriter) error {
-	n, err := g.parser.Next()
+	n, err := g.checker.Next()
 	if err != nil {
 		return err
 	}

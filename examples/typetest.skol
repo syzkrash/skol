@@ -1,0 +1,4 @@
+skol! "sim" 0.3
+
+print! to_str! 123
+print! ""
