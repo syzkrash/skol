@@ -45,28 +45,6 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 			}
 		}
 
-		// we can check for the skol function since it'd be typechecked by now
-		if fcn.Func == "skol" {
-			verVal, err := t.Parser.Sim.Expr(fcn.Args[0])
-			if err != nil {
-				return err
-			}
-			engVal, err := t.Parser.Sim.Expr(fcn.Args[1])
-			if err != nil {
-				return err
-			}
-			if verVal.Data.(float32) < common.VersionF {
-				return common.Error(n,
-					"this script requires skol %d or above",
-					verVal.Data.(float32))
-			}
-			if engVal.Data.(string) != t.Parser.Engine {
-				return common.Error(n,
-					"this script required the %s engine",
-					engVal.Data.(string))
-			}
-		}
-
 	case nodes.NdFuncDef:
 		fdn := n.(*nodes.FuncDefNode)
 		t.Parser.Scope = &parser.Scope{
@@ -152,5 +130,30 @@ func (t *Typechecker) Next() (n nodes.Node, err error) {
 		return
 	}
 	err = t.checkNode(n)
+	if err == nil && n.Kind() == nodes.NdFuncCall {
+		fcn := n.(*nodes.FuncCallNode)
+		// we can check for the skol function since it'd be typechecked by now
+		if fcn.Func == "skol" {
+			verVal, err := t.Parser.Sim.Expr(fcn.Args[1])
+			if err != nil {
+				return n, err
+			}
+			engVal, err := t.Parser.Sim.Expr(fcn.Args[0])
+			if err != nil {
+				return n, err
+			}
+			if verVal.Data.(float32) > common.VersionF {
+				return n, common.Error(n,
+					"this script requires skol %d or above",
+					verVal.Data.(float32))
+			}
+			if engVal.Data.(string) != t.Parser.Engine {
+				return n, common.Error(n,
+					"this script required the %s engine",
+					engVal.Data.(string))
+			}
+			return t.Next()
+		}
+	}
 	return
 }
