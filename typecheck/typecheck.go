@@ -30,22 +30,6 @@ func typeError(n nodes.Node, want, got *values.Type, format string, a ...any) er
 
 func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 	switch n.Kind() {
-	case nodes.NdVarDef:
-		vdn := n.(*nodes.VarDefNode)
-		olddef, ok := t.Parser.Scope.FindVar(vdn.Var)
-		if !ok {
-			// this is the first time we see this var, so we can't check it
-			return nil
-		}
-		vtype, err := t.Parser.TypeOf(vdn.Value)
-		if err != nil {
-			return err
-		}
-		if !olddef.VarType.Equals(vtype) {
-			return typeError(vdn.Value, olddef.VarType, vtype,
-				"variable redefined with wrong type")
-		}
-
 	case nodes.NdFuncCall:
 		fcn := n.(*nodes.FuncCallNode)
 		fdef, _ := t.Parser.Scope.FindFunc(fcn.Func)

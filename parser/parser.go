@@ -255,6 +255,16 @@ func (p *Parser) varDef() (n nodes.Node, err error) {
 		err = fmt.Errorf("could not deduce type of %s: %s", val, err)
 		return
 	}
+
+	if old, ok := p.Scope.FindVar(nameToken.Raw); ok {
+		if !old.VarType.Equals(vt) {
+			err = p.selfError(nameToken, fmt.Sprintf(
+				"variable redefinition with incorrect type: %s (expected %s)",
+				vt.Name(), old.VarType.Name()))
+			return
+		}
+	}
+
 	n = &nodes.VarDefNode{
 		Var:     nameToken.Raw,
 		Value:   val,
