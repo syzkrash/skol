@@ -333,24 +333,12 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 			if err != nil {
 				return
 			}
-			deducted := funcType == values.Undefined
 			for _, bn := range body {
 				if bn.Kind() == nodes.NdReturn {
 					rn := bn.(*nodes.ReturnNode)
 					t, _ := p.TypeOf(rn.Value)
 					if funcType == values.Undefined {
 						funcType = t
-					} else if t != funcType {
-						if deducted {
-							err = p.selfError(nameToken,
-								fmt.Sprintf("inconsistent return types: deducted %s, got %s",
-									funcType, t))
-						} else {
-							err = p.selfError(nameToken,
-								fmt.Sprintf("wrong return type: want %s, got %s",
-									funcType, t))
-						}
-						return
 					}
 				}
 			}
@@ -687,7 +675,7 @@ func (p *Parser) ParseType(raw string) (*values.Type, bool) {
 	case "any", "a":
 		return values.Any, true
 	}
-	if stype, ok := p.Scope.Types[raw]; ok {
+	if stype, ok := p.Scope.FindType(raw); ok {
 		return stype, true
 	}
 	return nil, false

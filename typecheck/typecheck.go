@@ -34,14 +34,23 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 	case nodes.NdFuncCall:
 		fcn := n.(*nodes.FuncCallNode)
 		fdef, _ := t.Parser.Scope.FindFunc(fcn.Func)
+		paramTypes := []*values.Type{}
 		for i, param := range fdef.Args {
 			atype, err := t.Parser.TypeOf(fcn.Args[i])
 			if err != nil {
 				return err
 			}
+			paramTypes = append(paramTypes, param.Type)
 			if !param.Type.Equals(atype) {
 				return typeError(fcn.Args[i], param.Type, atype,
 					"wrong argument type in function call")
+			}
+		}
+
+		if fcn.Func == "eq" {
+			if !paramTypes[1].Equals(paramTypes[0]) {
+				return typeError(fcn.Args[1], paramTypes[0], paramTypes[1],
+					"eq! arguments must be the same type")
 			}
 		}
 
@@ -144,7 +153,7 @@ func (t *Typechecker) Next() (n nodes.Node, err error) {
 			}
 			if verVal.Data.(float32) > common.VersionF {
 				return n, common.Error(n,
-					"this script requires skol %d or above",
+					"this script requires skol %.1f or above",
 					verVal.Data.(float32))
 			}
 			if engVal.Data.(string) != t.Parser.Engine {
