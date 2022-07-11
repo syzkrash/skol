@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
@@ -775,7 +776,7 @@ func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, err error) {
 	outer:
 		for _, e := range path[1:] {
 			if t.Prim != values.PStruct {
-				err = fmt.Errorf("can only select fields on structures")
+				err = common.Error(n, "can only select fields on structures")
 				return
 			}
 			for _, f := range t.Structure.Fields {
@@ -784,7 +785,7 @@ func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, err error) {
 					continue outer
 				}
 			}
-			err = fmt.Errorf("'%s' value does not contain field '%s'", t, e)
+			err = common.Error(n, "%s does not contain field '%s'", t.Name(), e)
 			return
 		}
 	default:

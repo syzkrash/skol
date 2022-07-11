@@ -112,7 +112,7 @@ $NextToken/Token(
 $NextValue/Value?
 $NextValueFrom/Value Tok/Token?
 
-$PrintValue Val/int(
+$PrintValue Val/Value(
   ?eq! Val#Kind ValString (print! Val#Value)
   ?eq! Val#Kind ValNumber (print! to_str! Val#Value)
 )

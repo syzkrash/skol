@@ -87,6 +87,23 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 			return typeError(cn.Condition, values.Bool, ctype,
 				"conditional must be a boolean")
 		}
+		for _, bn := range cn.IfBlock {
+			if err = t.checkNode(bn); err != nil {
+				return err
+			}
+		}
+		for _, bn := range cn.ElseBlock {
+			if err = t.checkNode(bn); err != nil {
+				return err
+			}
+		}
+		for _, branch := range cn.ElseIfNodes {
+			for _, bn := range branch.Block {
+				if err = t.checkNode(bn); err != nil {
+					return err
+				}
+			}
+		}
 
 	case nodes.NdWhile:
 		cn := n.(*nodes.WhileNode)
@@ -97,6 +114,11 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 		if !values.Bool.Equals(ctype) {
 			return typeError(cn.Condition, values.Bool, ctype,
 				"conditional must be a boolean")
+		}
+		for _, bn := range cn.Body {
+			if err = t.checkNode(bn); err != nil {
+				return err
+			}
 		}
 
 	case nodes.NdNewStruct:
@@ -128,9 +150,56 @@ func (t *Typechecker) checkNodeInFunc(n nodes.Node, ret *values.Type) (err error
 				"incorrect or inconsistent function return type")
 		}
 		return nil
+
+	case nodes.NdIf:
+		cn := n.(*nodes.IfNode)
+		ctype, err := t.Parser.TypeOf(cn.Condition)
+		if err != nil {
+			return err
+		}
+		if !values.Bool.Equals(ctype) {
+			return typeError(cn.Condition, values.Bool, ctype,
+				"conditional must be a boolean")
+		}
+		for _, bn := range cn.IfBlock {
+			if err = t.checkNodeInFunc(bn, ret); err != nil {
+				return err
+			}
+		}
+		for _, bn := range cn.ElseBlock {
+			if err = t.checkNodeInFunc(bn, ret); err != nil {
+				return err
+			}
+		}
+		for _, branch := range cn.ElseIfNodes {
+			for _, bn := range branch.Block {
+				if err = t.checkNodeInFunc(bn, ret); err != nil {
+					return err
+				}
+			}
+		}
+
+	case nodes.NdWhile:
+		cn := n.(*nodes.WhileNode)
+		ctype, err := t.Parser.TypeOf(cn.Condition)
+		if err != nil {
+			return err
+		}
+		if !values.Bool.Equals(ctype) {
+			return typeError(cn.Condition, values.Bool, ctype,
+				"conditional must be a boolean")
+		}
+		for _, bn := range cn.Body {
+			if err = t.checkNodeInFunc(bn, ret); err != nil {
+				return err
+			}
+		}
+
 	default:
 		return t.checkNode(n)
 	}
+
+	return nil
 }
 
 func (t *Typechecker) Next() (n nodes.Node, err error) {
