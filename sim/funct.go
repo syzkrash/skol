@@ -2,7 +2,9 @@ package sim
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/syzkrash/skol/parser/defaults"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
 )
@@ -166,6 +168,83 @@ func NativeStrLen(s *Simulator, args ArgMap) (*values.Value, error) {
 
 func NativeCtoI(s *Simulator, args ArgMap) (*values.Value, error) {
 	return values.NewValue(int(args["c"].Char())), nil
+}
+
+func NativeOpen(s *Simulator, args ArgMap) (*values.Value, error) {
+	fn := args["fn"].String()
+	f, err := os.Open(fn)
+	if err != nil {
+		res := &values.Value{
+			defaults.Types["file_descriptor_result"],
+			map[string]*values.Value{
+				"fd":  values.NewValue(0),
+				"ok":  values.NewValue(false),
+				"err": values.NewValue(err.Error()),
+			},
+		}
+		return res, nil
+	}
+	fd := &values.Value{
+		defaults.Types["file_descriptor"],
+		map[string]*values.Value{
+			"fd": values.NewValue(int(f.Fd())),
+			"fn": values.NewValue(fn),
+		},
+	}
+	res := &values.Value{
+		defaults.Types["file_descriptor_result"],
+		map[string]*values.Value{
+			"fd":  fd,
+			"ok":  values.NewValue(true),
+			"err": values.NewValue(""),
+		},
+	}
+	return res, nil
+}
+
+func NativeFGetC(s *Simulator, args ArgMap) (*values.Value, error) {
+	fd := args["fd"].Struct()
+	f := os.NewFile(uintptr(fd["fd"].Int()), fd["fn"].String())
+	if f == nil {
+		res := &values.Value{
+			defaults.Types["char_result"],
+			map[string]*values.Value{
+				"char": values.NewValue('\000'),
+				"ok":   values.NewValue(false),
+				"err":  values.NewValue("operation on invalid file descriptor"),
+			},
+		}
+		return res, nil
+	}
+	buf := []byte{0}
+	_, err := f.Read(buf)
+	if err != nil {
+		res := &values.Value{
+			defaults.Types["char_result"],
+			map[string]*values.Value{
+				"char": values.NewValue(byte(0)),
+				"ok":   values.NewValue(false),
+				"err":  values.NewValue(err.Error()),
+			},
+		}
+		return res, nil
+	}
+	res := &values.Value{
+		defaults.Types["char_result"],
+		map[string]*values.Value{
+			"char": values.NewValue(buf[0]),
+			"ok":   values.NewValue(true),
+			"err":  values.NewValue(""),
+		},
+	}
+	return res, nil
+}
+
+func NativeClose(s *Simulator, args ArgMap) (*values.Value, error) {
+	fd := args["fd"].Struct()
+	f := os.NewFile(uintptr(fd["fd"].Int()), fd["fn"].String())
+	f.Close()
+	return nil, nil
 }
 
 var DefaultFuncs = map[string]*Funct{
@@ -348,5 +427,23 @@ var DefaultFuncs = map[string]*Funct{
 		Ret:      values.Int,
 		IsNative: true,
 		Native:   NativeCtoI,
+	},
+	"open": {
+		Args:     defaults.Functions["open"].Args,
+		Ret:      defaults.Functions["open"].Ret,
+		IsNative: true,
+		Native:   NativeOpen,
+	},
+	"fgetc": {
+		Args:     defaults.Functions["fgetc"].Args,
+		Ret:      defaults.Functions["fgetc"].Ret,
+		IsNative: true,
+		Native:   NativeFGetC,
+	},
+	"close": {
+		Args:     defaults.Functions["close"].Args,
+		Ret:      defaults.Functions["close"].Ret,
+		IsNative: true,
+		Native:   NativeClose,
 	},
 }

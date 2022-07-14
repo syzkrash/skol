@@ -36,6 +36,14 @@ func Struct(name string, fields []*Field) *Type {
 	return &Type{PStruct, &Structure{name, fields}}
 }
 
+func MakeStruct(name string, f ...any) *Type {
+	fs := []*Field{}
+	for i := 0; i < len(f); i += 2 {
+		fs = append(fs, &Field{f[i].(string), f[i+1].(*Type)})
+	}
+	return Struct(name, fs)
+}
+
 var (
 	Nothing   = &Type{PNothing, nil}
 	Int       = &Type{PInt, nil}
