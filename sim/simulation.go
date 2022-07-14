@@ -194,6 +194,7 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 		if funct.IsNative {
 			val, err = funct.Native(s, argv)
 			s.Scope = s.Scope.parent
+			s.popCall()
 			return val, err
 		}
 		for _, n := range funct.Body {
