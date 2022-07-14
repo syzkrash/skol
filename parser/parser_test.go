@@ -60,7 +60,7 @@ func TestFuncCall(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestFuncCall", src, "test")
 	// to prevent 'unknown function' error
-	p.Scope.SetFunc("add", &Function{
+	p.Scope.SetFunc("add", &values.Function{
 		Name: "add",
 		Args: []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
 		Ret:  values.Float,
@@ -94,7 +94,7 @@ func TestIf(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIf", src, "test")
 	// to prevent 'unknown function' error
-	p.Scope.SetFunc("print", &Function{
+	p.Scope.SetFunc("print", &values.Function{
 		Name: "print",
 		Args: []values.FuncArg{{"a", values.Any}},
 		Ret:  values.Nothing,
@@ -131,7 +131,7 @@ func TestIfBetween(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIfBetween", src, "test")
 	// to prevent 'unknown function' error
-	p.Scope.SetFunc("print", &Function{
+	p.Scope.SetFunc("print", &values.Function{
 		Name: "print",
 		Args: []values.FuncArg{{"a", values.Any}},
 		Ret:  values.Nothing,
@@ -186,7 +186,7 @@ func TestIfElse(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIfElse", src, "test")
 	// to prevent 'unknown function' error
-	p.Scope.SetFunc("print", &Function{
+	p.Scope.SetFunc("print", &values.Function{
 		Name: "print",
 		Args: []values.FuncArg{{"a", values.Any}},
 		Ret:  values.Nothing,
@@ -244,7 +244,7 @@ func TestIfElseIfElse(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIfElseIfElse", src, "test")
 	// to prevent 'unknown function' error
-	p.Scope.SetFunc("print", &Function{
+	p.Scope.SetFunc("print", &values.Function{
 		Name: "print",
 		Args: []values.FuncArg{{"a", values.Any}},
 		Ret:  values.Nothing,
@@ -322,7 +322,7 @@ func TestIfElseIf(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIfElseIf", src, "test")
 	// to prevent 'unknown function' error
-	p.Scope.SetFunc("print", &Function{
+	p.Scope.SetFunc("print", &values.Function{
 		Name: "print",
 		Args: []values.FuncArg{{"a", values.Any}},
 		Ret:  values.Nothing,

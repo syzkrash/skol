@@ -1,13 +1,14 @@
 package parser
 
 import (
+	"github.com/syzkrash/skol/parser/defaults"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
 )
 
 type Scope struct {
 	Parent *Scope
-	Funcs  map[string]*Function
+	Funcs  map[string]*values.Function
 	Vars   map[string]*nodes.VarDefNode
 	Consts map[string]*values.Value
 	Types  map[string]*values.Type
@@ -16,14 +17,14 @@ type Scope struct {
 func NewScope(parent *Scope) *Scope {
 	return &Scope{
 		Parent: parent,
-		Funcs:  DefaultFuncs,
+		Funcs:  defaults.Functions,
 		Vars:   make(map[string]*nodes.VarDefNode),
 		Consts: make(map[string]*values.Value),
 		Types:  make(map[string]*values.Type),
 	}
 }
 
-func (s *Scope) FindFunc(name string) (*Function, bool) {
+func (s *Scope) FindFunc(name string) (*values.Function, bool) {
 	f, ok := s.Funcs[name]
 	if s.Parent != nil && !ok && name[0] != '_' {
 		return s.Parent.FindFunc(name)
@@ -31,7 +32,7 @@ func (s *Scope) FindFunc(name string) (*Function, bool) {
 	return f, ok
 }
 
-func (s *Scope) SetFunc(n string, f *Function) {
+func (s *Scope) SetFunc(n string, f *values.Function) {
 	if _, ok := s.Funcs[n]; ok || s.Parent == nil {
 		s.Funcs[n] = f
 	} else {

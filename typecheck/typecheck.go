@@ -58,7 +58,7 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 		fdn := n.(*nodes.FuncDefNode)
 		t.Parser.Scope = &parser.Scope{
 			Parent: t.Parser.Scope,
-			Funcs:  map[string]*parser.Function{},
+			Funcs:  map[string]*values.Function{},
 			Vars:   map[string]*nodes.VarDefNode{},
 			Consts: map[string]*values.Value{},
 			Types:  map[string]*values.Type{},

@@ -55,7 +55,7 @@ func (p *Parser) otherError(where *lexer.Token, msg string, cause error) error {
 //	add! sqr! 2 sqr! 2     // add(sqr(2), sqr(2))
 //	add! a b               // add(a, b)
 //	add! mul! a a mul! bb  // add(mul(a, a), mul(b, b))
-func (p *Parser) funcCall(fn string, f *Function, pos lexer.Position) (n nodes.Node, err error) {
+func (p *Parser) funcCall(fn string, f *values.Function, pos lexer.Position) (n nodes.Node, err error) {
 	args := make([]nodes.Node, len(f.Args))
 	for i := 0; i < len(args); i++ {
 		v, err := p.value()
@@ -346,14 +346,16 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 			if funcType.Prim == values.PUndefined {
 				funcType = values.Nothing
 			}
-			n = &nodes.FuncDefNode{
+			fdn := &nodes.FuncDefNode{
 				Name: nameToken.Raw,
 				Args: args,
 				Ret:  funcType,
 				Body: body,
 				Pos:  nameToken.Where,
 			}
-			p.Scope.SetFunc(nameToken.Raw, DefinedFunction(n.(*nodes.FuncDefNode)))
+			n = fdn
+			p.Scope.SetFunc(nameToken.Raw,
+				values.DefinedFunction(fdn.Name, fdn.Args, fdn.Ret))
 			return
 		}
 		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '?' {
@@ -371,14 +373,16 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 			if funcType.Prim == values.PUndefined {
 				funcType = values.Nothing
 			}
-			n = &nodes.FuncExternNode{
+			fen := &nodes.FuncExternNode{
 				Name:   nameToken.Raw,
 				Intern: intern,
 				Args:   args,
 				Ret:    funcType,
 				Pos:    nameToken.Where,
 			}
-			p.Scope.SetFunc(nameToken.Raw, ExternFunction(n.(*nodes.FuncExternNode)))
+			n = fen
+			p.Scope.SetFunc(nameToken.Raw,
+				values.ExternFunction(fen.Name, fen.Intern, fen.Args, fen.Ret))
 			return
 		}
 		if argName.Kind != lexer.TkIdent {

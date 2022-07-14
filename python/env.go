@@ -7,7 +7,7 @@ import (
 
 func (p *pythonState) initEnv() {
 	newScope := parser.NewScope(p.parser.Scope)
-	newScope.Funcs = map[string]*parser.Function{
+	newScope.Funcs = map[string]*values.Function{
 		"print": {
 			Name: "print",
 			Args: []values.FuncArg{{"a", values.Any}},
