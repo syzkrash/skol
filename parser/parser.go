@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/syzkrash/skol/common"
+	"github.com/syzkrash/skol/debug"
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
@@ -358,6 +359,7 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 					Var:     a.Name,
 				})
 			}
+			debug.Log(debug.AttrScope, "Entering new scope")
 			p.Scope = newScope
 
 			p.lexer.Rollback(argName)
@@ -493,6 +495,7 @@ func (p *Parser) condition() (n nodes.Node, err error) {
 	if err != nil {
 		return
 	}
+	debug.Log(debug.AttrScope, "Entering new scope")
 	p.Scope = NewScope(p.Scope)
 	ifb, err := p.block()
 	if err != nil {
@@ -547,6 +550,7 @@ func (p *Parser) condition() (n nodes.Node, err error) {
 		}
 	}
 
+	debug.Log(debug.AttrScope, "Exitig scope")
 	p.Scope = p.Scope.Parent
 
 	n = &nodes.IfNode{
@@ -565,12 +569,14 @@ func (p *Parser) loop() (n nodes.Node, err error) {
 		return
 	}
 
+	debug.Log(debug.AttrScope, "Entering new scope")
 	p.Scope = NewScope(p.Scope)
 	body, err := p.block()
 	if err != nil {
 		return
 	}
 
+	debug.Log(debug.AttrScope, "Exiting scope")
 	p.Scope = p.Scope.Parent
 	n = &nodes.WhileNode{
 		Condition: condition,
@@ -771,6 +777,11 @@ func (p *Parser) Next() (n nodes.Node, err error) {
 		return nil, err
 	}
 	n, err = p.internalNext(tok)
+	if err != nil {
+		debug.Log(debug.AttrParser, "Error %s", err)
+	} else {
+		debug.Log(debug.AttrParser, "%s node at %s", n.Kind(), n.Where())
+	}
 	return
 }
 

@@ -3,6 +3,8 @@ package lexer
 import (
 	"errors"
 	"io"
+
+	"github.com/syzkrash/skol/debug"
 )
 
 type Lexer struct {
@@ -299,6 +301,11 @@ func (l *Lexer) Next() (tok *Token, err error) {
 	var lerr *LexerError
 	if err != nil && !errors.As(err, &lerr) {
 		err = l.otherError(err)
+	}
+	if err != nil {
+		debug.Log(debug.AttrLexer, "Error %s", err)
+	} else {
+		debug.Log(debug.AttrLexer, "%s token `%s` at %s", tok.Kind, tok.Raw, tok.Where)
 	}
 	return
 }

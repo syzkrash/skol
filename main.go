@@ -13,6 +13,7 @@ import (
 
 	"github.com/syzkrash/skol/codegen"
 	"github.com/syzkrash/skol/common"
+	"github.com/syzkrash/skol/debug"
 	"github.com/syzkrash/skol/python"
 )
 
@@ -48,11 +49,29 @@ func engineFlag(arg string) error {
 	return nil
 }
 
+func debugFlag(arg string) error {
+	for _, feat := range strings.Split(arg, ",") {
+		feat = strings.ToLower(strings.TrimSpace(feat))
+		switch feat {
+		case "lexer":
+			debug.GlobalAttr |= debug.AttrLexer
+		case "parser":
+			debug.GlobalAttr |= debug.AttrParser
+		case "scope":
+			debug.GlobalAttr |= debug.AttrScope
+		default:
+			return fmt.Errorf("unknown debug feature: %s", feat)
+		}
+	}
+	return nil
+}
+
 var input string
 
 func main() {
 	flag.StringVar(&input, "input", "", "File to compile/transpile/interpret. (Leave blank for REPL)")
 	flag.Func("engine", "Which interpreter/compiler to use.", engineFlag)
+	flag.Func("debug", "Which debug logs to show.", debugFlag)
 	flag.Parse()
 
 	fmt.Printf("Skol v%s\n", common.Version)
