@@ -1,0 +1,86 @@
+/* Simple document parser.
+ * Written as a more real-world test of the new type system.
+ * (it works)
+ */
+
+skol! "sim" 0.4
+
+%Source: "= Title\n- Subtitle\n  Text text text!\n"
+%Index: 0
+%LineNo: 1
+
+@Line(
+  no/int
+  effect/char
+  content/str
+)
+
+// these result types are pretty harsh to define for each type we use
+// but generics would make the type system very complex
+// and i don't want to overcomplicate it until the language is reliable
+@LineResult(
+  ok/bool
+  ln/Line
+)
+
+@CharResult(
+  ok/bool
+  ch/char
+)
+
+@StringResult(
+  ok/bool
+  str/str
+)
+
+$NextChar/CharResult(
+  ?gt_i! Index sub_i! str_len! Source 1(
+    >@CharResult / 'a'
+  )
+  %res: @CharResult * char_at! Source Index
+  %Index: add_i! Index 1
+  >res
+)
+
+$NextLine/StringResult(
+  %cr: NextChar!
+  %l: ""
+  // wonky loop but it makes sense
+  // for you human-readable language enthusiasts:
+  // cr.ok && cr.ch != '\n'
+  *and! cr#ok not! eq! cr#ch '\n'(
+    %l: char_append! l cr#ch
+    %cr: NextChar!
+  )
+  %LineNo: add_i! LineNo 1
+  >@StringResult cr#ok l
+)
+
+$ParseLine/Line no/int ln/str(
+  >@Line no char_at! ln 0 substr! ln 1 str_len! ln
+)
+
+$RenderLine/str ln/Line(
+   ?eq! ln#effect '='(
+    >concat! concat! "<h1>" ln#content "</h1>"
+  )
+  :?eq! ln#effect '-'(
+    >concat! concat! "<h2>" ln#content "</h2>"
+  )
+  :(
+    >ln#content
+  )
+)
+
+$Main(
+  %sr: NextLine!
+  *sr#ok(
+    // line = ParseLine(LineNo-1, sr.str)
+    %line: ParseLine! sub_i! LineNo 1 sr#str
+    %html: RenderLine! line
+    print! html
+    %sr: NextLine!
+  )
+)
+
+Main!
