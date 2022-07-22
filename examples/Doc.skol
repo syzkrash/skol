@@ -76,8 +76,8 @@ $Main(
   %sr: NextLine!
   *sr#ok(
     // line = ParseLine(LineNo-1, sr.str)
-    %line: ParseLine! sub_i! LineNo 1 sr#str
-    %html: RenderLine! line
+    %ln: ParseLine! sub_i! LineNo 1 sr#str
+    %html: RenderLine! ln
     print! html
     %sr: NextLine!
   )

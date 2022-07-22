@@ -49,10 +49,19 @@ func (s *Scope) FindVar(name string) (*nodes.VarDefNode, bool) {
 }
 
 func (s *Scope) SetVar(n string, v *nodes.VarDefNode) {
-	if _, ok := s.Vars[n]; ok || s.Parent == nil {
+	var target *Scope
+	current := s
+	for {
+		if _, ok := current.Vars[n]; ok || current.Parent == nil {
+			target = current
+			break
+		}
+		current = current.Parent
+	}
+	if target == nil {
 		s.Vars[n] = v
 	} else {
-		s.Parent.SetVar(n, v)
+		target.Vars[n] = v
 	}
 }
 
