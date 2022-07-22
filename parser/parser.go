@@ -72,6 +72,64 @@ func (p *Parser) funcCall(fn string, f *values.Function, pos lexer.Position) (n 
 	return
 }
 
+func (p *Parser) selectorOrTypecast(start *lexer.Token) (n nodes.Node, err error) {
+	n = &nodes.SelectorNode{
+		Parent: nil,
+		Child:  start.Raw,
+		Pos:    start.Where,
+	}
+	var tok *lexer.Token
+	for {
+		tok, err = p.lexer.Next()
+		if errors.Is(err, io.EOF) {
+			err = nil
+			return
+		}
+		if err != nil {
+			return
+		}
+		if tok.Kind != lexer.TkPunct || tok.Raw != "#" {
+			p.lexer.Rollback(tok)
+			return
+		}
+		tok, err = p.lexer.Next()
+		if err != nil {
+			return
+		}
+		if tok.Kind == lexer.TkPunct && tok.Raw == "@" {
+			typecastLoc := tok.Where
+			tok, err = p.lexer.Next()
+			if err != nil {
+				return
+			}
+			if tok.Kind != lexer.TkIdent {
+				err = p.selfError(tok, "expected an identifer")
+				return
+			}
+			t, ok := p.ParseType(tok.Raw)
+			if !ok {
+				err = p.selfError(tok, "unknown type: "+t.Name())
+				return
+			}
+			n = &nodes.TypecastNode{
+				Value:  n.(*nodes.SelectorNode),
+				Target: t,
+				Pos:    typecastLoc,
+			}
+			return
+		}
+		if tok.Kind != lexer.TkIdent {
+			err = p.selfError(tok, "expected an identifer")
+			return
+		}
+		n = &nodes.SelectorNode{
+			Parent: n.(*nodes.SelectorNode),
+			Child:  tok.Raw,
+			Pos:    n.Where(),
+		}
+	}
+}
+
 // value parses a nodes.Node that has a value
 //
 // Example values:
@@ -138,34 +196,7 @@ func (p *Parser) value() (n nodes.Node, err error) {
 			}
 			n, err = p.funcCall(fn, f, tok.Where)
 		} else if _, ok := p.Scope.FindVar(tok.Raw); ok {
-			n = &nodes.SelectorNode{
-				Parent: nil,
-				Child:  tok.Raw,
-				Pos:    tok.Where,
-			}
-			for {
-				tok, err = p.lexer.Next()
-				if errors.Is(err, io.EOF) {
-					err = nil
-					return
-				}
-				if err != nil {
-					return
-				}
-				if tok.Kind != lexer.TkPunct || tok.Raw != "#" {
-					p.lexer.Rollback(tok)
-					break
-				}
-				tok, err = p.lexer.Next()
-				if err != nil {
-					return
-				}
-				n = &nodes.SelectorNode{
-					Parent: n.(*nodes.SelectorNode),
-					Child:  tok.Raw,
-					Pos:    n.Where(),
-				}
-			}
+			return p.selectorOrTypecast(tok)
 		} else if v, ok := p.Scope.FindConst(tok.Raw); ok {
 			n = p.ToNode(v, tok.Where)
 		} else {
@@ -792,6 +823,8 @@ func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, err error) {
 			err = common.Error(n, "%s does not contain field '%s'", t.Name(), e)
 			return
 		}
+	case nodes.NdTypecast:
+		return n.(*nodes.TypecastNode).Target, nil
 	default:
 		err = fmt.Errorf("%s node is not a value", n.Kind())
 	}

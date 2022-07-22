@@ -244,6 +244,14 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 			}
 		}
 		return v, nil
+	case nodes.NdTypecast:
+		tn := n.(*nodes.TypecastNode)
+		v, err := s.Expr(tn.Value)
+		if err != nil {
+			return nil, err
+		}
+		v.Type = tn.Target
+		return v, nil
 	}
 	fmt.Printf("Simulator: not a value: %s\n", n.Kind())
 	return nil, s.Errorf(n, "%s node is not a value", n.Kind())

@@ -113,8 +113,14 @@ $NextValue/Value?
 $NextValueFrom/Value Tok/Token?
 
 $PrintValue Val/Value(
-  ?eq! Val#Kind ValString (print! Val#Value)
-  ?eq! Val#Kind ValNumber (print! to_str! Val#Value)
+  ?eq! Val#Kind ValString (
+    %SVal: Val#@StringValue
+    print! SVal#Value
+  )
+  ?eq! Val#Kind ValNumber (
+    %NVal: Val#@NumberValue
+    print! to_str! NVal#Value
+  )
 )
 
 $NextObject/Value(
@@ -146,7 +152,7 @@ $NextObject/Value(
 
     %Tok: NextToken!
     ? eq! Tok#Kind TkRBrace
-      (>ValObject)
+      (>@Value ValObject)
     :?not! eq! Tok#Kind TkComma (
       print! "Expected comma"
       >@Value ValInvalid

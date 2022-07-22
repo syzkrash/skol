@@ -23,6 +23,7 @@ const (
 	NdStruct
 	NdNewStruct
 	NdSelector
+	NdTypecast
 )
 
 var nodeKinds = []string{
@@ -41,6 +42,7 @@ var nodeKinds = []string{
 	"Struct",
 	"NewStruct",
 	"Selector",
+	"Typecast",
 }
 
 func (k NodeKind) String() string {
@@ -274,4 +276,18 @@ func (n *SelectorNode) Path() []string {
 		return []string{n.Child}
 	}
 	return append(n.Parent.Path(), n.Child)
+}
+
+type TypecastNode struct {
+	Value  *SelectorNode
+	Target *values.Type
+	Pos    lexer.Position
+}
+
+func (*TypecastNode) Kind() NodeKind {
+	return NdTypecast
+}
+
+func (n *TypecastNode) Where() lexer.Position {
+	return n.Pos
 }

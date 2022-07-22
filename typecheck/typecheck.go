@@ -133,6 +133,21 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 					"wrong field type in structure literal")
 			}
 		}
+
+	case nodes.NdVarDef:
+		vdn := n.(*nodes.VarDefNode)
+		switch vdn.Value.Kind() {
+		case nodes.NdTypecast:
+			tn := vdn.Value.(*nodes.TypecastNode)
+			otype, err := t.Parser.TypeOf(tn.Value)
+			if err != nil {
+				return err
+			}
+			if !otype.Equals(tn.Target) {
+				return typeError(tn, otype, tn.Target,
+					"cannot cast to incompatible type")
+			}
+		}
 	}
 	return nil
 }
