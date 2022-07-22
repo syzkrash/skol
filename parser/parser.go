@@ -385,8 +385,8 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 				Pos:  nameToken.Where,
 			}
 			n = fdn
-			p.Scope.SetFunc(nameToken.Raw,
-				values.DefinedFunction(fdn.Name, fdn.Args, fdn.Ret))
+			p.Scope.Funcs[nameToken.Raw] =
+				values.DefinedFunction(fdn.Name, fdn.Args, fdn.Ret)
 			return
 		}
 		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '?' {
@@ -412,8 +412,8 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 				Pos:    nameToken.Where,
 			}
 			n = fen
-			p.Scope.SetFunc(nameToken.Raw,
-				values.ExternFunction(fen.Name, fen.Intern, fen.Args, fen.Ret))
+			p.Scope.Funcs[nameToken.Raw] =
+				values.ExternFunction(fen.Name, fen.Intern, fen.Args, fen.Ret)
 			return
 		}
 		if argName.Kind != lexer.TkIdent {

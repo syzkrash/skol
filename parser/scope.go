@@ -32,14 +32,6 @@ func (s *Scope) FindFunc(name string) (*values.Function, bool) {
 	return f, ok
 }
 
-func (s *Scope) SetFunc(n string, f *values.Function) {
-	if _, ok := s.Funcs[n]; ok || s.Parent == nil {
-		s.Funcs[n] = f
-	} else {
-		s.Parent.SetFunc(n, f)
-	}
-}
-
 func (s *Scope) FindVar(name string) (*nodes.VarDefNode, bool) {
 	v, ok := s.Vars[name]
 	if s.Parent != nil && !ok && name[0] != '_' {
