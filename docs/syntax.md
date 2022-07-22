@@ -172,10 +172,105 @@ using the same punctuator, an infinite loop is simply defined with `**`:
 )
 ```
 
+## Structure
+
+```hs
+@Vec2i(
+  x/int
+  y/int
+)
+
+$AddVec2i/Vec2i a/Vec2i b/Vec2i(
+  >@Vect2i add_i! a#x b#x add_i! a#y b#y
+)
+```
+
+Like C, skol does not have classes or any OOP concepts. Instead, everything is
+done with structures. Naturally, structures have fields of certain types.
+Polymorphism is possible in skol due to loose typechecks:
+
+```hs
+// considering the Vec2i and AddVec2i from above
+
+@Vec3i(
+  x/int
+  y/int
+  z/int
+)
+
+$Main(
+  %my_vec: @Vec3i 1 2 3
+  %other_vec: @Vec2i 2 1
+  %final_vec: AddVec2i! my_vec other_vec
+)
+```
+
+The above code will not produce a type error. Type checks in skol only consider
+whether all the required fields are present in a type, not checking the identity
+of the type itself. That means: a Vec3i can act as a Vec2i, as it contains all
+the fields Vec2i contains.
+
+## Typecast
+
+```hs
+// again, considering Vec2i from above
+
+@Vec2or3(
+  is_vec3/bool
+  x/int
+  y/int
+)
+
+@Vec2or3Result(
+  ok/bool
+  vec/Vec2or3
+)
+
+// Vec3i doesn't have the is_vec3 field
+@Vec3O(
+  is_vec3/bool
+  x/int
+  y/int
+  z/int
+)
+
+$AddVec/Vec2or3Result a/Vec2or3 b/Vec2or3(
+  // fail if a and b are not the same size
+  ?not! eq! a#is_vec3 b#is_vec3(
+    >@Vec2or3Result / @Vec2or3 / 0 0
+  )
+  // call the appropriate function based on the type
+  ?a#is_vec3(
+    %v2r: AddVec2O! a b
+    >@Vec2or3Result * v2r
+  ):(
+    // convert to Vec3 type: possible, since Vec3O contains all the fields
+    // Vec2or3 contais
+    %v3a: a#@Vec3O
+    %v3b: b#@Vec3O
+    // add Vec3
+    %v3r: AddVec3O! v3a v3b
+    // convert back to Vec2or3
+    %v3o: v3r#@Vec2or3
+    // and return the result
+    >@Vec2or3Result * v3o
+  )
+)
+```
+
+Typecasts are similar to selectors, which use the `#` punctuator. Instead of
+using an identifier to denote a field of a structure, use `@` to denote a
+typecast, followed by the name of the type to cast to.
+
+**Note** that primitive types, like booleans, integers, floats and strings are
+*not* castable. Typecasts can only be performed on structures.
+
 ## Conclusion
 
 If you wish to see skol in action, feel free to view the [JSON][json] and
-[calculator][calc] examples.
+[calculator][calc] examples. You can also see the more recent, but simpler
+[document parser][doc] example.
 
 [json]: /examples/json.skol
 [calc]: /examples/calculator.skol
+[doc]:  /examples/Doc.skol
