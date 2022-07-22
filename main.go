@@ -74,10 +74,10 @@ func main() {
 	flag.Func("debug", "Which debug logs to show.", debugFlag)
 	flag.Parse()
 
-	fmt.Printf("Skol v%s\n", common.Version)
+	fmt.Fprintf(os.Stderr, "Skol v%s\n", common.Version)
 
 	if theEngine == EnUndefined {
-		fmt.Println("Specify an engine to use.")
+		fmt.Fprintln(os.Stderr, "Specify an engine to use.")
 		return
 	}
 
@@ -91,13 +91,13 @@ func main() {
 func compile() {
 	inFile, err := os.Open(input)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		return
 	}
 	defer inFile.Close()
 	code, err := io.ReadAll(inFile)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		return
 	}
 
@@ -106,12 +106,12 @@ func compile() {
 	if gen.CanGenerate() {
 		outFile, err := os.Create(input + gen.Ext())
 		if err != nil {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 			return
 		}
 		defer outFile.Close()
 
-		fmt.Println("Compiling using engine:", engines[theEngine])
+		fmt.Fprintln(os.Stderr, "Compiling using engine:", engines[theEngine])
 		compStart := time.Now()
 
 		for {
@@ -120,22 +120,22 @@ func compile() {
 				break
 			}
 			if err != nil {
-				fmt.Println("Error -", err)
+				fmt.Fprintln(os.Stderr, "Error -", err)
 				return
 			}
 		}
 
-		fmt.Println("Compiled in", time.Since(compStart))
+		fmt.Fprintln(os.Stderr, "Compiled in", time.Since(compStart))
 	}
 
 	if gen.CanRun() {
-		fmt.Println("Running...")
-		fmt.Println("----------")
+		fmt.Fprintln(os.Stderr, "Running...")
+		fmt.Fprintln(os.Stderr, "----------")
 		if err = gen.Run(input + ".py"); err != nil {
 			if perr, ok := err.(common.Printable); ok {
 				perr.Print()
 			} else {
-				fmt.Println(err)
+				fmt.Fprintln(os.Stderr, err)
 			}
 			return
 		}
@@ -155,28 +155,28 @@ func gen(fn string, src io.RuneScanner) codegen.Generator {
 }
 
 func repl() {
-	fmt.Println("Type a line of Skol code and hit Enter.")
-	fmt.Println("Code generated for the given engine will be printed.")
-	fmt.Println("Press ^C at any time to exit.")
+	fmt.Fprintln(os.Stderr, "Type a line of Skol code and hit Enter.")
+	fmt.Fprintln(os.Stderr, "Code generated for the given engine will be printed.")
+	fmt.Fprintln(os.Stderr, "Press ^C at any time to exit.")
 
 	stdin := bufio.NewReader(os.Stdin)
 	src := strings.NewReader("")
 	gen := gen("REPL", src)
 
 	for {
-		fmt.Print(">> ")
+		fmt.Fprint(os.Stderr, ">> ")
 		line, err := stdin.ReadString('\n')
 		if errors.Is(err, io.EOF) {
-			fmt.Print("\n")
+			fmt.Fprint(os.Stderr, "\n")
 			return
 		}
 		if err != nil {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 			return
 		}
 		src.Reset(line + "\n")
 		if err = gen.Generate(os.Stdout); err != nil {
-			fmt.Println("Error -", err)
+			fmt.Fprintln(os.Stderr, "Error -", err)
 		}
 	}
 }
