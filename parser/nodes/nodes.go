@@ -3,6 +3,7 @@ package nodes
 import (
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/values"
+	"github.com/syzkrash/skol/parser/values/types"
 )
 
 type NodeKind uint8
@@ -120,7 +121,7 @@ func (n *CharNode) Where() lexer.Position {
 }
 
 type VarDefNode struct {
-	VarType *values.Type
+	VarType types.Type
 	Var     string
 	Value   Node
 	Pos     lexer.Position
@@ -151,7 +152,7 @@ func (n *FuncCallNode) Where() lexer.Position {
 type FuncDefNode struct {
 	Name string
 	Args []values.FuncArg
-	Ret  *values.Type
+	Ret  types.Type
 	Body []Node
 	Pos  lexer.Position
 }
@@ -168,7 +169,7 @@ type FuncExternNode struct {
 	Name   string
 	Intern string
 	Args   []values.FuncArg
-	Ret    *values.Type
+	Ret    types.Type
 	Pos    lexer.Position
 }
 
@@ -231,7 +232,7 @@ func (n *WhileNode) Where() lexer.Position {
 
 type StructNode struct {
 	Name string
-	Type *values.Type
+	Type types.Type
 	Pos  lexer.Position
 }
 
@@ -244,7 +245,7 @@ func (n *StructNode) Where() lexer.Position {
 }
 
 type NewStructNode struct {
-	Type *values.Type
+	Type types.Type
 	Args []Node
 	Pos  lexer.Position
 }
@@ -280,7 +281,7 @@ func (n *SelectorNode) Path() []string {
 
 type TypecastNode struct {
 	Value  *SelectorNode
-	Target *values.Type
+	Target types.Type
 	Pos    lexer.Position
 }
 

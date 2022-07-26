@@ -1,12 +1,14 @@
 package values
 
+import "github.com/syzkrash/skol/parser/values/types"
+
 type Function struct {
 	Name string
 	Args []FuncArg
-	Ret  *Type
+	Ret  types.Type
 }
 
-func DefinedFunction(name string, args []FuncArg, ret *Type) *Function {
+func DefinedFunction(name string, args []FuncArg, ret types.Type) *Function {
 	return &Function{
 		Name: name,
 		Args: args,
@@ -14,7 +16,7 @@ func DefinedFunction(name string, args []FuncArg, ret *Type) *Function {
 	}
 }
 
-func ExternFunction(name, intern string, args []FuncArg, ret *Type) *Function {
+func ExternFunction(name, intern string, args []FuncArg, ret types.Type) *Function {
 	var fn string
 	if intern != "" {
 		fn = intern
@@ -30,5 +32,5 @@ func ExternFunction(name, intern string, args []FuncArg, ret *Type) *Function {
 
 type FuncArg struct {
 	Name string
-	Type *Type
+	Type types.Type
 }

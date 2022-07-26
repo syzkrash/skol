@@ -6,6 +6,7 @@ import (
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
+	"github.com/syzkrash/skol/parser/values/types"
 )
 
 type Simulator struct {
@@ -172,7 +173,7 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 		if !ok {
 			return nil, s.Errorf(n, "unknown function: %s", fcn.Func)
 		}
-		if funct.Ret.Equals(values.Nothing) {
+		if funct.Ret.Equals(types.Nothing) {
 			return nil, s.Errorf(n, "function %s does not return a values.Value", fcn.Func)
 		}
 		argv := map[string]*values.Value{}
@@ -218,7 +219,7 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 			if err != nil {
 				return nil, err
 			}
-			fields[nsn.Type.Structure.Fields[i].Name] = v
+			fields[nsn.Type.(types.StructType).Fields[i].Name] = v
 		}
 		v = &values.Value{nsn.Type, fields}
 		return v, nil
@@ -235,7 +236,7 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 			return v, nil
 		}
 		for _, name := range p[1:] {
-			if v != nil && v.Type.Prim != values.PStruct {
+			if v != nil && v.Type.Prim() != types.PStruct {
 				return nil, s.Errorf(n, "non-struct types do not have fields")
 			}
 			v, ok = v.Struct()[name]

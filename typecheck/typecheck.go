@@ -8,6 +8,7 @@ import (
 	"github.com/syzkrash/skol/parser"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
+	"github.com/syzkrash/skol/parser/values/types"
 )
 
 type Typechecker struct {
@@ -20,7 +21,7 @@ func NewTypechecker(src io.RuneScanner, fn, eng string) *Typechecker {
 	}
 }
 
-func typeError(n nodes.Node, want, got *values.Type, format string, a ...any) error {
+func typeError(n nodes.Node, want, got types.Type, format string, a ...any) error {
 	return &TypeError{
 		msg:  fmt.Sprintf(format, a...),
 		Got:  got,
@@ -34,7 +35,7 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 	case nodes.NdFuncCall:
 		fcn := n.(*nodes.FuncCallNode)
 		fdef, _ := t.Parser.Scope.FindFunc(fcn.Func)
-		paramTypes := []*values.Type{}
+		paramTypes := []types.Type{}
 		for i, param := range fdef.Args {
 			atype, err := t.Parser.TypeOf(fcn.Args[i])
 			if err != nil {
@@ -61,7 +62,7 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 			Funcs:  map[string]*values.Function{},
 			Vars:   map[string]*nodes.VarDefNode{},
 			Consts: map[string]*values.Value{},
-			Types:  map[string]*values.Type{},
+			Types:  map[string]types.Type{},
 		}
 		for _, a := range fdn.Args {
 			t.Parser.Scope.SetVar(a.Name, &nodes.VarDefNode{
@@ -83,8 +84,8 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 		if err != nil {
 			return err
 		}
-		if !values.Bool.Equals(ctype) {
-			return typeError(cn.Condition, values.Bool, ctype,
+		if !types.Bool.Equals(ctype) {
+			return typeError(cn.Condition, types.Bool, ctype,
 				"conditional must be a boolean")
 		}
 		for _, bn := range cn.IfBlock {
@@ -111,8 +112,8 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 		if err != nil {
 			return err
 		}
-		if !values.Bool.Equals(ctype) {
-			return typeError(cn.Condition, values.Bool, ctype,
+		if !types.Bool.Equals(ctype) {
+			return typeError(cn.Condition, types.Bool, ctype,
 				"conditional must be a boolean")
 		}
 		for _, bn := range cn.Body {
@@ -123,7 +124,7 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 
 	case nodes.NdNewStruct:
 		nsn := n.(*nodes.NewStructNode)
-		for i, f := range nsn.Type.Structure.Fields {
+		for i, f := range nsn.Type.(types.StructType).Fields {
 			atype, err := t.Parser.TypeOf(nsn.Args[i])
 			if err != nil {
 				return err
@@ -152,7 +153,7 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 	return nil
 }
 
-func (t *Typechecker) checkNodeInFunc(n nodes.Node, ret *values.Type) (err error) {
+func (t *Typechecker) checkNodeInFunc(n nodes.Node, ret types.Type) (err error) {
 	switch n.Kind() {
 	case nodes.NdReturn:
 		rn := n.(*nodes.ReturnNode)
@@ -172,8 +173,8 @@ func (t *Typechecker) checkNodeInFunc(n nodes.Node, ret *values.Type) (err error
 		if err != nil {
 			return err
 		}
-		if !values.Bool.Equals(ctype) {
-			return typeError(cn.Condition, values.Bool, ctype,
+		if !types.Bool.Equals(ctype) {
+			return typeError(cn.Condition, types.Bool, ctype,
 				"conditional must be a boolean")
 		}
 		for _, bn := range cn.IfBlock {
@@ -200,8 +201,8 @@ func (t *Typechecker) checkNodeInFunc(n nodes.Node, ret *values.Type) (err error
 		if err != nil {
 			return err
 		}
-		if !values.Bool.Equals(ctype) {
-			return typeError(cn.Condition, values.Bool, ctype,
+		if !types.Bool.Equals(ctype) {
+			return typeError(cn.Condition, types.Bool, ctype,
 				"conditional must be a boolean")
 		}
 		for _, bn := range cn.Body {

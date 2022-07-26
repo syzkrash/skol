@@ -6,22 +6,22 @@ import (
 	"strings"
 
 	"github.com/syzkrash/skol/parser/nodes"
-	"github.com/syzkrash/skol/parser/values"
+	"github.com/syzkrash/skol/parser/values/types"
 )
 
 const indent = "  "
 
-func (p *pythonState) vt2pt(t *values.Type) string {
+func (p *pythonState) vt2pt(t types.Type) string {
 	switch t {
-	case values.Bool:
+	case types.Bool:
 		return "bool"
-	case values.Char:
+	case types.Char:
 		return "int"
-	case values.Float:
+	case types.Float:
 		return "float"
-	case values.Int:
+	case types.Int:
 		return "int"
-	case values.String:
+	case types.String:
 		return "str"
 	}
 	return ""
@@ -32,8 +32,9 @@ func (p *pythonState) class(s *nodes.StructNode) (err error) {
 	if err != nil {
 		return
 	}
-	if len(s.Type.Structure.Fields) > 1 {
-		for _, f := range s.Type.Structure.Fields[:len(s.Type.Structure.Fields)-1] {
+	st := s.Type.(types.StructType)
+	if len(st.Fields) > 1 {
+		for _, f := range st.Fields[:len(st.Fields)-1] {
 			_, err = p.out.WriteString(f.Name)
 			if err != nil {
 				return
@@ -44,7 +45,7 @@ func (p *pythonState) class(s *nodes.StructNode) (err error) {
 			}
 		}
 	}
-	f := s.Type.Structure.Fields[len(s.Type.Structure.Fields)-1]
+	f := st.Fields[len(st.Fields)-1]
 	_, err = p.out.WriteString(f.Name)
 	if err != nil {
 		return
@@ -53,7 +54,7 @@ func (p *pythonState) class(s *nodes.StructNode) (err error) {
 	if err != nil {
 		return
 	}
-	for _, f := range s.Type.Structure.Fields {
+	for _, f := range st.Fields {
 		_, err = p.out.WriteString(indent + indent + "self." + f.Name + " = " + f.Name + "\n")
 		if err != nil {
 			return
@@ -216,7 +217,7 @@ func (p *pythonState) impt(mod string) (err error) {
 }
 
 func (p *pythonState) instantiate(n *nodes.NewStructNode) (err error) {
-	_, err = p.out.WriteString(n.Type.Structure.Name)
+	_, err = p.out.WriteString(n.Type.(types.StructType).Name)
 	if err != nil {
 		return
 	}

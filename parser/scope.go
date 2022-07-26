@@ -4,6 +4,7 @@ import (
 	"github.com/syzkrash/skol/parser/defaults"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
+	"github.com/syzkrash/skol/parser/values/types"
 )
 
 type Scope struct {
@@ -11,7 +12,7 @@ type Scope struct {
 	Funcs  map[string]*values.Function
 	Vars   map[string]*nodes.VarDefNode
 	Consts map[string]*values.Value
-	Types  map[string]*values.Type
+	Types  map[string]types.Type
 }
 
 func NewScope(parent *Scope) *Scope {
@@ -20,7 +21,7 @@ func NewScope(parent *Scope) *Scope {
 		Funcs:  defaults.Functions,
 		Vars:   make(map[string]*nodes.VarDefNode),
 		Consts: make(map[string]*values.Value),
-		Types:  make(map[string]*values.Type),
+		Types:  make(map[string]types.Type),
 	}
 }
 
@@ -73,7 +74,7 @@ func (s *Scope) SetConst(n string, v *values.Value) bool {
 	return true
 }
 
-func (s *Scope) FindType(n string) (*values.Type, bool) {
+func (s *Scope) FindType(n string) (types.Type, bool) {
 	t, ok := s.Types[n]
 	if s.Parent != nil && !ok {
 		return s.Parent.FindType(n)

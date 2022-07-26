@@ -7,6 +7,7 @@ import (
 	"github.com/syzkrash/skol/parser/defaults"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
+	"github.com/syzkrash/skol/parser/values/types"
 )
 
 type ArgMap map[string]*values.Value
@@ -14,7 +15,7 @@ type NativeFunc func(*Simulator, ArgMap) (*values.Value, error)
 
 type Funct struct {
 	Args     []values.FuncArg
-	Ret      *values.Type
+	Ret      types.Type
 	Body     []nodes.Node
 	IsNative bool
 	Native   NativeFunc
@@ -29,11 +30,11 @@ func NativePrint(s *Simulator, args ArgMap) (*values.Value, error) {
 	return nil, nil
 }
 
-func NativeToString(s *Simulator, args ArgMap) (*values.Value, error) {
+func NativeToString(s *Simulator, args ArgMap) (v *values.Value, err error) {
 	return values.NewValue(args["a"].String()), nil
 }
 
-func NativeAddI(s *Simulator, args ArgMap) (*values.Value, error) {
+func NativeAddI(s *Simulator, args ArgMap) (v *values.Value, err error) {
 	return values.NewValue(args["a"].Int() + args["b"].Int()), nil
 }
 
@@ -136,7 +137,7 @@ func NativeCharAt(s *Simulator, args ArgMap) (*values.Value, error) {
 	for i > int32(len(str)) {
 		i -= int32(len(str))
 	}
-	return &values.Value{values.Char, str[i]}, nil
+	return &values.Value{types.Char, str[i]}, nil
 }
 
 func NativeSubstr(s *Simulator, args ArgMap) (*values.Value, error) {
@@ -249,182 +250,182 @@ func NativeClose(s *Simulator, args ArgMap) (*values.Value, error) {
 
 var DefaultFuncs = map[string]*Funct{
 	"print": {
-		Args:     []values.FuncArg{{"a", values.String}},
-		Ret:      values.Nothing,
+		Args:     []values.FuncArg{{"a", types.String}},
+		Ret:      types.Nothing,
 		IsNative: true,
 		Native:   NativePrint,
 	},
 	"to_str": {
-		Args:     []values.FuncArg{{"a", values.Any}},
-		Ret:      values.String,
+		Args:     []values.FuncArg{{"a", types.Any}},
+		Ret:      types.String,
 		IsNative: true,
 		Native:   NativeToString,
 	},
 	"add_i": {
-		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
-		Ret:      values.Int,
+		Args:     []values.FuncArg{{"a", types.Int}, {"b", types.Int}},
+		Ret:      types.Int,
 		IsNative: true,
 		Native:   NativeAddI,
 	},
 	"add_f": {
-		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
-		Ret:      values.Float,
+		Args:     []values.FuncArg{{"a", types.Float}, {"b", types.Float}},
+		Ret:      types.Float,
 		IsNative: true,
 		Native:   NativeAddF,
 	},
 	"add_c": {
-		Args:     []values.FuncArg{{"a", values.Char}, {"b", values.Char}},
-		Ret:      values.Char,
+		Args:     []values.FuncArg{{"a", types.Char}, {"b", types.Char}},
+		Ret:      types.Char,
 		IsNative: true,
 		Native:   NativeAddC,
 	},
 	"sub_i": {
-		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
-		Ret:      values.Int,
+		Args:     []values.FuncArg{{"a", types.Int}, {"b", types.Int}},
+		Ret:      types.Int,
 		IsNative: true,
 		Native:   NativeSubI,
 	},
 	"sub_f": {
-		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
-		Ret:      values.Float,
+		Args:     []values.FuncArg{{"a", types.Float}, {"b", types.Float}},
+		Ret:      types.Float,
 		IsNative: true,
 		Native:   NativeSubF,
 	},
 	"sub_c": {
-		Args:     []values.FuncArg{{"a", values.Char}, {"b", values.Char}},
-		Ret:      values.Char,
+		Args:     []values.FuncArg{{"a", types.Char}, {"b", types.Char}},
+		Ret:      types.Char,
 		IsNative: true,
 		Native:   NativeSubC,
 	},
 	"mul_i": {
-		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
-		Ret:      values.Int,
+		Args:     []values.FuncArg{{"a", types.Int}, {"b", types.Int}},
+		Ret:      types.Int,
 		IsNative: true,
 		Native:   NativeMulI,
 	},
 	"mul_f": {
-		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
-		Ret:      values.Float,
+		Args:     []values.FuncArg{{"a", types.Float}, {"b", types.Float}},
+		Ret:      types.Float,
 		IsNative: true,
 		Native:   NativeMulF,
 	},
 	"div_i": {
-		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
-		Ret:      values.Int,
+		Args:     []values.FuncArg{{"a", types.Int}, {"b", types.Int}},
+		Ret:      types.Int,
 		IsNative: true,
 		Native:   NativeDivI,
 	},
 	"div_f": {
-		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
-		Ret:      values.Float,
+		Args:     []values.FuncArg{{"a", types.Float}, {"b", types.Float}},
+		Ret:      types.Float,
 		IsNative: true,
 		Native:   NativeDivF,
 	},
 	"mod_i": {
-		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
-		Ret:      values.Int,
+		Args:     []values.FuncArg{{"a", types.Int}, {"b", types.Int}},
+		Ret:      types.Int,
 		IsNative: true,
 		Native:   NativeModI,
 	},
 	"mod_f": {
-		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Int}},
-		Ret:      values.Int,
+		Args:     []values.FuncArg{{"a", types.Float}, {"b", types.Int}},
+		Ret:      types.Int,
 		IsNative: true,
 		Native:   NativeModF,
 	},
 	"concat": {
-		Args:     []values.FuncArg{{"a", values.String}, {"b", values.String}},
-		Ret:      values.String,
+		Args:     []values.FuncArg{{"a", types.String}, {"b", types.String}},
+		Ret:      types.String,
 		IsNative: true,
 		Native:   NativeConcat,
 	},
 	"not": {
-		Args:     []values.FuncArg{{"a", values.Bool}},
-		Ret:      values.Bool,
+		Args:     []values.FuncArg{{"a", types.Bool}},
+		Ret:      types.Bool,
 		IsNative: true,
 		Native:   NativeNot,
 	},
 	"or": {
-		Args:     []values.FuncArg{{"a", values.Bool}, {"b", values.Bool}},
-		Ret:      values.Bool,
+		Args:     []values.FuncArg{{"a", types.Bool}, {"b", types.Bool}},
+		Ret:      types.Bool,
 		IsNative: true,
 		Native:   NativeOr,
 	},
 	"and": {
-		Args:     []values.FuncArg{{"a", values.Bool}, {"b", values.Bool}},
-		Ret:      values.Bool,
+		Args:     []values.FuncArg{{"a", types.Bool}, {"b", types.Bool}},
+		Ret:      types.Bool,
 		IsNative: true,
 		Native:   NativeAnd,
 	},
 	"eq": {
-		Args:     []values.FuncArg{{"a", values.Any}, {"b", values.Any}},
-		Ret:      values.Bool,
+		Args:     []values.FuncArg{{"a", types.Any}, {"b", types.Any}},
+		Ret:      types.Bool,
 		IsNative: true,
 		Native:   NativeEq,
 	},
 	"gt_i": {
-		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
-		Ret:      values.Bool,
+		Args:     []values.FuncArg{{"a", types.Int}, {"b", types.Int}},
+		Ret:      types.Bool,
 		IsNative: true,
 		Native:   NativeGtI,
 	},
 	"gt_f": {
-		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
-		Ret:      values.Bool,
+		Args:     []values.FuncArg{{"a", types.Float}, {"b", types.Float}},
+		Ret:      types.Bool,
 		IsNative: true,
 		Native:   NativeGtF,
 	},
 	"gt_c": {
-		Args:     []values.FuncArg{{"a", values.Char}, {"b", values.Char}},
-		Ret:      values.Bool,
+		Args:     []values.FuncArg{{"a", types.Char}, {"b", types.Char}},
+		Ret:      types.Bool,
 		IsNative: true,
 		Native:   NativeGtC,
 	},
 	"lt_i": {
-		Args:     []values.FuncArg{{"a", values.Int}, {"b", values.Int}},
-		Ret:      values.Bool,
+		Args:     []values.FuncArg{{"a", types.Int}, {"b", types.Int}},
+		Ret:      types.Bool,
 		IsNative: true,
 		Native:   NativeLtI,
 	},
 	"lt_f": {
-		Args:     []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
-		Ret:      values.Bool,
+		Args:     []values.FuncArg{{"a", types.Float}, {"b", types.Float}},
+		Ret:      types.Bool,
 		IsNative: true,
 		Native:   NativeLtF,
 	},
 	"lt_c": {
-		Args:     []values.FuncArg{{"a", values.Char}, {"b", values.Char}},
-		Ret:      values.Bool,
+		Args:     []values.FuncArg{{"a", types.Char}, {"b", types.Char}},
+		Ret:      types.Bool,
 		IsNative: true,
 		Native:   NativeLtC,
 	},
 	"char_at": {
-		Args:     []values.FuncArg{{"s", values.String}, {"i", values.Int}},
-		Ret:      values.Char,
+		Args:     []values.FuncArg{{"s", types.String}, {"i", types.Int}},
+		Ret:      types.Char,
 		IsNative: true,
 		Native:   NativeCharAt,
 	},
 	"substr": {
-		Args:     []values.FuncArg{{"s", values.String}, {"a", values.Int}, {"b", values.Int}},
-		Ret:      values.String,
+		Args:     []values.FuncArg{{"s", types.String}, {"a", types.Int}, {"b", types.Int}},
+		Ret:      types.String,
 		IsNative: true,
 		Native:   NativeSubstr,
 	},
 	"char_append": {
-		Args:     []values.FuncArg{{"s", values.String}, {"c", values.Char}},
-		Ret:      values.String,
+		Args:     []values.FuncArg{{"s", types.String}, {"c", types.Char}},
+		Ret:      types.String,
 		IsNative: true,
 		Native:   NativeCharAppend,
 	},
 	"str_len": {
-		Args:     []values.FuncArg{{"s", values.String}},
-		Ret:      values.Int,
+		Args:     []values.FuncArg{{"s", types.String}},
+		Ret:      types.Int,
 		IsNative: true,
 		Native:   NativeStrLen,
 	},
 	"ctoi": {
-		Args:     []values.FuncArg{{"c", values.Char}},
-		Ret:      values.Int,
+		Args:     []values.FuncArg{{"c", types.Char}},
+		Ret:      types.Int,
 		IsNative: true,
 		Native:   NativeCtoI,
 	},

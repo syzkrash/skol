@@ -7,6 +7,7 @@ import (
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
+	"github.com/syzkrash/skol/parser/values/types"
 )
 
 func TestVarDef(t *testing.T) {
@@ -62,8 +63,8 @@ func TestFuncCall(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.Funcs["add"] = &values.Function{
 		Name: "add",
-		Args: []values.FuncArg{{"a", values.Float}, {"b", values.Float}},
-		Ret:  values.Float,
+		Args: []values.FuncArg{{"a", types.Float}, {"b", types.Float}},
+		Ret:  types.Float,
 	}
 	n, err := p.value()
 	if err != nil {
@@ -96,8 +97,8 @@ func TestIf(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.Funcs["print"] = &values.Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.Any}},
-		Ret:  values.Nothing,
+		Args: []values.FuncArg{{"a", types.Any}},
+		Ret:  types.Nothing,
 	}
 	n, err := p.Next()
 	if err != nil {
@@ -133,8 +134,8 @@ func TestIfBetween(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.Funcs["print"] = &values.Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.Any}},
-		Ret:  values.Nothing,
+		Args: []values.FuncArg{{"a", types.Any}},
+		Ret:  types.Nothing,
 	}
 
 	// check for the if statement
@@ -188,8 +189,8 @@ func TestIfElse(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.Funcs["print"] = &values.Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.Any}},
-		Ret:  values.Nothing,
+		Args: []values.FuncArg{{"a", types.Any}},
+		Ret:  types.Nothing,
 	}
 
 	n, err := p.Next()
@@ -246,8 +247,8 @@ func TestIfElseIfElse(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.Funcs["print"] = &values.Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.Any}},
-		Ret:  values.Nothing,
+		Args: []values.FuncArg{{"a", types.Any}},
+		Ret:  types.Nothing,
 	}
 
 	n, err := p.Next()
@@ -324,8 +325,8 @@ func TestIfElseIf(t *testing.T) {
 	// to prevent 'unknown function' error
 	p.Scope.Funcs["print"] = &values.Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.Any}},
-		Ret:  values.Nothing,
+		Args: []values.FuncArg{{"a", types.Any}},
+		Ret:  types.Nothing,
 	}
 
 	n, err := p.Next()
@@ -418,8 +419,8 @@ func TestStruct(t *testing.T) {
 	if s.Name != "V2I" {
 		t.Fatalf("expected 'V2I' struct, got '%s' instead", s.Name)
 	}
-	if len(s.Type.Structure.Fields) != 2 {
-		t.Fatalf("expected 2 fields, got %d", len(s.Type.Structure.Fields))
+	if len(s.Type.(types.StructType).Fields) != 2 {
+		t.Fatalf("expected 2 fields, got %d", len(s.Type.(types.StructType).Fields))
 	}
 }
 
@@ -438,8 +439,8 @@ func TestNewStruct(t *testing.T) {
 	if s.Name != "V2I" {
 		t.Fatalf("expected 'V2I' struct, got '%s' instead", s.Name)
 	}
-	if len(s.Type.Structure.Fields) != 2 {
-		t.Fatalf("expected 2 fields, got %d", len(s.Type.Structure.Fields))
+	if len(s.Type.(types.StructType).Fields) != 2 {
+		t.Fatalf("expected 2 fields, got %d", len(s.Type.(types.StructType).Fields))
 	}
 	n, err = p.Next()
 	if err != nil {
@@ -468,8 +469,8 @@ func TestSelector(t *testing.T) {
 	code := ` %my_var: a#b#c `
 	src := strings.NewReader(code)
 	p := NewParser("TestSelector", src, "test")
-	b := values.Struct("b", []*values.Field{{"c", values.Int}})
-	a := values.Struct("a", []*values.Field{{"b", b}})
+	b := types.StructType{"b", []types.Field{{"c", types.Int}}}
+	a := types.StructType{"a", []types.Field{{"b", b}}}
 	p.Scope.SetVar("a", &nodes.VarDefNode{a, "a", &nodes.NewStructNode{}, lexer.Position{"TestSelector", 0, 0}})
 	n, err := p.Next()
 	if err != nil {
@@ -517,8 +518,8 @@ func TestSelectorType(t *testing.T) {
 	code := ` %my_var: a#b#c `
 	src := strings.NewReader(code)
 	p := NewParser("TestSelector", src, "test")
-	b := values.Struct("b", []*values.Field{{"c", values.Int}})
-	a := values.Struct("a", []*values.Field{{"b", b}})
+	b := types.StructType{"b", []types.Field{{"c", types.Int}}}
+	a := types.StructType{"a", []types.Field{{"b", b}}}
 	p.Scope.SetVar("a", &nodes.VarDefNode{a, "a", &nodes.NewStructNode{}, lexer.Position{"TestSelectorType", 0, 0}})
 	n, err := p.Next()
 	if err != nil {
@@ -528,7 +529,7 @@ func TestSelectorType(t *testing.T) {
 		t.Fatalf("expected VarDef node, got %s", n.Kind())
 	}
 	v := n.(*nodes.VarDefNode)
-	if !v.VarType.Equals(values.Int) {
+	if !v.VarType.Equals(types.Int) {
 		t.Fatalf("decuced type is not compatible with int: %s", v.VarType)
 	}
 }

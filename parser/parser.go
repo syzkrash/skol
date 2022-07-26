@@ -12,6 +12,7 @@ import (
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
+	"github.com/syzkrash/skol/parser/values/types"
 	"github.com/syzkrash/skol/sim"
 )
 
@@ -109,7 +110,7 @@ func (p *Parser) selectorOrTypecast(start *lexer.Token) (n nodes.Node, err error
 			}
 			t, ok := p.ParseType(tok.Raw)
 			if !ok {
-				err = p.selfError(tok, "unknown type: "+t.Name())
+				err = p.selfError(tok, "unknown type: "+t.String())
 				return
 			}
 			n = &nodes.TypecastNode{
@@ -222,8 +223,9 @@ func (p *Parser) value() (n nodes.Node, err error) {
 				err = p.selfError(tok, "unknown type: "+tok.Raw)
 				return
 			}
-			args := make([]nodes.Node, len(t.Structure.Fields))
-			for i := range t.Structure.Fields {
+			s := t.(types.StructType)
+			args := make([]nodes.Node, len(s.Fields))
+			for i := range s.Fields {
 				n, err = p.value()
 				if err != nil {
 					return
@@ -292,7 +294,7 @@ func (p *Parser) varDef() (n nodes.Node, err error) {
 		if !old.VarType.Equals(vt) {
 			err = p.selfError(nameToken, fmt.Sprintf(
 				"variable redefinition with incorrect type: %s (expected %s)",
-				vt.Name(), old.VarType.Name()))
+				vt.String(), old.VarType.String()))
 			return
 		}
 	}
@@ -319,7 +321,7 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 	}
 
 	var typeToken *lexer.Token
-	funcType := values.Undefined
+	var funcType types.Type = types.Undefined
 	var ok bool
 	sepToken, err := p.lexer.Next()
 	if err != nil {
@@ -371,13 +373,13 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 				if bn.Kind() == nodes.NdReturn {
 					rn := bn.(*nodes.ReturnNode)
 					t, _ := p.TypeOf(rn.Value)
-					if funcType == values.Undefined {
+					if funcType == types.Undefined {
 						funcType = t
 					}
 				}
 			}
-			if funcType.Prim == values.PUndefined {
-				funcType = values.Nothing
+			if funcType.Prim() == types.PUndefined {
+				funcType = types.Nothing
 			}
 			fdn := &nodes.FuncDefNode{
 				Name: nameToken.Raw,
@@ -403,8 +405,8 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 			} else {
 				intern = internToken.Raw
 			}
-			if funcType.Prim == values.PUndefined {
-				funcType = values.Nothing
+			if funcType.Prim() == types.PUndefined {
+				funcType = types.Nothing
 			}
 			fen := &nodes.FuncExternNode{
 				Name:   nameToken.Raw,
@@ -645,12 +647,12 @@ func (p *Parser) structn() (n nodes.Node, err error) {
 		err = p.selfError(startTk, "expected '(', got '"+startTk.Raw+"'")
 		return
 	}
-	fields := []*values.Field{}
+	fields := []types.Field{}
 	var (
 		fNameTk *lexer.Token
 		sepTk   *lexer.Token
 		typeTk  *lexer.Token
-		fType   *values.Type
+		fType   types.Type
 		ok      bool
 	)
 	for {
@@ -690,9 +692,9 @@ func (p *Parser) structn() (n nodes.Node, err error) {
 			err = p.selfError(typeTk, "unknown type: "+typeTk.Raw)
 			return
 		}
-		fields = append(fields, &values.Field{fNameTk.Raw, fType})
+		fields = append(fields, types.Field{fNameTk.Raw, fType})
 	}
-	t := values.Struct(nameTk.Raw, fields)
+	t := types.StructType{nameTk.Raw, fields}
 	n = &nodes.StructNode{
 		Name: nameTk.Raw,
 		Type: t,
@@ -702,20 +704,20 @@ func (p *Parser) structn() (n nodes.Node, err error) {
 	return
 }
 
-func (p *Parser) ParseType(raw string) (*values.Type, bool) {
+func (p *Parser) ParseType(raw string) (types.Type, bool) {
 	switch strings.ToLower(raw) {
 	case "integer", "int32", "int", "i32", "i":
-		return values.Int, true
+		return types.Int, true
 	case "boolean", "bool", "b":
-		return values.Bool, true
+		return types.Bool, true
 	case "float32", "float", "f32", "f":
-		return values.Float, true
+		return types.Float, true
 	case "char", "ch", "c":
-		return values.Char, true
+		return types.Char, true
 	case "string", "str", "s":
-		return values.String, true
+		return types.String, true
 	case "any", "a":
-		return values.Any, true
+		return types.Any, true
 	}
 	if stype, ok := p.Scope.FindType(raw); ok {
 		return stype, true
@@ -785,18 +787,18 @@ func (p *Parser) Next() (n nodes.Node, err error) {
 	return
 }
 
-func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, err error) {
+func (p *Parser) TypeOf(n nodes.Node) (t types.Type, err error) {
 	switch n.Kind() {
 	case nodes.NdBoolean:
-		t = values.Bool
+		t = types.Bool
 	case nodes.NdInteger:
-		t = values.Int
+		t = types.Int
 	case nodes.NdFloat:
-		t = values.Float
+		t = types.Float
 	case nodes.NdChar:
-		t = values.Char
+		t = types.Char
 	case nodes.NdString:
-		t = values.String
+		t = types.String
 	case nodes.NdNewStruct:
 		t = n.(*nodes.NewStructNode).Type
 	case nodes.NdFuncCall:
@@ -821,17 +823,17 @@ func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, err error) {
 		}
 	outer:
 		for _, e := range path[1:] {
-			if t.Prim != values.PStruct {
+			if t.Prim() != types.PStruct {
 				err = common.Error(n, "can only select fields on structures")
 				return
 			}
-			for _, f := range t.Structure.Fields {
+			for _, f := range t.(types.StructType).Fields {
 				if f.Name == e {
 					t = f.Type
 					continue outer
 				}
 			}
-			err = common.Error(n, "%s does not contain field '%s'", t.Name(), e)
+			err = common.Error(n, "%s does not contain field '%s'", t.String(), e)
 			return
 		}
 	case nodes.NdTypecast:
@@ -843,16 +845,16 @@ func (p *Parser) TypeOf(n nodes.Node) (t *values.Type, err error) {
 }
 
 func (p *Parser) ToNode(v *values.Value, pos lexer.Position) nodes.Node {
-	switch v.Type.Prim {
-	case values.PBool:
+	switch v.Type.Prim() {
+	case types.PBool:
 		return &nodes.BooleanNode{v.Data.(bool), pos}
-	case values.PChar:
+	case types.PChar:
 		return &nodes.CharNode{v.Data.(byte), pos}
-	case values.PFloat:
+	case types.PFloat:
 		return &nodes.FloatNode{v.Data.(float32), pos}
-	case values.PInt:
+	case types.PInt:
 		return &nodes.IntegerNode{v.Data.(int32), pos}
-	case values.PString:
+	case types.PString:
 		return &nodes.StringNode{v.Data.(string), pos}
 	}
 	panic(v.Type.String())
