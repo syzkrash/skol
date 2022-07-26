@@ -9,6 +9,7 @@ const (
 	PFloat
 	PString
 	PStruct
+	PArray
 	PAny
 	PNothing
 	PUndefined
