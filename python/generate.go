@@ -64,7 +64,6 @@ func (p *pythonState) class(s *nodes.StructNode) (err error) {
 }
 
 func (p *pythonState) statement(n nodes.Node) (err error) {
-	p.out.WriteString(fmt.Sprintf("#%s\n", n))
 	defer p.out.WriteString("\n")
 
 	for i := 0; i < int(p.ind); i++ {
