@@ -25,6 +25,7 @@ const (
 	NdNewStruct
 	NdSelector
 	NdTypecast
+	NdArray
 )
 
 var nodeKinds = []string{
@@ -290,5 +291,19 @@ func (*TypecastNode) Kind() NodeKind {
 }
 
 func (n *TypecastNode) Where() lexer.Position {
+	return n.Pos
+}
+
+type ArrayNode struct {
+	Type     types.Type
+	Elements []Node
+	Pos      lexer.Position
+}
+
+func (*ArrayNode) Kind() NodeKind {
+	return NdArray
+}
+
+func (n *ArrayNode) Where() lexer.Position {
 	return n.Pos
 }
