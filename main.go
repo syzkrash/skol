@@ -181,7 +181,11 @@ func repl() {
 		}
 		src.Reset(line + "\n")
 		if err = gen.Generate(os.Stdout); err != nil {
-			fmt.Fprintln(os.Stderr, "Error -", err)
+			if perr, ok := err.(common.Printable); ok {
+				perr.Print()
+			} else {
+				fmt.Fprintln(os.Stderr, "Error -", err)
+			}
 		}
 	}
 }
