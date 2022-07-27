@@ -57,6 +57,10 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 
 	case nodes.NdFuncDef:
 		fdn := n.(*nodes.FuncDefNode)
+		if fdn.Ret.Equals(types.Any) {
+			return typeError(n, types.Nothing, types.Nothing,
+				"functions cannot return Any")
+		}
 		t.Parser.Scope = &parser.Scope{
 			Parent: t.Parser.Scope,
 			Funcs:  map[string]*values.Function{},
@@ -137,6 +141,10 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 
 	case nodes.NdVarDef:
 		vdn := n.(*nodes.VarDefNode)
+		if vdn.VarType.Equals(types.Any) {
+			return typeError(n, types.Nothing, types.Nothing,
+				"variables cannot be of type Any")
+		}
 		switch vdn.Value.Kind() {
 		case nodes.NdTypecast:
 			tn := vdn.Value.(*nodes.TypecastNode)
