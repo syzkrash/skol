@@ -155,13 +155,18 @@ func gen(fn string, src io.RuneScanner) codegen.Generator {
 }
 
 func repl() {
-	fmt.Fprintln(os.Stderr, "Type a line of Skol code and hit Enter.")
-	fmt.Fprintln(os.Stderr, "Code generated for the given engine will be printed.")
-	fmt.Fprintln(os.Stderr, "Press ^C at any time to exit.")
-
 	stdin := bufio.NewReader(os.Stdin)
 	src := strings.NewReader("")
 	gen := gen("REPL", src)
+
+	if !gen.CanGenerate() {
+		fmt.Fprintln(os.Stderr, "The given engine does not generate code.")
+		return
+	}
+
+	fmt.Fprintln(os.Stderr, "Type a line of Skol code and hit Enter.")
+	fmt.Fprintln(os.Stderr, "Code generated for the given engine will be printed.")
+	fmt.Fprintln(os.Stderr, "Press ^C at any time to exit.")
 
 	for {
 		fmt.Fprint(os.Stderr, ">> ")
