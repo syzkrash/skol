@@ -83,11 +83,18 @@ func (p *Parser) value() (n nodes.Node, err error) {
 			err = p.selfError(tok, "unknown variable: "+tok.Raw)
 		}
 	case lexer.TkPunct:
-		if tok.Raw == "*" {
-			n = &nodes.BooleanNode{true, tok.Where}
-		} else if tok.Raw == "/" {
-			n = &nodes.BooleanNode{false, tok.Where}
-		} else if tok.Raw == "@" {
+		switch tok.Raw[0] {
+		case '*':
+			n = &nodes.BooleanNode{
+				Bool: true,
+				Pos:  tok.Where,
+			}
+		case '/':
+			n = &nodes.BooleanNode{
+				Bool: false,
+				Pos:  tok.Where,
+			}
+		case '@':
 			tok, err = p.lexer.Next()
 			if err != nil {
 				return
@@ -115,7 +122,66 @@ func (p *Parser) value() (n nodes.Node, err error) {
 				Args: args,
 				Pos:  tok.Where,
 			}
-		} else {
+		case '[':
+			var elemtype types.Type = types.Undefined
+			var ok bool
+			tok, err = p.lexer.Next()
+			if err != nil {
+				return
+			}
+			if tok.Kind == lexer.TkIdent {
+				elemtype, ok = p.ParseType(tok.Raw)
+				if !ok {
+					err = p.selfError(tok, "unknown type")
+					return
+				}
+				tok, err = p.lexer.Next()
+				if err != nil {
+					return
+				}
+			}
+			if tok.Kind != lexer.TkPunct || tok.Raw[0] != ']' {
+				err = p.selfError(tok, "expected ']'")
+				return
+			}
+			tok, err = p.lexer.Next()
+			if err != nil {
+				return
+			}
+			if tok.Kind != lexer.TkPunct || tok.Raw[0] != '(' {
+				err = p.selfError(tok, "expected '('")
+				return
+			}
+			elems := []nodes.Node{}
+			var elem nodes.Node
+			for {
+				tok, err = p.lexer.Next()
+				if err != nil {
+					return
+				}
+				if tok.Kind == lexer.TkPunct && tok.Raw[0] == ')' {
+					break
+				} else {
+					p.lexer.Rollback(tok)
+				}
+				elem, err = p.value()
+				if err != nil {
+					return
+				}
+				if elemtype.Prim() == types.PUndefined {
+					elemtype, err = p.TypeOf(elem)
+					if err != nil {
+						return
+					}
+				}
+				elems = append(elems, elem)
+			}
+			n = &nodes.ArrayNode{
+				Type:     elemtype,
+				Elements: elems,
+				Pos:      tok.Where,
+			}
+		default:
 			err = p.selfError(tok, "unexpected punctuator")
 		}
 	default:
