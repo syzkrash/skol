@@ -254,7 +254,6 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 		v.Type = tn.Target
 		return v, nil
 	}
-	fmt.Printf("Simulator: not a value: %s\n", n.Kind())
 	return nil, s.Errorf(n, "%s node is not a value", n.Kind())
 }
 
