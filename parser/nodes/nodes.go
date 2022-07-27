@@ -45,6 +45,7 @@ var nodeKinds = []string{
 	"NewStruct",
 	"Selector",
 	"Typecast",
+	"Array",
 }
 
 func (k NodeKind) String() string {
