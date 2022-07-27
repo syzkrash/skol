@@ -258,7 +258,6 @@ func (p *pythonState) selector(s *nodes.SelectorNode) (err error) {
 }
 
 func (p *pythonState) value(n nodes.Node) error {
-	fmt.Printf("Python: generating value: %s\n", n.Kind())
 	switch n.Kind() {
 	case nodes.NdInteger:
 		return p.integer(n.(*nodes.IntegerNode))
@@ -277,7 +276,6 @@ func (p *pythonState) value(n nodes.Node) error {
 	case nodes.NdSelector:
 		return p.selector(n.(*nodes.SelectorNode))
 	}
-	fmt.Printf("Python: not a value: %s\n", n.Kind())
 	return fmt.Errorf("%s node is not a value", n.Kind())
 }
 
