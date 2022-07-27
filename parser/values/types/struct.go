@@ -47,7 +47,7 @@ func MakeStruct(name string, fields ...any) Type {
 	for i := 0; i < len(fields); i += 2 {
 		f[i/2] = Field{
 			Name: fields[i].(string),
-			Type: fields[i].(Type),
+			Type: fields[i+1].(Type),
 		}
 	}
 	return StructType{
