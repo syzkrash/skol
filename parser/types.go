@@ -81,6 +81,8 @@ func (p *Parser) TypeOf(n nodes.Node) (t types.Type, err error) {
 		}
 	case nodes.NdTypecast:
 		return n.(*nodes.TypecastNode).Target, nil
+	case nodes.NdArray:
+		return types.ArrayType{n.(*nodes.ArrayNode).Type}, nil
 	default:
 		err = fmt.Errorf("%s node is not a value", n.Kind())
 	}
