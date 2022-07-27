@@ -156,6 +156,18 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 				return typeError(tn, otype, tn.Target,
 					"cannot cast to incompatible type")
 			}
+		case nodes.NdArray:
+			an := vdn.Value.(*nodes.ArrayNode)
+			for _, e := range an.Elements {
+				et, err := t.Parser.TypeOf(e)
+				if err != nil {
+					return err
+				}
+				if !an.Type.Equals(et) {
+					return typeError(an, an.Type, et,
+						"value of incompatible type in array")
+				}
+			}
 		}
 	}
 	return nil
