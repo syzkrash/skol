@@ -123,6 +123,7 @@ func (p *Parser) value() (n nodes.Node, err error) {
 				Pos:  tok.Where,
 			}
 		case '[':
+			begin := tok
 			var elemtype types.Type = types.Undefined
 			var ok bool
 			tok, err = p.lexer.Next()
@@ -176,10 +177,14 @@ func (p *Parser) value() (n nodes.Node, err error) {
 				}
 				elems = append(elems, elem)
 			}
+			if elemtype.Prim() == types.PUndefined {
+				err = p.selfError(begin, "array literal must have a type or at least one element")
+				return
+			}
 			n = &nodes.ArrayNode{
 				Type:     elemtype,
 				Elements: elems,
-				Pos:      tok.Where,
+				Pos:      begin.Where,
 			}
 		default:
 			err = p.selfError(tok, "unexpected punctuator")
