@@ -125,15 +125,13 @@ func (p *Parser) value() (n nodes.Node, err error) {
 		case '[':
 			begin := tok
 			var elemtype types.Type = types.Undefined
-			var ok bool
 			tok, err = p.lexer.Next()
 			if err != nil {
 				return
 			}
 			if tok.Kind == lexer.TkIdent {
-				elemtype, ok = p.ParseType(tok.Raw)
-				if !ok {
-					err = p.selfError(tok, "unknown type")
+				elemtype, err = p.parseType()
+				if err != nil {
 					return
 				}
 				tok, err = p.lexer.Next()

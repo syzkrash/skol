@@ -8,6 +8,7 @@ import (
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
+	"github.com/syzkrash/skol/parser/values/types"
 	"github.com/syzkrash/skol/sim"
 )
 
@@ -78,18 +79,10 @@ func (p *Parser) selectorOrTypecast(start *lexer.Token) (n nodes.Node, err error
 			return
 		}
 		if tok.Kind == lexer.TkPunct && tok.Raw == "@" {
+			var t types.Type
 			typecastLoc := tok.Where
-			tok, err = p.lexer.Next()
+			t, err = p.parseType()
 			if err != nil {
-				return
-			}
-			if tok.Kind != lexer.TkIdent {
-				err = p.selfError(tok, "expected an identifer")
-				return
-			}
-			t, ok := p.ParseType(tok.Raw)
-			if !ok {
-				err = p.selfError(tok, "unknown type: "+t.String())
 				return
 			}
 			n = &nodes.TypecastNode{

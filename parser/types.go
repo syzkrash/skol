@@ -5,29 +5,61 @@ import (
 	"strings"
 
 	"github.com/syzkrash/skol/common"
+	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
-func (p *Parser) ParseType(raw string) (types.Type, bool) {
-	switch strings.ToLower(raw) {
+func (p *Parser) parseType() (t types.Type, err error) {
+	tk, err := p.lexer.Next()
+	if err != nil {
+		return
+	}
+	isArray := false
+	if tk.Kind == lexer.TkPunct && tk.Raw[0] == '[' {
+		isArray = true
+		tk, err = p.lexer.Next()
+		if err != nil {
+			return
+		}
+	}
+	if tk.Kind != lexer.TkIdent {
+		err = p.selfError(tk, "expected identifier")
+		return
+	}
+	switch strings.ToLower(tk.Raw) {
 	case "integer", "int32", "int", "i32", "i":
-		return types.Int, true
+		t = types.Int
 	case "boolean", "bool", "b":
-		return types.Bool, true
+		t = types.Bool
 	case "float32", "float", "f32", "f":
-		return types.Float, true
+		t = types.Float
 	case "char", "ch", "c":
-		return types.Char, true
+		t = types.Char
 	case "string", "str", "s":
-		return types.String, true
+		t = types.String
 	case "any", "a":
-		return types.Any, true
+		t = types.Any
+	default:
+		var ok bool
+		t, ok = p.Scope.FindType(tk.Raw)
+		if !ok {
+			err = p.selfError(tk, "unknown type: "+tk.Raw)
+			return
+		}
 	}
-	if stype, ok := p.Scope.FindType(raw); ok {
-		return stype, true
+	if isArray {
+		tk, err = p.lexer.Next()
+		if err != nil {
+			return
+		}
+		if tk.Kind != lexer.TkPunct || tk.Raw[0] != ']' {
+			err = p.selfError(tk, "expected ']'")
+			return
+		}
+		t = types.ArrayType{t}
 	}
-	return nil, false
+	return
 }
 
 func (p *Parser) TypeOf(n nodes.Node) (t types.Type, err error) {

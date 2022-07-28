@@ -121,25 +121,14 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 		return
 	}
 
-	var typeToken *lexer.Token
 	var funcType types.Type = types.Undefined
-	var ok bool
 	sepToken, err := p.lexer.Next()
 	if err != nil {
 		return
 	}
 	if sepToken.Kind == lexer.TkPunct && sepToken.Raw == "/" {
-		typeToken, err = p.lexer.Next()
+		funcType, err = p.parseType()
 		if err != nil {
-			return
-		}
-		if typeToken.Kind != lexer.TkIdent {
-			err = p.selfError(typeToken, "expected Identifier, got "+typeToken.Kind.String())
-			return
-		}
-		funcType, ok = p.ParseType(typeToken.Raw)
-		if !ok {
-			err = p.selfError(typeToken, "unknown type: "+typeToken.Raw)
 			return
 		}
 	} else {
@@ -234,16 +223,9 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 		if sept.Raw[0] != '/' {
 			return nil, p.selfError(sept, "expected '/'")
 		}
-		argType, err := p.lexer.Next()
+		t, err := p.parseType()
 		if err != nil {
 			return nil, err
-		}
-		if argType.Kind != lexer.TkIdent {
-			return nil, p.selfError(argType, "expected an identifier")
-		}
-		t, ok := p.ParseType(argType.Raw)
-		if !ok {
-			return nil, p.selfError(argType, "unknown type: "+argType.Raw)
 		}
 		args = append(args, values.FuncArg{Name: argName.Raw, Type: t})
 	}
@@ -274,9 +256,7 @@ func (p *Parser) structn() (n nodes.Node, err error) {
 	var (
 		fNameTk *lexer.Token
 		sepTk   *lexer.Token
-		typeTk  *lexer.Token
 		fType   types.Type
-		ok      bool
 	)
 	for {
 		fNameTk, err = p.lexer.Next()
@@ -302,17 +282,8 @@ func (p *Parser) structn() (n nodes.Node, err error) {
 			err = p.selfError(sepTk, "expected '/', got '"+sepTk.Raw+"'")
 			return
 		}
-		typeTk, err = p.lexer.Next()
+		fType, err = p.parseType()
 		if err != nil {
-			return
-		}
-		if typeTk.Kind != lexer.TkIdent {
-			err = p.selfError(typeTk, "expected Identifier, got "+typeTk.Kind.String())
-			return
-		}
-		fType, ok = p.ParseType(typeTk.Raw)
-		if !ok {
-			err = p.selfError(typeTk, "unknown type: "+typeTk.Raw)
 			return
 		}
 		fields = append(fields, types.Field{fNameTk.Raw, fType})
