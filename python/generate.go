@@ -226,8 +226,20 @@ func (p *pythonState) instantiate(n *nodes.NewStructNode) (err error) {
 	if err != nil {
 		return
 	}
-	for _, a := range n.Args {
-		err = p.value(a)
+	if len(n.Args) == 1 {
+		err = p.value(n.Args[0])
+		if err != nil {
+			return
+		}
+	} else {
+		for _, a := range n.Args[:len(n.Args)-1] {
+			err = p.value(a)
+			if err != nil {
+				return
+			}
+			p.out.WriteString(", ")
+		}
+		err = p.value(n.Args[len(n.Args)-1])
 		if err != nil {
 			return
 		}
