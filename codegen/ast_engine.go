@@ -67,9 +67,9 @@ func (g *ASTGenerator) internalGenerate(w io.Writer, n nodes.Node) error {
 		fdn := n.(*nodes.FuncDefNode)
 		fmt.Fprintf(w, "FuncDef (%s; ", fdn.Name)
 		for _, a := range fdn.Args {
-			fmt.Fprintf(w, "%s %s,", a.Type, a.Name)
+			fmt.Fprintf(w, "%s %s  ", a.Type, a.Name)
 		}
-		fmt.Fprintln(w, "):")
+		fmt.Fprintf(w, "; %s):\n", fdn.Ret)
 		g.indent++
 		for _, bn := range fdn.Body {
 			g.internalGenerate(w, bn)
@@ -79,9 +79,9 @@ func (g *ASTGenerator) internalGenerate(w io.Writer, n nodes.Node) error {
 		fdn := n.(*nodes.FuncExternNode)
 		fmt.Fprintf(w, "FuncExtern (%s; ", fdn.Name)
 		for _, a := range fdn.Args {
-			fmt.Fprintf(w, "%s %s,", a.Type, a.Name)
+			fmt.Fprintf(w, "%s %s  ", a.Type, a.Name)
 		}
-		fmt.Fprint(w, ")")
+		fmt.Fprintf(w, "; %s)", fdn.Ret)
 	case nodes.NdReturn:
 		fmt.Fprintln(w, "Return:")
 		g.indent++
@@ -130,8 +130,9 @@ func (g *ASTGenerator) internalGenerate(w io.Writer, n nodes.Node) error {
 	case nodes.NdSelector:
 		fmt.Fprint(w, "Selector (")
 		for _, e := range n.(*nodes.SelectorNode).Path() {
-			fmt.Fprintf(w, "%s, ", e)
+			fmt.Fprintf(w, "%s  ", e)
 		}
+		fmt.Fprintf(w, ")")
 	case nodes.NdTypecast:
 		tn := n.(*nodes.TypecastNode)
 		fmt.Fprint(w, "Typecast (")
