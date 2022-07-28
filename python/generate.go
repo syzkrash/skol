@@ -12,17 +12,19 @@ import (
 const indent = "  "
 
 func (p *pythonState) vt2pt(t types.Type) string {
-	switch t {
-	case types.Bool:
+	switch {
+	case types.Bool.Equals(t):
 		return "bool"
-	case types.Char:
+	case types.Int.Equals(t), types.Char.Equals(t):
 		return "int"
-	case types.Float:
+	case types.Float.Equals(t):
 		return "float"
-	case types.Int:
-		return "int"
-	case types.String:
-		return "str"
+	case types.String.Equals(t):
+		return "string"
+	case t.Prim() == types.PStruct:
+		return t.(types.StructType).Name
+	case t.Prim() == types.PArray:
+		return "list"
 	}
 	return ""
 }
