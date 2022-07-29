@@ -24,6 +24,7 @@ const (
 	NdSelector
 	NdTypecast
 	NdArray
+	NdIndex
 )
 
 var nodeKinds = []string{
@@ -44,6 +45,7 @@ var nodeKinds = []string{
 	"Selector",
 	"Typecast",
 	"Array",
+	"Index",
 }
 
 func (k NodeKind) String() string {

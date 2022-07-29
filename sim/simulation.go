@@ -253,6 +253,40 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 		}
 		v.Type = tn.Target
 		return v, nil
+	case nodes.NdIndex:
+		in := n.(*nodes.IndexNode)
+		pv, err := s.Expr(in.Parent)
+		if err != nil {
+			return nil, err
+		}
+		if pv.Type.Prim() != types.PArray {
+			return nil, s.Errorf(n, "cannot index %s node", n.Kind())
+		}
+		at := pv.Type.(types.ArrayType)
+		av, ok := pv.Data.([]*values.Value)
+		if !ok {
+			panic("array-type value does not contain slice value")
+		}
+		rt := types.MakeStruct(at.Element.String()+"Result",
+			"val", at.Element,
+			"ok", types.Bool)
+		if in.Index >= len(av) || in.Index < 0 {
+			return &values.Value{
+				Type: rt,
+				Data: map[string]*values.Value{
+					"val": nil,
+					"ok":  values.NewValue(false),
+				},
+			}, nil
+		} else {
+			return &values.Value{
+				Type: rt,
+				Data: map[string]*values.Value{
+					"val": av[in.Index],
+					"ok":  values.NewValue(true),
+				},
+			}, nil
+		}
 	}
 	return nil, s.Errorf(n, "%s node is not a value", n.Kind())
 }

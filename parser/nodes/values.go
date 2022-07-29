@@ -53,3 +53,17 @@ func (*TypecastNode) Kind() NodeKind {
 func (n *TypecastNode) Where() lexer.Position {
 	return n.Pos
 }
+
+type IndexNode struct {
+	Parent *SelectorNode
+	Index  int
+	Pos    lexer.Position
+}
+
+func (*IndexNode) Kind() NodeKind {
+	return NdIndex
+}
+
+func (n *IndexNode) Where() lexer.Position {
+	return n.Pos
+}

@@ -115,6 +115,21 @@ func (p *Parser) TypeOf(n nodes.Node) (t types.Type, err error) {
 		return n.(*nodes.TypecastNode).Target, nil
 	case nodes.NdArray:
 		return types.ArrayType{n.(*nodes.ArrayNode).Type}, nil
+	case nodes.NdIndex:
+		i := n.(*nodes.IndexNode)
+		ptype, err := p.TypeOf(i.Parent)
+		if err != nil {
+			return nil, err
+		}
+		if ptype.Prim() != types.PArray {
+			return nil, fmt.Errorf("cannot index %s value", ptype.String())
+		}
+		atype := ptype.(types.ArrayType)
+		rtype := types.MakeStruct(atype.Element.String()+"Result",
+			"val", atype.Element,
+			"ok", types.Bool)
+		p.Scope.Types[rtype.(types.StructType).Name] = rtype
+		return rtype, nil
 	default:
 		err = fmt.Errorf("%s node is not a value", n.Kind())
 	}

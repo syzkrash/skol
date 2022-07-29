@@ -148,6 +148,13 @@ func (g *ASTGenerator) internalGenerate(w io.Writer, n nodes.Node) error {
 			g.internalGenerate(w, en)
 		}
 		g.indent--
+	case nodes.NdIndex:
+		in := n.(*nodes.IndexNode)
+		fmt.Fprint(w, "Index (")
+		for _, e := range in.Parent.Path() {
+			fmt.Fprintf(w, "%s  ", e)
+		}
+		fmt.Fprintf(w, "%d)", in.Index)
 	}
 	fmt.Fprint(w, "\n")
 	return nil

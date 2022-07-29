@@ -2,6 +2,7 @@ package python
 
 import (
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -288,6 +289,8 @@ func (p *pythonState) value(n nodes.Node) error {
 		return p.instantiate(n.(*nodes.NewStructNode))
 	case nodes.NdSelector:
 		return p.selector(n.(*nodes.SelectorNode))
+	case nodes.NdIndex:
+		return p.index(n.(*nodes.IndexNode))
 	}
 	return fmt.Errorf("%s node is not a value", n.Kind())
 }
@@ -496,4 +499,13 @@ func (p *pythonState) while(n *nodes.WhileNode) (err error) {
 		return
 	}
 	return p.block(n.Body)
+}
+
+func (p *pythonState) index(n *nodes.IndexNode) (err error) {
+	err = p.selector(n.Parent)
+	if err != nil {
+		return
+	}
+	fmt.Fprintf(p.out.(io.Writer), "[%d]", n.Index)
+	return
 }

@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"io"
+	"strconv"
 
 	"github.com/syzkrash/skol/debug"
 	"github.com/syzkrash/skol/lexer"
@@ -89,6 +90,20 @@ func (p *Parser) selectorOrTypecast(start *lexer.Token) (n nodes.Node, err error
 				Value:  n.(*nodes.SelectorNode),
 				Target: t,
 				Pos:    typecastLoc,
+			}
+			return
+		}
+		if tok.Kind == lexer.TkConstant {
+			var idx int64
+			idx, err = strconv.ParseInt(tok.Raw, 0, 32)
+			if err != nil {
+				err = p.otherError(tok, "invalid index", err)
+				return
+			}
+			n = &nodes.IndexNode{
+				Parent: n.(*nodes.SelectorNode),
+				Index:  int(idx),
+				Pos:    n.Where(),
 			}
 			return
 		}
