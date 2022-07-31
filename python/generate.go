@@ -289,6 +289,8 @@ func (p *pythonState) value(n nodes.Node) error {
 		return p.instantiate(n.(*nodes.NewStructNode))
 	case nodes.NdSelector:
 		return p.selector(n.(*nodes.SelectorNode))
+	case nodes.NdArray:
+		return p.list(n.(*nodes.ArrayNode))
 	case nodes.NdIndex:
 		return p.index(n.(*nodes.IndexNode))
 	}
@@ -499,6 +501,22 @@ func (p *pythonState) while(n *nodes.WhileNode) (err error) {
 		return
 	}
 	return p.block(n.Body)
+}
+
+func (p *pythonState) list(n *nodes.ArrayNode) (err error) {
+	w := p.out.(io.Writer)
+	fmt.Fprint(w, "[")
+	if len(n.Elements) == 1 {
+		p.value(n.Elements[0])
+	} else if len(n.Elements) > 1 {
+		for _, e := range n.Elements[:len(n.Elements)-1] {
+			p.value(e)
+			p.out.WriteString(", ")
+		}
+		p.value(n.Elements[len(n.Elements)-1])
+	}
+	fmt.Fprint(w, "]")
+	return
 }
 
 func (p *pythonState) index(n *nodes.IndexNode) (err error) {
