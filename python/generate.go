@@ -31,38 +31,47 @@ func (p *pythonState) vt2pt(t types.Type) string {
 }
 
 func (p *pythonState) class(s *nodes.StructNode) (err error) {
-	_, err = p.out.WriteString("class " + s.Name + ":\n" + indent + "def __init__(self, ")
-	if err != nil {
-		return
+	str := s.Type.(types.StructType)
+	w := p.out.(io.Writer)
+
+	// begin class definition
+	//		class x:
+	fmt.Fprintf(w, "class %s:\n", s.Name)
+
+	// add __slots__
+	//		__slots__ = ('a', 'b', 'c', ...,)
+	fmt.Fprint(w, indent+"__slots__ = (")
+	for _, f := range str.Fields {
+		fmt.Fprintf(w, "\"%s\", ", f.Name)
 	}
-	st := s.Type.(types.StructType)
-	if len(st.Fields) > 1 {
-		for _, f := range st.Fields[:len(st.Fields)-1] {
-			_, err = p.out.WriteString(f.Name)
-			if err != nil {
-				return
-			}
-			_, err = p.out.WriteString(", ")
-			if err != nil {
-				return
-			}
-		}
+	fmt.Fprint(w, ")\n")
+
+	// add type hints for fields
+	//		a: int
+	//		b: str
+	//		...
+	for _, f := range str.Fields {
+		fmt.Fprintf(w, indent+"%s: %s\n", f.Name, p.vt2pt(f.Type))
 	}
-	f := st.Fields[len(st.Fields)-1]
-	_, err = p.out.WriteString(f.Name)
-	if err != nil {
-		return
+
+	// add constructor
+	//	def __init__(self, a: int, b: str, ...,):
+	fmt.Fprint(w, indent+"def __init__(")
+	for _, f := range str.Fields {
+		fmt.Fprintf(w, "%s: %s, ", f.Name, p.vt2pt(f.Type))
 	}
-	_, err = p.out.WriteString("):\n")
-	if err != nil {
-		return
+	fmt.Fprint(w, "):\n")
+
+	// constructor body
+	//		self.a = a
+	//		self.b = b
+	//		...
+	for _, f := range str.Fields {
+		fmt.Fprintf(w, indent+indent+"self.%s = %s\n", f.Name, f.Name)
 	}
-	for _, f := range st.Fields {
-		_, err = p.out.WriteString(indent + indent + "self." + f.Name + " = " + f.Name + "\n")
-		if err != nil {
-			return
-		}
-	}
+
+	// add a final newline to ensure no indentation fuckery
+	fmt.Fprint(w, "\n")
 	return
 }
 
