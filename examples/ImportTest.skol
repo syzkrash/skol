@@ -1,11 +1,16 @@
 import! "requests"
-$get/any url/str ?"requests.get"
-$getattr/any obj/any prop/str ?
+
+@Response(
+  status_code/int
+)
+
+$get/Response url/str ?"requests.get"
+
 
 $Main
 (
   %r: get! "http://example.com"
-  print! getattr! r "status_code"
+  print! to_str! r#status_code
 )
 
 Main!

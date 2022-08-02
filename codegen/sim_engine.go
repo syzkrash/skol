@@ -4,17 +4,17 @@ import (
 	"errors"
 	"io"
 
-	"github.com/syzkrash/skol/parser"
 	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/typecheck"
 )
 
 type SimEngine struct {
-	p *parser.Parser
+	c *typecheck.Typechecker
 }
 
 func NewSimEngine(fn string, src io.RuneScanner) Generator {
 	return &SimEngine{
-		p: parser.NewParser(fn, src, "sim"),
+		c: typecheck.NewTypechecker(src, fn, "sim"),
 	}
 }
 
@@ -37,14 +37,14 @@ func (*SimEngine) Ext() string {
 func (s *SimEngine) Run(string) (err error) {
 	var n nodes.Node
 	for {
-		n, err = s.p.Next()
+		n, err = s.c.Next()
 		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {
 			return
 		}
-		err = s.p.Sim.Stmt(n)
+		err = s.c.Parser.Sim.Stmt(n)
 		if err != nil {
 			return
 		}
