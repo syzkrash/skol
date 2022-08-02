@@ -30,6 +30,52 @@ func typeError(n nodes.Node, want, got types.Type, format string, a ...any) erro
 	}
 }
 
+func (t *Typechecker) checkSelector(s nodes.Selector) (err error) {
+	path := s.Path()
+	root, _ := t.Parser.Scope.FindVar(path[0].Name)
+	typeNow := root.VarType
+	for _, e := range path[1:] {
+		// again, the selector resolve algorithm
+		// see /parser/types.go, line 137
+		if e.Cast != nil {
+			if !typeNow.Equals(e.Cast) {
+				return typeError(s, typeNow, e.Cast,
+					"cast to incompatible type")
+			}
+			typeNow = e.Cast
+			continue
+		}
+		if e.Name != "" {
+			if typeNow.Prim() != types.PStruct {
+				return typeError(s, typeNow, nil,
+					"can only access fields on structures (acessing '%s' on %s)",
+					e.Name, typeNow)
+			}
+			st := typeNow.(types.StructType)
+			ok := false
+			for _, f := range st.Fields {
+				if f.Name == e.Name {
+					ok = true
+					typeNow = f.Type
+				}
+			}
+			if !ok {
+				return typeError(s, typeNow, nil,
+					"unknown field: '%s'", e.Name)
+			}
+			continue
+		}
+		if typeNow.Prim() != types.PArray {
+			return typeError(s, typeNow, nil,
+				"can only index arrays (accessing index %d of %s)",
+				e.Idx, typeNow)
+		}
+		at := typeNow.(types.ArrayType)
+		typeNow = t.Parser.EnsureResultType(at.Element)
+	}
+	return
+}
+
 func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 	switch n.Kind() {
 	case nodes.NdFuncCall:
@@ -146,16 +192,6 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 				"variables cannot be of type Any")
 		}
 		switch vdn.Value.Kind() {
-		case nodes.NdTypecast:
-			tn := vdn.Value.(*nodes.TypecastNode)
-			otype, err := t.Parser.TypeOf(tn.Value)
-			if err != nil {
-				return err
-			}
-			if !otype.Equals(tn.Target) {
-				return typeError(tn, otype, tn.Target,
-					"cannot cast to incompatible type")
-			}
 		case nodes.NdArray:
 			an := vdn.Value.(*nodes.ArrayNode)
 			for _, e := range an.Elements {
@@ -168,6 +204,9 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 						"value of incompatible type in array")
 				}
 			}
+		}
+		if sel, ok := vdn.Value.(nodes.Selector); ok {
+			return t.checkSelector(sel)
 		}
 	}
 	return nil

@@ -495,7 +495,7 @@ func TestSelector(t *testing.T) {
 	if s.Child != "c" {
 		t.Fatalf("expected 'c' child, got '%s'", s.Child)
 	}
-	s = s.Parent
+	s = s.Parent.(*nodes.SelectorNode)
 	if s.Parent == nil {
 		t.Fatal("expected parent, got nil")
 	}
@@ -505,7 +505,7 @@ func TestSelector(t *testing.T) {
 	if s.Child != "b" {
 		t.Fatalf("expected 'b' child, got '%s'", s.Child)
 	}
-	s = s.Parent
+	s = s.Parent.(*nodes.SelectorNode)
 	if s.Parent != nil {
 		t.Fatalf("expected nil parent, got %s node", s.Parent.Kind())
 	}
@@ -531,5 +531,64 @@ func TestSelectorType(t *testing.T) {
 	v := n.(*nodes.VarDefNode)
 	if !v.VarType.Equals(types.Int) {
 		t.Fatalf("decuced type is not compatible with int: %s", v.VarType)
+	}
+}
+
+func TestSelectorElems(t *testing.T) {
+	// prepare types for test
+	vt := types.MakeStruct("Result",
+		"ok", types.Bool,
+		"val", types.ArrayType{types.Char})
+	v := &nodes.VarDefNode{
+		VarType: vt,
+		Var:     "result",
+		Value:   nil,
+		Pos:     lexer.Position{"TestSelectorElems", 0, 0},
+	}
+
+	// prepare parser
+	code := `%a: result#val#1`
+	src := strings.NewReader(code)
+	p := NewParser("TestSelectorElems", src, "test")
+	p.Scope.SetVar("result", v)
+
+	// get the node
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// had to use it in a variable definition as selectors are not allowed at
+	// top-level
+	n = n.(*nodes.VarDefNode).Value
+
+	// ensure it is a selector
+	var s nodes.Selector
+	var ok bool
+	if s, ok = n.(nodes.Selector); !ok {
+		t.Fatal("resulting node is not a selector")
+	}
+
+	// ensure the path has exactly the elements we are looking for
+	path := s.Path()
+	if len(path) != 3 {
+		// path should have 3 elements: [root, field, index]
+		t.Fatalf("incorrect path element count: got %d, expected 3", len(path))
+	}
+
+	// ensure the path elements are correct
+	root := path[0]
+	if root.Name != "result" {
+		t.Fatalf("incorrect path root: got '%s', wanted 'result'", root.Name)
+	}
+
+	field := path[1]
+	if field.Name != "val" {
+		t.Fatalf("incorrect path field: got '%s', wanted 'val'", field.Name)
+	}
+
+	index := path[2]
+	if index.Idx != 1 {
+		t.Fatalf("incorrect path index: got %d, wanted 1", index.Idx)
 	}
 }

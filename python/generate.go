@@ -258,25 +258,32 @@ func (p *pythonState) instantiate(n *nodes.NewStructNode) (err error) {
 	return
 }
 
-func (p *pythonState) selector(s *nodes.SelectorNode) (err error) {
-	path := []string{s.Child}
-	for s.Parent != nil {
-		s = s.Parent
-		path = append([]string{s.Child}, path...)
+func (p *pythonState) selector(s nodes.Selector) (err error) {
+	w := p.out.(io.Writer)
+	path := s.Path()
+
+	// preemtively write the first element since the parser and typechecker will
+	// ensure it is valid by this point
+	fmt.Fprint(w, path[0].Name)
+	if len(path) == 1 {
+		return
 	}
-	if len(path) > 1 {
-		for _, n := range path[:len(path)-1] {
-			_, err = p.out.WriteString(n)
-			if err != nil {
-				return
-			}
-			_, err = p.out.WriteString(".")
-			if err != nil {
-				return
-			}
+
+	// iterate the rest of the path
+	for _, e := range path[1:] {
+		// the algorithm here works in the same way as in (*Parser).TypeOf()
+		// see /parser/types.go, line 137
+		if e.Cast != nil {
+			// don't do anything since Python is dynamically typed anyway
+		} else if e.Name != "" {
+			fmt.Fprintf(w, ".%s", e.Name)
+		} else {
+			// this is not correct, since this will return a regular value, whereas
+			// skol arrays return a result type when indexing
+			// ¯\_(ツ)_/¯
+			fmt.Fprintf(w, "[%d]", e.Idx)
 		}
 	}
-	_, err = p.out.WriteString(path[len(path)-1])
 	return
 }
 
@@ -296,12 +303,12 @@ func (p *pythonState) value(n nodes.Node) error {
 		return p.callOrExpr(n.(*nodes.FuncCallNode))
 	case nodes.NdNewStruct:
 		return p.instantiate(n.(*nodes.NewStructNode))
-	case nodes.NdSelector:
-		return p.selector(n.(*nodes.SelectorNode))
 	case nodes.NdArray:
 		return p.list(n.(*nodes.ArrayNode))
-	case nodes.NdIndex:
-		return p.index(n.(*nodes.IndexNode))
+	default:
+		if s, ok := n.(nodes.Selector); ok {
+			return p.selector(s)
+		}
 	}
 	return fmt.Errorf("%s node is not a value", n.Kind())
 }
@@ -525,14 +532,5 @@ func (p *pythonState) list(n *nodes.ArrayNode) (err error) {
 		p.value(n.Elements[len(n.Elements)-1])
 	}
 	fmt.Fprint(w, "]")
-	return
-}
-
-func (p *pythonState) index(n *nodes.IndexNode) (err error) {
-	err = p.selector(n.Parent)
-	if err != nil {
-		return
-	}
-	fmt.Fprintf(p.out.(io.Writer), "[%d]", n.Index)
 	return
 }

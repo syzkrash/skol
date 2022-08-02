@@ -76,7 +76,7 @@ func (p *Parser) value() (n nodes.Node, err error) {
 			}
 			n, err = p.funcCall(fn, f, tok.Where)
 		} else if _, ok := p.Scope.FindVar(tok.Raw); ok {
-			return p.selectorOrTypecast(tok)
+			return p.selector(tok)
 		} else if v, ok := p.Scope.FindConst(tok.Raw); ok {
 			n = p.ToNode(v, tok.Where)
 		} else {

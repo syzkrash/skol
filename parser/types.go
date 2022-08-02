@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values/types"
@@ -62,6 +61,25 @@ func (p *Parser) parseType() (t types.Type, err error) {
 	return
 }
 
+// EnsureResultType makes sure that a given result type exists in the current
+// scope, creating one if it doesn't exist
+func (p *Parser) EnsureResultType(inner types.Type) types.Type {
+	// result type name
+	tn := inner.String() + "Result"
+
+	// check if it already exists and return it if it does
+	if rt, ok := p.Scope.FindType(tn); ok {
+		return rt
+	}
+
+	// otherwise, create a new one, add it to the current scope and return it
+	rt := types.MakeStruct(tn,
+		"ok", types.Bool,
+		"val", inner)
+	p.Scope.Types[tn] = rt
+	return rt
+}
+
 func (p *Parser) TypeOf(n nodes.Node) (t types.Type, err error) {
 	switch n.Kind() {
 	case nodes.NdBoolean:
@@ -87,32 +105,85 @@ func (p *Parser) TypeOf(n nodes.Node) (t types.Type, err error) {
 	case nodes.NdSelector:
 		s := n.(*nodes.SelectorNode)
 		path := s.Path()
-		v, ok := p.Scope.FindVar(path[0])
-		if !ok {
-			err = fmt.Errorf("unknown variable: %s", path[0])
+
+		// first, ensure the path is correct
+		if len(path) < 1 {
+			err = fmt.Errorf("selector has path length of 0; this should never happen!")
 			return
 		}
+
+		// get the root of the path, which should be a variable name
+		root := path[0]
+		if root.Name == "" {
+			err = fmt.Errorf("expected first element of selector to be a name")
+			return
+		}
+
+		// get the variable
+		v, ok := p.Scope.FindVar(root.Name)
+		if !ok {
+			err = fmt.Errorf("unknown variable: %s", root.Name)
+		}
+
+		// set the type to the variable's type (if it is found) and return if it is
+		// the only element of the path
 		t = v.VarType
 		if len(path) == 1 {
 			return
 		}
-	outer:
+
+		// iterate through the rest of the elements
 		for _, e := range path[1:] {
-			if t.Prim() != types.PStruct {
-				err = common.Error(n, "can only select fields on structures")
+			// typecasts and fields take priority over indexing because an index does
+			// not have an invalid/empty value:
+			//	0   is a valid index
+			//	""  is NOT a valid name
+			//  nil is NOT a valid type
+
+			// typecast because the Cast is not empty
+			if e.Cast != nil {
+				// checking type compatibility is not our job, let the typechecker
+				// figure that out
+				t = e.Cast
+				continue
+			}
+			// field selection because the Name is not empty
+			if e.Name != "" {
+				// make sure we are selecting fields on a structure
+				if t.Prim() != types.PStruct {
+					err = fmt.Errorf("can only select fields on structures (you are selecting field '%s' on %s)", e.Name, t.String())
+					return
+				}
+				// now, ensure the structure contains the given field and update our
+				// current type accordingly
+				s := t.(types.StructType)
+				ok := false
+				for _, f := range s.Fields {
+					if f.Name == e.Name {
+						ok = true
+						t = f.Type
+						break
+					}
+				}
+				// exit if the field was not found
+				if !ok {
+					err = fmt.Errorf("%s does not contain field '%s'", t.String(), e.Name)
+					return
+				}
+				// otherwise we can just move on to the next element (or exit the loop)
+				continue
+			}
+			// finally, if neither are specified, process array index
+			if t.Prim() != types.PArray {
+				err = fmt.Errorf("can only index arrays (you are getting index %d of %s)", e.Idx, t.String())
 				return
 			}
-			for _, f := range t.(types.StructType).Fields {
-				if f.Name == e {
-					t = f.Type
-					continue outer
-				}
-			}
-			err = common.Error(n, "%s does not contain field '%s'", t.String(), e)
-			return
+			// return a result type for the array's element type (because s a f e t y)
+			a := t.(types.ArrayType)
+			t = p.EnsureResultType(a.Element)
 		}
 	case nodes.NdTypecast:
-		return n.(*nodes.TypecastNode).Target, nil
+		return n.(*nodes.TypecastNode).Type, nil
 	case nodes.NdArray:
 		return types.ArrayType{n.(*nodes.ArrayNode).Type}, nil
 	case nodes.NdIndex:

@@ -155,6 +155,53 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 	return s.Errorf(n, "%s is not a statement", n)
 }
 
+func (s *Simulator) selector(sel nodes.Selector) (*values.Value, error) {
+	p := sel.Path()
+	var v *values.Value
+	var ok bool
+	v, ok = s.Scope.FindVar(p[0].Name)
+	if !ok {
+		return nil, s.Errorf(sel, "variable %s not found", p[0].Name)
+	}
+	if len(p) == 1 {
+		return v, nil
+	}
+	for _, e := range p[1:] {
+		// again, the selector resolve alogrithm
+		// see /parser/types.go, line 137
+		if e.Cast != nil {
+			v.Type = e.Cast
+			continue
+		}
+		if e.Name != "" {
+			v = v.Data.(map[string]*values.Value)[e.Name]
+			continue
+		}
+		arraytype := v.Type.(types.ArrayType)
+		arraydata := v.Data.([]*values.Value)
+		resulttype := types.MakeStruct(arraytype.Element.String()+"Result",
+			"ok", types.Bool,
+			"val", arraytype.Element)
+		if e.Idx >= uint(len(arraydata)) {
+			v = &values.Value{
+				Type: resulttype,
+				Data: map[string]*values.Value{
+					"ok": values.NewValue(false),
+				},
+			}
+		} else {
+			v = &values.Value{
+				Type: resulttype,
+				Data: map[string]*values.Value{
+					"ok":  values.NewValue(true),
+					"val": arraydata[e.Idx],
+				},
+			}
+		}
+	}
+	return v, nil
+}
+
 func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 	switch n.Kind() {
 	case nodes.NdInteger:
@@ -223,69 +270,9 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 		}
 		v = &values.Value{nsn.Type, fields}
 		return v, nil
-	case nodes.NdSelector:
-		sn := n.(*nodes.SelectorNode)
-		p := sn.Path()
-		var v *values.Value
-		var ok bool
-		v, ok = s.Scope.FindVar(p[0])
-		if !ok {
-			return nil, s.Errorf(n, "variable %s not found", p[0])
-		}
-		if len(p) == 1 {
-			return v, nil
-		}
-		for _, name := range p[1:] {
-			if v != nil && v.Type.Prim() != types.PStruct {
-				return nil, s.Errorf(n, "non-struct types do not have fields")
-			}
-			v, ok = v.Struct()[name]
-			if !ok {
-				return nil, s.Errorf(n, "field %s not found", name)
-			}
-		}
-		return v, nil
-	case nodes.NdTypecast:
-		tn := n.(*nodes.TypecastNode)
-		v, err := s.Expr(tn.Value)
-		if err != nil {
-			return nil, err
-		}
-		v.Type = tn.Target
-		return v, nil
-	case nodes.NdIndex:
-		in := n.(*nodes.IndexNode)
-		pv, err := s.Expr(in.Parent)
-		if err != nil {
-			return nil, err
-		}
-		if pv.Type.Prim() != types.PArray {
-			return nil, s.Errorf(n, "cannot index %s node", n.Kind())
-		}
-		at := pv.Type.(types.ArrayType)
-		av, ok := pv.Data.([]*values.Value)
-		if !ok {
-			panic("array-type value does not contain slice value")
-		}
-		rt := types.MakeStruct(at.Element.String()+"Result",
-			"val", at.Element,
-			"ok", types.Bool)
-		if in.Index >= len(av) || in.Index < 0 {
-			return &values.Value{
-				Type: rt,
-				Data: map[string]*values.Value{
-					"val": nil,
-					"ok":  values.NewValue(false),
-				},
-			}, nil
-		} else {
-			return &values.Value{
-				Type: rt,
-				Data: map[string]*values.Value{
-					"val": av[in.Index],
-					"ok":  values.NewValue(true),
-				},
-			}, nil
+	default:
+		if sel, ok := n.(nodes.Selector); ok {
+			return s.selector(sel)
 		}
 	}
 	return nil, s.Errorf(n, "%s node is not a value", n.Kind())

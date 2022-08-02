@@ -55,7 +55,7 @@ func (p *Parser) funcCall(fn string, f *values.Function, pos lexer.Position) (n 
 	return
 }
 
-func (p *Parser) selectorOrTypecast(start *lexer.Token) (n nodes.Node, err error) {
+func (p *Parser) selector(start *lexer.Token) (n nodes.Node, err error) {
 	n = &nodes.SelectorNode{
 		Parent: nil,
 		Child:  start.Raw,
@@ -63,7 +63,10 @@ func (p *Parser) selectorOrTypecast(start *lexer.Token) (n nodes.Node, err error
 	}
 	var tok *lexer.Token
 	for {
+		// first, consume the #
 		tok, err = p.lexer.Next()
+		// the selector *could* be the last thing in a file, so we just return
+		// on EOF
 		if errors.Is(err, io.EOF) {
 			err = nil
 			return
@@ -71,50 +74,71 @@ func (p *Parser) selectorOrTypecast(start *lexer.Token) (n nodes.Node, err error
 		if err != nil {
 			return
 		}
-		if tok.Kind != lexer.TkPunct || tok.Raw != "#" {
+
+		// rollback the token we read in case it isn't a #
+		// we have just consumed an element of the selector, so if we don't have
+		// another # that means that is the end of the selector
+		if tok.Kind != lexer.TkPunct || tok.Raw[0] != '#' {
 			p.lexer.Rollback(tok)
 			return
 		}
+
+		// now, we consume the actual selector element
 		tok, err = p.lexer.Next()
 		if err != nil {
 			return
 		}
-		if tok.Kind == lexer.TkPunct && tok.Raw == "@" {
+		switch tok.Kind {
+		// ident: select a field on a structure
+		case lexer.TkIdent:
+			// append to the chain of selectors
+			n = &nodes.SelectorNode{
+				Parent: n.(nodes.Selector),
+				Child:  tok.Raw,
+				Pos:    n.Where(),
+			}
+		// constant: index into an array
+		//	indexes are always unsigned integers, but base prefixes are allowed
+		case lexer.TkConstant:
+			// parse the index, this will error out if the index is not an unsigned
+			// integer
+			var idx uint64
+			idx, err = strconv.ParseUint(tok.Raw, 0, 32)
+			if err != nil {
+				return
+			}
+			// append to the chain
+			n = &nodes.IndexNode{
+				Parent: n.(nodes.Selector),
+				Idx:    uint(idx),
+				Pos:    n.Where(),
+			}
+		// punct: can be a typecast
+		//	typecasts use the @ punctuator
+		case lexer.TkPunct:
+			if tok.Raw[0] != '@' {
+				// error out if the punctuator is not @
+				err = p.selfError(tok, "expected identifer, constant or '@'")
+				return
+			}
+			// get the type for typecast
+			// this also allows arrays to be typecast (makes sense if you think about
+			// it)
 			var t types.Type
-			typecastLoc := tok.Where
 			t, err = p.parseType()
 			if err != nil {
 				return
 			}
+			// append to the chain
 			n = &nodes.TypecastNode{
-				Value:  n.(*nodes.SelectorNode),
-				Target: t,
-				Pos:    typecastLoc,
-			}
-			return
-		}
-		if tok.Kind == lexer.TkConstant {
-			var idx int64
-			idx, err = strconv.ParseInt(tok.Raw, 0, 32)
-			if err != nil {
-				err = p.otherError(tok, "invalid index", err)
-				return
-			}
-			n = &nodes.IndexNode{
-				Parent: n.(*nodes.SelectorNode),
-				Index:  int(idx),
+				Parent: n.(nodes.Selector),
+				Type:   t,
 				Pos:    n.Where(),
 			}
+		// any other token is not allowed
+		default:
+			err = p.selfError(tok, "expected identifer, constant or '@'")
 			return
-		}
-		if tok.Kind != lexer.TkIdent {
-			err = p.selfError(tok, "expected an identifer")
-			return
-		}
-		n = &nodes.SelectorNode{
-			Parent: n.(*nodes.SelectorNode),
-			Child:  tok.Raw,
-			Pos:    n.Where(),
 		}
 	}
 }
