@@ -127,19 +127,6 @@ func (g *ASTGenerator) internalGenerate(w io.Writer, n nodes.Node) error {
 			g.internalGenerate(w, an)
 		}
 		g.indent--
-	case nodes.NdSelector:
-		fmt.Fprint(w, "Selector (")
-		for _, e := range n.(*nodes.SelectorNode).Path() {
-			fmt.Fprintf(w, "%s  ", e)
-		}
-		fmt.Fprintf(w, ")")
-	case nodes.NdTypecast:
-		tn := n.(*nodes.TypecastNode)
-		fmt.Fprint(w, "Typecast (")
-		for _, e := range tn.Value.Path() {
-			fmt.Fprintf(w, "%s, ", e)
-		}
-		fmt.Fprintf(w, " -> %s)", tn.Target.String())
 	case nodes.NdArray:
 		an := n.(*nodes.ArrayNode)
 		fmt.Fprintf(w, "Array (%s):\n", an.Type)
@@ -148,13 +135,24 @@ func (g *ASTGenerator) internalGenerate(w io.Writer, n nodes.Node) error {
 			g.internalGenerate(w, en)
 		}
 		g.indent--
-	case nodes.NdIndex:
-		in := n.(*nodes.IndexNode)
-		fmt.Fprint(w, "Index (")
-		for _, e := range in.Parent.Path() {
-			fmt.Fprintf(w, "%s  ", e)
+	default:
+		if sel, ok := n.(nodes.Selector); ok {
+			fmt.Fprintln(w, "Selector:")
+			g.indent++
+			for _, e := range sel.Path() {
+				for i := 0; i < int(g.indent); i++ {
+					fmt.Fprint(w, indent)
+				}
+				if e.Cast != nil {
+					fmt.Fprintf(w, "Cast to %s\n", e.Cast)
+				} else if e.Name != "" {
+					fmt.Fprintf(w, "Access field '%s'\n", e.Name)
+				} else {
+					fmt.Fprintf(w, "Access index %d\n", e.Idx)
+				}
+			}
+			g.indent--
 		}
-		fmt.Fprintf(w, "%d)", in.Index)
 	}
 	fmt.Fprint(w, "\n")
 	return nil
