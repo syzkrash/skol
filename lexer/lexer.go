@@ -213,6 +213,11 @@ func (l *Lexer) ignoreBlockComment() (err error) {
 func (l *Lexer) commentOrSlash() (comment bool, err error) {
 	var c rune
 	c, _, err = l.src.ReadRune()
+	if errors.Is(err, io.EOF) {
+		err = nil
+		comment = false
+		return
+	}
 	if err != nil {
 		return
 	}

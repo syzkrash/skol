@@ -42,7 +42,7 @@ func (p *Parser) varDef() (n nodes.Node, err error) {
 		return
 	}
 
-	val, err := p.value()
+	val, err := p.Value()
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (p *Parser) constant() (err error) {
 		return
 	}
 
-	n, err := p.value()
+	n, err := p.Value()
 	if err != nil {
 		return err
 	}

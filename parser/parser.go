@@ -41,7 +41,7 @@ func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
 func (p *Parser) funcCall(fn string, f *values.Function, pos lexer.Position) (n nodes.Node, err error) {
 	args := make([]nodes.Node, len(f.Args))
 	for i := 0; i < len(args); i++ {
-		v, err := p.value()
+		v, err := p.Value()
 		if err != nil {
 			return nil, err
 		}
@@ -165,7 +165,7 @@ func (p *Parser) selector(start *lexer.Token) (n nodes.Node, err error) {
 }
 
 func (p *Parser) ret() (n nodes.Node, err error) {
-	v, err := p.value()
+	v, err := p.Value()
 	if err != nil {
 		return
 	}

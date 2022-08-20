@@ -10,7 +10,7 @@ import (
 )
 
 func (p *Parser) condition() (n nodes.Node, err error) {
-	condition, err := p.value()
+	condition, err := p.Value()
 	if err != nil {
 		return
 	}
@@ -48,7 +48,7 @@ func (p *Parser) condition() (n nodes.Node, err error) {
 			return
 		}
 		if tok.Kind == lexer.TkPunct && tok.Raw == "?" {
-			subcond, err = p.value()
+			subcond, err = p.Value()
 			if err != nil {
 				return
 			}
@@ -83,7 +83,7 @@ func (p *Parser) condition() (n nodes.Node, err error) {
 }
 
 func (p *Parser) loop() (n nodes.Node, err error) {
-	condition, err := p.value()
+	condition, err := p.Value()
 	if err != nil {
 		return
 	}

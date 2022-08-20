@@ -10,7 +10,7 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
-// value parses a nodes.Node that has a value
+// Value parses a nodes.Node that has a Value
 //
 // Example values:
 //
@@ -23,7 +23,7 @@ import (
 //	@VectorTwo 1.2 3.4 // nodes.NewStructNode
 //	pos#x      // nodes.SelectorNode
 //
-func (p *Parser) value() (n nodes.Node, err error) {
+func (p *Parser) Value() (n nodes.Node, err error) {
 	tok, err := p.lexer.Next()
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func (p *Parser) value() (n nodes.Node, err error) {
 			s := t.(types.StructType)
 			args := make([]nodes.Node, len(s.Fields))
 			for i := range s.Fields {
-				n, err = p.value()
+				n, err = p.Value()
 				if err != nil {
 					return
 				}
@@ -163,7 +163,7 @@ func (p *Parser) value() (n nodes.Node, err error) {
 				} else {
 					p.lexer.Rollback(tok)
 				}
-				elem, err = p.value()
+				elem, err = p.Value()
 				if err != nil {
 					return
 				}

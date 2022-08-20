@@ -39,7 +39,7 @@ func TestVarRef(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestVarRef", src, "test")
 	p.Scope.SetVar("a", &nodes.VarDefNode{}) // to prevent 'unknown variable' error)
-	n, err := p.value()
+	n, err := p.Value()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestFuncCall(t *testing.T) {
 		Args: []values.FuncArg{{"a", types.Float}, {"b", types.Float}},
 		Ret:  types.Float,
 	}
-	n, err := p.value()
+	n, err := p.Value()
 	if err != nil {
 		t.Fatal(err)
 	}
