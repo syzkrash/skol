@@ -91,11 +91,29 @@ func (p *Parser) selector(start *lexer.Token) (n nodes.Node, err error) {
 		switch tok.Kind {
 		// ident: select a field on a structure
 		case lexer.TkIdent:
+			// determine if the parent selector is an array
+			var pt types.Type
+			pt, err = p.TypeOf(n)
+			if err != nil {
+				return
+			}
 			// append to the chain of selectors
-			n = &nodes.SelectorNode{
-				Parent: n.(nodes.Selector),
-				Child:  tok.Raw,
-				Pos:    n.Where(),
+			if pt.Prim() == types.PArray {
+				n = &nodes.IndexNode{
+					Parent: n.(nodes.Selector),
+					Idx: &nodes.SelectorNode{
+						Parent: nil,
+						Child:  tok.Raw,
+						Pos:    tok.Where,
+					},
+					Pos: n.Where(),
+				}
+			} else {
+				n = &nodes.SelectorNode{
+					Parent: n.(nodes.Selector),
+					Child:  tok.Raw,
+					Pos:    n.Where(),
+				}
 			}
 		// constant: index into an array
 		//	indexes are always unsigned integers, but base prefixes are allowed
@@ -110,8 +128,11 @@ func (p *Parser) selector(start *lexer.Token) (n nodes.Node, err error) {
 			// append to the chain
 			n = &nodes.IndexNode{
 				Parent: n.(nodes.Selector),
-				Idx:    uint(idx),
-				Pos:    n.Where(),
+				Idx: &nodes.IntegerNode{
+					Int: int32(idx),
+					Pos: n.Where(),
+				},
+				Pos: n.Where(),
 			}
 		// punct: can be a typecast
 		//	typecasts use the @ punctuator

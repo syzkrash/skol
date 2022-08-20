@@ -6,7 +6,7 @@ import (
 )
 
 type SelectorElem struct {
-	Idx  uint
+	Idx  Node
 	Name string
 	Cast types.Type
 }
@@ -60,7 +60,7 @@ func (n *TypecastNode) Path() []SelectorElem {
 
 type IndexNode struct {
 	Parent Selector
-	Idx    uint
+	Idx    Node
 	Pos    lexer.Position
 }
 

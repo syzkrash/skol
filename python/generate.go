@@ -281,7 +281,11 @@ func (p *pythonState) selector(s nodes.Selector) (err error) {
 			// this is not correct, since this will return a regular value, whereas
 			// skol arrays return a result type when indexing
 			// ¯\_(ツ)_/¯
-			fmt.Fprintf(w, "[%d]", e.Idx)
+			if e.Idx.Kind() == nodes.NdSelector {
+				fmt.Fprintf(w, "[%s]", e.Idx.(*nodes.SelectorNode).Child)
+			} else {
+				fmt.Fprintf(w, "[%d]", e.Idx.(*nodes.IntegerNode).Int)
+			}
 		}
 	}
 	return

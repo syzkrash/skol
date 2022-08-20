@@ -588,7 +588,8 @@ func TestSelectorElems(t *testing.T) {
 	}
 
 	index := path[2]
-	if index.Idx != 1 {
-		t.Fatalf("incorrect path index: got %d, wanted 1", index.Idx)
+	idxin := index.Idx.(*nodes.IntegerNode)
+	if idxin.Int != 1 {
+		t.Fatalf("incorrect path index: got %d, wanted 1", idxin.Int)
 	}
 }

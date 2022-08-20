@@ -177,12 +177,26 @@ func (s *Simulator) selector(sel nodes.Selector) (*values.Value, error) {
 			v = v.Data.(map[string]*values.Value)[e.Name]
 			continue
 		}
+		var idx uint
+		if e.Idx.Kind() == nodes.NdInteger {
+			idx = uint(e.Idx.(*nodes.IntegerNode).Int)
+		} else { // can only be NdInteger or NdSelector
+			vn := e.Idx.(*nodes.SelectorNode).Child
+			val, ok := s.Scope.FindVar(vn)
+			if !ok {
+				return nil, s.Errorf(e.Idx, "unknown variable, %s", vn)
+			}
+			if !types.Int.Equals(val.Type) {
+				return nil, s.Errorf(e.Idx, "can only index with integers")
+			}
+			idx = uint(val.Int())
+		}
 		arraytype := v.Type.(types.ArrayType)
 		arraydata := v.Data.([]*values.Value)
 		resulttype := types.MakeStruct(arraytype.Element.String()+"Result",
 			"ok", types.Bool,
 			"val", arraytype.Element)
-		if e.Idx >= uint(len(arraydata)) {
+		if idx >= uint(len(arraydata)) {
 			v = &values.Value{
 				Type: resulttype,
 				Data: map[string]*values.Value{
@@ -194,7 +208,7 @@ func (s *Simulator) selector(sel nodes.Selector) (*values.Value, error) {
 				Type: resulttype,
 				Data: map[string]*values.Value{
 					"ok":  values.NewValue(true),
-					"val": arraydata[e.Idx],
+					"val": arraydata[idx],
 				},
 			}
 		}
