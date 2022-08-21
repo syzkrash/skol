@@ -26,6 +26,7 @@ func expect(t *testing.T, p *parser.Parser, exp nodes.Node) {
 		}
 		t.Fatal(err)
 	}
+	t.Logf("%+v", got)
 	compare(t, "expect", exp, got)
 }
 
@@ -172,6 +173,94 @@ func compare(t *testing.T, note string, exp, got nodes.Node) {
 		compare(t, note+": Condition", ew.Condition, gw.Condition)
 		for i, en := range ew.Body {
 			compare(t, note+": Body", en, gw.Body[i])
+		}
+	case nodes.NdVarDef:
+		ev := exp.(*nodes.VarDefNode)
+		gv := got.(*nodes.VarDefNode)
+		if ev.Var != gv.Var {
+			t.Fatalf("%s: expected `%s` variable, got `%s`", note, ev.Var, gv.Var)
+		}
+		if !ev.VarType.Equals(gv.VarType) {
+			t.Fatalf("%s: expected %s variable type, got %s", note, ev.VarType, gv.VarType)
+		}
+		compare(t, note+": variable value", ev.Value, gv.Value)
+	case nodes.NdFuncDef:
+		ef := exp.(*nodes.FuncDefNode)
+		gf := exp.(*nodes.FuncDefNode)
+		if ef.Name != gf.Name {
+			t.Fatalf("%s: expected `%s` function, got `%s`", note, ef.Name, gf.Name)
+		}
+		if len(ef.Args) != len(gf.Args) {
+			t.Fatalf("%s: expected %d arguments, got %d", note, len(ef.Args), len(gf.Args))
+		}
+		for i, ea := range ef.Args {
+			ga := gf.Args[i]
+			if ea.Name != ga.Name {
+				t.Fatalf("%s: argument %d: expected `%s` argument, got `%s`", note, i, ea.Name, ga.Name)
+			}
+			if !ea.Type.Equals(ga.Type) {
+				t.Fatalf("%s: argument %d: expected %s type, got %s", note, i, ea.Type, ga.Type)
+			}
+		}
+		if !ef.Ret.Equals(gf.Ret) {
+			t.Fatalf("%s: expected %s return type, got %s", note, ef.Ret, gf.Ret)
+		}
+		if len(ef.Body) != len(gf.Body) {
+			t.Fatalf("%s: expected %d body nodes, got %d", note, len(ef.Body), len(gf.Body))
+		}
+		for i, en := range ef.Body {
+			gn := gf.Body[i]
+			compare(t, fmt.Sprintf("%s: body node %d", note, i), en, gn)
+		}
+	case nodes.NdFuncExtern:
+		ee := exp.(*nodes.FuncExternNode)
+		ge := exp.(*nodes.FuncExternNode)
+		if ee.Name != ge.Name {
+			t.Fatalf("%s: expected `%s` extern, got `%s`", note, ee.Name, ge.Name)
+		}
+		if ee.Intern != ge.Intern {
+			t.Fatalf("%s: expected `%s` intern, got `%s`", note, ee.Intern, ge.Intern)
+		}
+		if len(ee.Args) != len(ge.Args) {
+			t.Fatalf("%s: expected %d arguments, got %d", note, len(ee.Args), len(ge.Args))
+		}
+		for i, ea := range ee.Args {
+			ga := ge.Args[i]
+			if ea.Name != ga.Name {
+				t.Fatalf("%s: argument %d: expected `%s` name, got `%s`", note, i, ea.Name, ga.Name)
+			}
+			if !ea.Type.Equals(ga.Type) {
+				t.Fatalf("%s: argument %d: expected %s type, got %s", note, i, ea.Type, ga.Type)
+			}
+		}
+		if !ee.Ret.Equals(ge.Ret) {
+			t.Fatalf("%s: expected %s return type, got %s", note, ee.Ret, ge.Ret)
+		}
+	case nodes.NdStruct:
+		es := exp.(*nodes.StructNode)
+		gs := got.(*nodes.StructNode)
+		if es.Name != gs.Name {
+			t.Fatalf("%s: expected `%s` structure name, got `%s`", note, es.Name, gs.Name)
+		}
+		if es.Type.Prim() != gs.Type.Prim() {
+			t.Fatalf("%s: expected %v type primitive, got %v", note, es.Type.Prim(), gs.Type.Prim())
+		}
+		est := es.Type.(types.StructType)
+		gst := gs.Type.(types.StructType)
+		if est.Name != gst.Name {
+			t.Fatalf("%s: type: expected `%s` name, got %s", note, est.Name, gst.Name)
+		}
+		if len(est.Fields) != len(gst.Fields) {
+			t.Fatalf("%s: type: expected %d fields, got %d", note, len(est.Fields), len(gst.Fields))
+		}
+		for i, ef := range est.Fields {
+			gf := gst.Fields[i]
+			if ef.Name != gf.Name {
+				t.Fatalf("%s: field `%s`: expected `%s` name", note, gf.Name, ef.Name)
+			}
+			if !ef.Type.Equals(gf.Type) {
+				t.Fatalf("%s: field `%s`: expected %s type, got %s", note, gf.Name, ef.Type, gf.Type)
+			}
 		}
 	default:
 		panic(fmt.Sprintf("compare() call on unexpected node: %s", exp.Kind()))
