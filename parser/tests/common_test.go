@@ -262,6 +262,32 @@ func compare(t *testing.T, note string, exp, got nodes.Node) {
 				t.Fatalf("%s: field `%s`: expected %s type, got %s", note, gf.Name, ef.Type, gf.Type)
 			}
 		}
+	case nodes.NdArray:
+		ea := exp.(*nodes.ArrayNode)
+		ga := got.(*nodes.ArrayNode)
+		if !ea.Type.Equals(ga.Type) {
+			t.Fatalf("%s: expected array of %s, got %s", note, ea.Type, ga.Type)
+		}
+		if len(ea.Elements) != len(ga.Elements) {
+			t.Fatalf("%s: expected %d array elements, got %d", note, len(ea.Elements), len(ga.Elements))
+		}
+		for i, ee := range ea.Elements {
+			ge := ga.Elements[i]
+			compare(t, fmt.Sprintf("%s: element %d", note, i), ee, ge)
+		}
+	case nodes.NdNewStruct:
+		es := exp.(*nodes.NewStructNode)
+		gs := exp.(*nodes.NewStructNode)
+		if !es.Type.Equals(gs.Type) {
+			t.Fatalf("%s: expected %s, got %s", note, es.Type, gs.Type)
+		}
+		if len(es.Args) != len(gs.Args) {
+			t.Fatalf("%s: expected %d arguments, got %d", note, len(es.Args), len(gs.Args))
+		}
+		for i, ea := range es.Args {
+			ga := gs.Args[i]
+			compare(t, fmt.Sprintf("%s: argument %d", note, i), ea, ga)
+		}
 	default:
 		panic(fmt.Sprintf("compare() call on unexpected node: %s", exp.Kind()))
 	}
