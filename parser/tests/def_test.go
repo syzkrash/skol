@@ -68,7 +68,7 @@ func TestVarDef(t *testing.T) {
 			Value:   &nodes.BooleanNode{Bool: true},
 		},
 		"%C1: 'q'": {
-			VarType: types.Bool,
+			VarType: types.Char,
 			Var:     "C1",
 			Value:   &nodes.CharNode{Char: 'q'},
 		},

@@ -2,7 +2,6 @@ package parser
 
 import (
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/syzkrash/skol/debug"
@@ -22,56 +21,78 @@ import (
 //	%	r	:	'E'
 //
 func (p *Parser) varDef() (n nodes.Node, err error) {
-	nameToken, err := p.lexer.Next()
+	var (
+		tok *lexer.Token
+
+		name    string
+		namePos lexer.Position
+		varType types.Type
+		value   nodes.Node
+	)
+
+	tok, err = p.lexer.Next()
 	if err != nil {
 		return
 	}
-	if nameToken.Kind != lexer.TkIdent {
-		err = p.selfError(nameToken, "expected an identifier")
-		return
-	}
 
-	sept, err := p.lexer.Next()
+	name = tok.Raw
+	namePos = tok.Where
+
+	tok, err = p.lexer.Next()
 	if err != nil {
-		return nil, err
-	}
-	if sept.Kind != lexer.TkPunct {
-		err = p.selfError(sept, "expected a punctuator")
-		return
-	}
-	if sept.Raw != ":" {
-		err = p.selfError(sept, "expected ':'")
 		return
 	}
 
-	val, err := p.Value()
+	if tok.Kind != lexer.TkPunct {
+		err = p.selfError(tok, "expected Punctuator, got "+tok.Kind.String())
+		return
+	}
+
+	if tok.Raw[0] == ':' {
+		goto value
+	} else if tok.Raw[0] == '/' {
+		varType, err = p.parseType()
+		if err != nil {
+			return
+		}
+
+		tok, err = p.lexer.Next()
+		if errors.Is(err, io.EOF) {
+			err = nil
+			goto ret
+		}
+		if err != nil {
+			return
+		}
+		if tok.Kind != lexer.TkPunct || tok.Raw[0] != ':' {
+			goto ret
+		}
+		goto value
+	} else {
+		err = p.selfError(tok, "expected '/' or ':'")
+		return
+	}
+
+value:
+	value, err = p.Value()
 	if err != nil {
-		return nil, err
-	}
-
-	vt, err := p.TypeOf(val)
-	if err != nil {
-		err = fmt.Errorf("could not deduce type of %s: %s", val, err)
 		return
 	}
 
-	if old, ok := p.Scope.FindVar(nameToken.Raw); ok {
-		if !old.VarType.Equals(vt) {
-			err = p.selfError(nameToken, fmt.Sprintf(
-				"variable redefinition with incorrect type: %s (expected %s)",
-				vt.String(), old.VarType.String()))
+	if varType == nil {
+		varType, err = p.TypeOf(value)
+		if err != nil {
 			return
 		}
 	}
 
+ret:
 	n = &nodes.VarDefNode{
-		Var:     nameToken.Raw,
-		Value:   val,
-		VarType: vt,
-		Pos:     nameToken.Where,
+		VarType: varType,
+		Var:     name,
+		Value:   value,
+		Pos:     namePos,
 	}
-	p.Scope.SetVar(nameToken.Raw, n.(*nodes.VarDefNode))
-
 	return
 }
 

@@ -60,7 +60,7 @@ func (p *Parser) parseType() (t types.Type, err error) {
 			err = p.selfError(tk, "expected ']'")
 			return
 		}
-		t = types.ArrayType{t}
+		t = types.ArrayType{Element: t}
 	}
 	return
 }
@@ -189,7 +189,7 @@ func (p *Parser) TypeOf(n nodes.Node) (t types.Type, err error) {
 	case nodes.NdTypecast:
 		return n.(*nodes.TypecastNode).Type, nil
 	case nodes.NdArray:
-		return types.ArrayType{n.(*nodes.ArrayNode).Type}, nil
+		return types.ArrayType{Element: n.(*nodes.ArrayNode).Type}, nil
 	case nodes.NdIndex:
 		i := n.(*nodes.IndexNode)
 		ptype, err := p.TypeOf(i.Parent)
