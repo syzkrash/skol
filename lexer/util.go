@@ -11,7 +11,7 @@ func isIdent(c rune) bool {
 }
 
 func isDigit(c rune) bool {
-	return c >= '0' && c <= '9'
+	return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
 }
 
 func isNumberHead(c rune) bool {
@@ -21,7 +21,8 @@ func isNumberHead(c rune) bool {
 func isNumberTail(c rune) bool {
 	return isDigit(c) ||
 		c == '.' || // decimals
-		c == 'b' || c == 'o' || c == 'x' // 0b-, 0o-, 0x-
+		c == 'b' || c == 'o' || c == 'x' || // 0b-, 0o-, 0x-
+		c == '_' // digit separator
 }
 
 func escapeSeq(e rune) (c rune, err error) {
