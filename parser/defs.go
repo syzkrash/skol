@@ -1,7 +1,9 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
+	"io"
 
 	"github.com/syzkrash/skol/debug"
 	"github.com/syzkrash/skol/lexer"
@@ -184,20 +186,25 @@ func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
 			return
 		}
 		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '?' {
+			if funcType.Prim() == types.PUndefined {
+				funcType = types.Nothing
+			}
 			var internToken *lexer.Token
+			var intern = ""
 			internToken, err = p.lexer.Next()
+			if errors.Is(err, io.EOF) {
+				err = nil
+				goto ret
+			}
 			if err != nil {
 				return
 			}
-			intern := ""
 			if internToken.Kind != lexer.TkString {
 				p.lexer.Rollback(internToken)
 			} else {
 				intern = internToken.Raw
 			}
-			if funcType.Prim() == types.PUndefined {
-				funcType = types.Nothing
-			}
+		ret:
 			fen := &nodes.FuncExternNode{
 				Name:   nameToken.Raw,
 				Intern: intern,

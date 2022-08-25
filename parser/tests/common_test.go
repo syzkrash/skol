@@ -202,7 +202,7 @@ func compare(t *testing.T, note string, exp, got nodes.Node) {
 				t.Fatalf("%s: argument %d: expected %s type, got %s", note, i, ea.Type, ga.Type)
 			}
 		}
-		if !ef.Ret.Equals(gf.Ret) {
+		if ef.Ret.Prim() != gf.Ret.Prim() {
 			t.Fatalf("%s: expected %s return type, got %s", note, ef.Ret, gf.Ret)
 		}
 		if len(ef.Body) != len(gf.Body) {
@@ -233,7 +233,7 @@ func compare(t *testing.T, note string, exp, got nodes.Node) {
 				t.Fatalf("%s: argument %d: expected %s type, got %s", note, i, ea.Type, ga.Type)
 			}
 		}
-		if !ee.Ret.Equals(ge.Ret) {
+		if ee.Ret.Prim() != ge.Ret.Prim() {
 			t.Fatalf("%s: expected %s return type, got %s", note, ee.Ret, ge.Ret)
 		}
 	case nodes.NdStruct:
