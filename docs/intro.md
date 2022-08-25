@@ -33,10 +33,9 @@ Let's analyse the first snippet.
   previously mentioned languages. Now here's the tricky bit -- the parenthesis
   (`(`) does not start the function's argument list. It starts the function's
   body. It's a very small difference, but the parenthesis is the only kind of
-  bracket skol uses. There are no curly brackets (`{}`), no square brackets (`[]`)
-  and most definitely no arrow brackets (`<>`). This introduction assumes you
-  are somewhat familiar with C, so the definition `$Main()` is equivalent to
-  `void Main() {}`.
+  bracket skol uses. There are no curly brackets (`{}`) and most definitely no
+  arrow brackets (`<>`). This introduction assumes you are somewhat familiar
+  with C, so the definition `$Main()` is equivalent to `void Main() {}`.
 
 2. `print! "Hello world"` -- This is the function call syntax.
   The `!` at the end of the `print` is what allows us to differentiate between
@@ -49,7 +48,7 @@ Let's analyse the first snippet.
   So, like in many scripting languages we have to call it ourselves.
 
 We've only analysed a single snippet of code and already know quite a lot about
-the language. Let's move on with another snipper.
+the language. Let's move on with another snippet.
 
 ## Variables and constants
 
@@ -80,21 +79,14 @@ get analysing, shall we:
   You can think of this as a `#define` in C.
 
 2. `%World: "World"` -- This is the variable definition syntax.
-  As with most constructs in skol, the variable (re)definition syntax is weird
-  and wacky. There are a lot of similarities with the constant definition syntax,
-  and it is quite easy to assume `#` means constant and `%` means variable.
-  Another assumption is that the `:` separates the constant/variable name from
-  it's value. That assumption is correct. A difference between the two, however,
-  is that a variable definition can accept a type, to initialise the variable to
-  that type's default value. More on that a bit later.
+  It is very similar to the constant definition syntax, only differing by the
+  `%` instead of a `#`. The same exact syntax is used both to define a new
+  variable, and to change an existing variable's value.
 
 3. `$Hello()` -- Again, function definition.
   It is notable that the variable reference and constant reference syntax are
   the same. We can also note the difference between a constant/variable
   reference and a function call.
-
-4. `$Main()` -- The main function.
-  It is notable that variables are defined and changed using the same syntax.
 
 [issues]: https://github.com/syzkrash/skol/issues
 [pr]: https://github.com/syzkrash/skol/pulls
