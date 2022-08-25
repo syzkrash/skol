@@ -35,6 +35,8 @@ func escapeSeq(e rune) (c rune, err error) {
 		c = '\r'
 	case 't':
 		c = '\t'
+	case '\\':
+		c = '\\'
 	default:
 		err = fmt.Errorf("unknown escape sequence: \\%c", e)
 	}
