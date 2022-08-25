@@ -265,6 +265,25 @@ typecast, followed by the name of the type to cast to.
 **Note** that primitive types, like booleans, integers, floats and strings are
 *not* castable. Typecasts can only be performed on structures.
 
+## Array
+
+Well, a better word would be 'list' or 'slice', but if JavaScript can call
+these 'array's so can we!
+
+```hs
+%CoolPeople: [str]("Joe" "Jah" "Jen")
+%UncoolPeople:  []("Bob" "Ben" "Bil")
+%EmptyTyped: [int]()
+```
+
+An array literal is very simple: type type of the array's elements surrounded
+by square brackets, followed by a list of values of that type. Said values are
+not limited to just literals. Function calls, constants, variable references are
+allowed. The type of the elements can be omitted to allow skol to deduce the
+element type. If the array doesn't have an explicit type declaration and doesn't
+contain any elements, skol cannot determine what type it's supposed to be and
+throws an error.
+
 ## Conclusion
 
 If you wish to see skol in action, feel free to view the [JSON][json] and
