@@ -130,8 +130,10 @@ func (p *Parser) Value() (n nodes.Node, err error) {
 				return
 			}
 			if tok.Kind == lexer.TkIdent {
-				elemtype, err = p.parseType()
-				if err != nil {
+				var ok bool
+				elemtype, ok = p.typeByName(tok.Raw)
+				if !ok {
+					err = p.selfError(tok, "unknown type: "+tok.Raw)
 					return
 				}
 				tok, err = p.lexer.Next()
@@ -140,7 +142,7 @@ func (p *Parser) Value() (n nodes.Node, err error) {
 				}
 			}
 			if tok.Kind != lexer.TkPunct || tok.Raw[0] != ']' {
-				err = p.selfError(tok, "expected ']'")
+				err = p.selfError(tok, "expected type name or ']'")
 				return
 			}
 			tok, err = p.lexer.Next()

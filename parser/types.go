@@ -9,6 +9,27 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
+func (p *Parser) typeByName(name string) (t types.Type, ok bool) {
+	ok = true
+	switch strings.ToLower(name) {
+	case "integer", "int32", "int", "i32", "i":
+		t = types.Int
+	case "boolean", "bool", "b":
+		t = types.Bool
+	case "float32", "float", "f32", "f":
+		t = types.Float
+	case "char", "ch", "c":
+		t = types.Char
+	case "string", "str", "s":
+		t = types.String
+	case "any", "a":
+		t = types.Any
+	default:
+		t, ok = p.Scope.FindType(name)
+	}
+	return
+}
+
 func (p *Parser) parseType() (t types.Type, err error) {
 	tk, err := p.lexer.Next()
 	if err != nil {
@@ -26,26 +47,9 @@ func (p *Parser) parseType() (t types.Type, err error) {
 		err = p.selfError(tk, "expected identifier")
 		return
 	}
-	switch strings.ToLower(tk.Raw) {
-	case "integer", "int32", "int", "i32", "i":
-		t = types.Int
-	case "boolean", "bool", "b":
-		t = types.Bool
-	case "float32", "float", "f32", "f":
-		t = types.Float
-	case "char", "ch", "c":
-		t = types.Char
-	case "string", "str", "s":
-		t = types.String
-	case "any", "a":
-		t = types.Any
-	default:
-		var ok bool
-		t, ok = p.Scope.FindType(tk.Raw)
-		if !ok {
-			err = p.selfError(tk, "unknown type: "+tk.Raw)
-			return
-		}
+	t, ok := p.typeByName(tk.Raw)
+	if !ok {
+		err = p.selfError(tk, "unknown type: "+tk.Raw)
 	}
 	if isArray {
 		tk, err = p.lexer.Next()
