@@ -4,8 +4,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
+	"github.com/syzkrash/skol/parser/values/types"
 )
 
 func TestVarDef(t *testing.T) {
@@ -37,16 +39,20 @@ func TestVarRef(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestVarRef", src, "test")
 	p.Scope.SetVar("a", &nodes.VarDefNode{}) // to prevent 'unknown variable' error)
-	n, err := p.value()
+	n, err := p.Value()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n.Kind() != nodes.NdVarRef {
-		t.Fatalf("expected %s node, got %s", nodes.NdVarRef, n.Kind())
+	if n.Kind() != nodes.NdSelector {
+		t.Fatalf("expected Selector node, got %s", n.Kind())
 	}
-	v := n.(*nodes.VarRefNode)
-	if v.Var != "a" {
-		t.Fatalf("expected variable name %s, got %s", "a", v.Var)
+	t.Logf("Got selector: %s", n)
+	s := n.(*nodes.SelectorNode)
+	if s.Parent != nil {
+		t.Fatalf("expected nil parent, got %s node", s.Parent.Kind())
+	}
+	if s.Child != "a" {
+		t.Fatalf("expected 'a' child, got '%s'", s.Child)
 	}
 }
 
@@ -55,12 +61,12 @@ func TestFuncCall(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestFuncCall", src, "test")
 	// to prevent 'unknown function' error
-	p.Scope.SetFunc("add", &Function{
+	p.Scope.Funcs["add"] = &values.Function{
 		Name: "add",
-		Args: []values.FuncArg{{"a", values.VtFloat}, {"b", values.VtFloat}},
-		Ret:  values.VtFloat,
-	})
-	n, err := p.value()
+		Args: []values.FuncArg{{"a", types.Float}, {"b", types.Float}},
+		Ret:  types.Float,
+	}
+	n, err := p.Value()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,11 +95,11 @@ func TestIf(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIf", src, "test")
 	// to prevent 'unknown function' error
-	p.Scope.SetFunc("print", &Function{
+	p.Scope.Funcs["print"] = &values.Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.VtAny}},
-		Ret:  values.VtNothing,
-	})
+		Args: []values.FuncArg{{"a", types.Any}},
+		Ret:  types.Nothing,
+	}
 	n, err := p.Next()
 	if err != nil {
 		t.Fatal(err)
@@ -103,7 +109,7 @@ func TestIf(t *testing.T) {
 	}
 	ifn := n.(*nodes.IfNode)
 	if ifn.Condition.Kind() != nodes.NdInteger {
-		t.Fatalf("expected Integer, got %s", n.Kind())
+		t.Fatalf("expected Int, got %s", n.Kind())
 	}
 	if len(ifn.IfBlock) < 1 {
 		t.Fatalf("expected 1 Node in block, got %d", len(ifn.IfBlock))
@@ -126,11 +132,11 @@ func TestIfBetween(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIfBetween", src, "test")
 	// to prevent 'unknown function' error
-	p.Scope.SetFunc("print", &Function{
+	p.Scope.Funcs["print"] = &values.Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.VtAny}},
-		Ret:  values.VtNothing,
-	})
+		Args: []values.FuncArg{{"a", types.Any}},
+		Ret:  types.Nothing,
+	}
 
 	// check for the if statement
 	n, err := p.Next()
@@ -142,7 +148,7 @@ func TestIfBetween(t *testing.T) {
 	}
 	ifn := n.(*nodes.IfNode)
 	if ifn.Condition.Kind() != nodes.NdInteger {
-		t.Fatalf("expected Integer, got %s", n.Kind())
+		t.Fatalf("expected Int, got %s", n.Kind())
 	}
 	if len(ifn.IfBlock) < 1 {
 		t.Fatalf("expected 1 Node in block, got %d", len(ifn.IfBlock))
@@ -181,11 +187,11 @@ func TestIfElse(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIfElse", src, "test")
 	// to prevent 'unknown function' error
-	p.Scope.SetFunc("print", &Function{
+	p.Scope.Funcs["print"] = &values.Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.VtAny}},
-		Ret:  values.VtNothing,
-	})
+		Args: []values.FuncArg{{"a", types.Any}},
+		Ret:  types.Nothing,
+	}
 
 	n, err := p.Next()
 	if err != nil {
@@ -198,7 +204,7 @@ func TestIfElse(t *testing.T) {
 	}
 	ifn := n.(*nodes.IfNode)
 	if ifn.Condition.Kind() != nodes.NdInteger {
-		t.Fatalf("expected Integer, got %s", n.Kind())
+		t.Fatalf("expected Int, got %s", n.Kind())
 	}
 
 	// check the IfBlock
@@ -239,11 +245,11 @@ func TestIfElseIfElse(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIfElseIfElse", src, "test")
 	// to prevent 'unknown function' error
-	p.Scope.SetFunc("print", &Function{
+	p.Scope.Funcs["print"] = &values.Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.VtAny}},
-		Ret:  values.VtNothing,
-	})
+		Args: []values.FuncArg{{"a", types.Any}},
+		Ret:  types.Nothing,
+	}
 
 	n, err := p.Next()
 	if err != nil {
@@ -256,7 +262,7 @@ func TestIfElseIfElse(t *testing.T) {
 	}
 	ifn := n.(*nodes.IfNode)
 	if ifn.Condition.Kind() != nodes.NdInteger {
-		t.Fatalf("expected Integer, got %s", n.Kind())
+		t.Fatalf("expected Int, got %s", n.Kind())
 	}
 
 	// check the IfBlock
@@ -317,11 +323,11 @@ func TestIfElseIf(t *testing.T) {
 	src := strings.NewReader(code)
 	p := NewParser("TestIfElseIf", src, "test")
 	// to prevent 'unknown function' error
-	p.Scope.SetFunc("print", &Function{
+	p.Scope.Funcs["print"] = &values.Function{
 		Name: "print",
-		Args: []values.FuncArg{{"a", values.VtAny}},
-		Ret:  values.VtNothing,
-	})
+		Args: []values.FuncArg{{"a", types.Any}},
+		Ret:  types.Nothing,
+	}
 
 	n, err := p.Next()
 	if err != nil {
@@ -334,7 +340,7 @@ func TestIfElseIf(t *testing.T) {
 	}
 	ifn := n.(*nodes.IfNode)
 	if ifn.Condition.Kind() != nodes.NdInteger {
-		t.Fatalf("expected Integer, got %s", n.Kind())
+		t.Fatalf("expected Int, got %s", n.Kind())
 	}
 
 	// check the IfBlock
@@ -395,5 +401,195 @@ func TestConst(t *testing.T) {
 	c := v.Value.(*nodes.IntegerNode)
 	if c.Int != 169 {
 		t.Fatalf("expected vale to be int %d, got %c", 169, c.Int)
+	}
+}
+
+func TestStruct(t *testing.T) {
+	code := `@V2I(x/i y/i)`
+	src := strings.NewReader(code)
+	p := NewParser("TestStruct", src, "test")
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != nodes.NdStruct {
+		t.Fatalf("expected Struct node, got %s", n.Kind())
+	}
+	s := n.(*nodes.StructNode)
+	if s.Name != "V2I" {
+		t.Fatalf("expected 'V2I' struct, got '%s' instead", s.Name)
+	}
+	if len(s.Type.(types.StructType).Fields) != 2 {
+		t.Fatalf("expected 2 fields, got %d", len(s.Type.(types.StructType).Fields))
+	}
+}
+
+func TestNewStruct(t *testing.T) {
+	code := `@V2I(x/i y/i)%pos:@V2I 0 0`
+	src := strings.NewReader(code)
+	p := NewParser("TestStruct", src, "test")
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != nodes.NdStruct {
+		t.Fatalf("expected Struct node, got %s", n.Kind())
+	}
+	s := n.(*nodes.StructNode)
+	if s.Name != "V2I" {
+		t.Fatalf("expected 'V2I' struct, got '%s' instead", s.Name)
+	}
+	if len(s.Type.(types.StructType).Fields) != 2 {
+		t.Fatalf("expected 2 fields, got %d", len(s.Type.(types.StructType).Fields))
+	}
+	n, err = p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != nodes.NdVarDef {
+		t.Fatalf("expected VarDef node, got %s", n.Kind())
+	}
+	v := n.(*nodes.VarDefNode)
+	if v.Value.Kind() != nodes.NdNewStruct {
+		t.Fatalf("expected NewStruct node, got %s", n.Kind())
+	}
+	ns := v.Value.(*nodes.NewStructNode)
+	if !ns.Type.Equals(s.Type) {
+		t.Fatalf("type mismatch between definition and instance")
+	}
+	if len(ns.Args) != 2 {
+		t.Fatalf("expected 2 arguments for instance, got %d", len(ns.Args))
+	}
+	if ns.Args[0].Kind() != nodes.NdInteger {
+		t.Fatalf("expected Integer node, got %s", ns.Args[0].Kind())
+	}
+}
+
+func TestSelector(t *testing.T) {
+	code := ` %my_var: a#b#c `
+	src := strings.NewReader(code)
+	p := NewParser("TestSelector", src, "test")
+	b := types.StructType{"b", []types.Field{{"c", types.Int}}}
+	a := types.StructType{"a", []types.Field{{"b", b}}}
+	p.Scope.SetVar("a", &nodes.VarDefNode{a, "a", &nodes.NewStructNode{}, lexer.Position{"TestSelector", 0, 0}})
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != nodes.NdVarDef {
+		t.Fatalf("expected VarDef node, got %s", n.Kind())
+	}
+	v := n.(*nodes.VarDefNode)
+	n = v.Value
+	if n.Kind() != nodes.NdSelector {
+		t.Fatalf("expected Selector node, got %s", n.Kind())
+	}
+	t.Logf("Got selector: %s", n)
+	s := n.(*nodes.SelectorNode)
+	if s.Parent == nil {
+		t.Fatal("expected parent, got nil")
+	}
+	if s.Parent.Kind() != nodes.NdSelector {
+		t.Fatalf("expected Selector parent, got %s", s.Parent.Kind())
+	}
+	if s.Child != "c" {
+		t.Fatalf("expected 'c' child, got '%s'", s.Child)
+	}
+	s = s.Parent.(*nodes.SelectorNode)
+	if s.Parent == nil {
+		t.Fatal("expected parent, got nil")
+	}
+	if s.Parent.Kind() != nodes.NdSelector {
+		t.Fatalf("expected Selector parent, got %s", s.Parent.Kind())
+	}
+	if s.Child != "b" {
+		t.Fatalf("expected 'b' child, got '%s'", s.Child)
+	}
+	s = s.Parent.(*nodes.SelectorNode)
+	if s.Parent != nil {
+		t.Fatalf("expected nil parent, got %s node", s.Parent.Kind())
+	}
+	if s.Child != "a" {
+		t.Fatalf("expected 'a' child, got '%s'", s.Child)
+	}
+}
+
+func TestSelectorType(t *testing.T) {
+	code := ` %my_var: a#b#c `
+	src := strings.NewReader(code)
+	p := NewParser("TestSelector", src, "test")
+	b := types.StructType{"b", []types.Field{{"c", types.Int}}}
+	a := types.StructType{"a", []types.Field{{"b", b}}}
+	p.Scope.SetVar("a", &nodes.VarDefNode{a, "a", &nodes.NewStructNode{}, lexer.Position{"TestSelectorType", 0, 0}})
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind() != nodes.NdVarDef {
+		t.Fatalf("expected VarDef node, got %s", n.Kind())
+	}
+	v := n.(*nodes.VarDefNode)
+	if !v.VarType.Equals(types.Int) {
+		t.Fatalf("decuced type is not compatible with int: %s", v.VarType)
+	}
+}
+
+func TestSelectorElems(t *testing.T) {
+	// prepare types for test
+	vt := types.MakeStruct("Result",
+		"ok", types.Bool,
+		"val", types.ArrayType{types.Char})
+	v := &nodes.VarDefNode{
+		VarType: vt,
+		Var:     "result",
+		Value:   nil,
+		Pos:     lexer.Position{"TestSelectorElems", 0, 0},
+	}
+
+	// prepare parser
+	code := `%a: result#val#1`
+	src := strings.NewReader(code)
+	p := NewParser("TestSelectorElems", src, "test")
+	p.Scope.SetVar("result", v)
+
+	// get the node
+	n, err := p.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// had to use it in a variable definition as selectors are not allowed at
+	// top-level
+	n = n.(*nodes.VarDefNode).Value
+
+	// ensure it is a selector
+	var s nodes.Selector
+	var ok bool
+	if s, ok = n.(nodes.Selector); !ok {
+		t.Fatal("resulting node is not a selector")
+	}
+
+	// ensure the path has exactly the elements we are looking for
+	path := s.Path()
+	if len(path) != 3 {
+		// path should have 3 elements: [root, field, index]
+		t.Fatalf("incorrect path element count: got %d, expected 3", len(path))
+	}
+
+	// ensure the path elements are correct
+	root := path[0]
+	if root.Name != "result" {
+		t.Fatalf("incorrect path root: got '%s', wanted 'result'", root.Name)
+	}
+
+	field := path[1]
+	if field.Name != "val" {
+		t.Fatalf("incorrect path field: got '%s', wanted 'val'", field.Name)
+	}
+
+	index := path[2]
+	idxin := index.Idx.(*nodes.IntegerNode)
+	if idxin.Int != 1 {
+		t.Fatalf("incorrect path index: got %d, wanted 1", idxin.Int)
 	}
 }

@@ -2,21 +2,20 @@ package parser
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"strconv"
-	"strings"
 
-	"github.com/syzkrash/skol/common"
+	"github.com/syzkrash/skol/debug"
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
+	"github.com/syzkrash/skol/parser/values/types"
 	"github.com/syzkrash/skol/sim"
 )
 
 type Parser struct {
 	lexer  *lexer.Lexer
-	engine string
+	Engine string
 	Sim    *sim.Simulator
 	Scope  *Scope
 }
@@ -24,25 +23,9 @@ type Parser struct {
 func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
 	return &Parser{
 		lexer:  lexer.NewLexer(src, fn),
-		engine: eng,
+		Engine: eng,
 		Sim:    sim.NewSimulator(),
 		Scope:  NewScope(nil),
-	}
-}
-
-func (p *Parser) selfError(where *lexer.Token, msg string) error {
-	return &ParserError{
-		msg:   msg,
-		cause: nil,
-		Where: where,
-	}
-}
-
-func (p *Parser) otherError(where *lexer.Token, msg string, cause error) error {
-	return &ParserError{
-		msg:   msg + ": " + cause.Error(),
-		cause: cause,
-		Where: where,
 	}
 }
 
@@ -55,297 +38,140 @@ func (p *Parser) otherError(where *lexer.Token, msg string, cause error) error {
 //	add! sqr! 2 sqr! 2     // add(sqr(2), sqr(2))
 //	add! a b               // add(a, b)
 //	add! mul! a a mul! bb  // add(mul(a, a), mul(b, b))
-func (p *Parser) funcCall(f *Function) (n nodes.Node, err error) {
+func (p *Parser) funcCall(fn string, f *values.Function, pos lexer.Position) (n nodes.Node, err error) {
 	args := make([]nodes.Node, len(f.Args))
 	for i := 0; i < len(args); i++ {
-		v, err := p.value()
+		v, err := p.Value()
 		if err != nil {
 			return nil, err
 		}
 		args[i] = v
 	}
 	n = &nodes.FuncCallNode{
-		Func: f.Name,
+		Func: fn,
 		Args: args,
+		Pos:  pos,
 	}
 	return
 }
 
-// value parses a nodes.Node that has a value
-//
-// Example values:
-//
-//	123        // nodes.IntegerNode
-//	45.67      // nodes.FloatNode
-//	"hello"    // nodes.StringNode
-//	'E'        // nodes.CharNode
-//	add! 1 2   // nodes.FuncCallNode
-//	age        // nodes.VarRefNode
-//
-func (p *Parser) value() (n nodes.Node, err error) {
-	tok, err := p.lexer.Next()
-	if err != nil {
-		return nil, err
+func (p *Parser) selector(start *lexer.Token) (n nodes.Node, err error) {
+	n = &nodes.SelectorNode{
+		Parent: nil,
+		Child:  start.Raw,
+		Pos:    start.Where,
 	}
-
-	switch tok.Kind {
-	case lexer.TkConstant:
-		if strings.ContainsRune(tok.Raw, '.') {
-			var f float64
-			f, err = strconv.ParseFloat(tok.Raw, 32)
-			if err != nil {
-				err = p.otherError(tok, "invalid floating-point constant", err)
-			}
-
-			n = &nodes.FloatNode{
-				Float: float32(f),
-			}
-		} else {
-			var i int64
-			i, err = strconv.ParseInt(tok.Raw, 0, 32)
-			if err != nil {
-				err = p.otherError(tok, "invalid integer constant", err)
-			}
-
-			n = &nodes.IntegerNode{
-				Int: int32(i),
-			}
-		}
-	case lexer.TkString:
-		n = &nodes.StringNode{
-			Str: tok.Raw,
-		}
-	case lexer.TkChar:
-		rdr := strings.NewReader(tok.Raw)
-		r, _, _ := rdr.ReadRune()
-		n = &nodes.CharNode{
-			Char: byte(r),
-		}
-	case lexer.TkIdent:
-		if tok.Raw[len(tok.Raw)-1] == '!' {
-			f, ok := p.Scope.FindFunc(tok.Raw[:len(tok.Raw)-1])
-			if !ok {
-				err = p.selfError(tok, "unknown function")
-				return
-			}
-			n, err = p.funcCall(f)
-		} else if _, ok := p.Scope.FindVar(tok.Raw); ok {
-			n = &nodes.VarRefNode{
-				Var: tok.Raw,
-			}
-		} else if v, ok := p.Scope.FindConst(tok.Raw); ok {
-			n = p.ToNode(v)
-		} else {
-			err = p.selfError(tok, "unknown variable")
-		}
-	case lexer.TkPunct:
-		if tok.Raw == "*" {
-			n = &nodes.BooleanNode{true}
-		} else if tok.Raw == "/" {
-			n = &nodes.BooleanNode{false}
-		} else {
-			err = p.selfError(tok, "unexpected punctuator")
-		}
-	default:
-		err = p.selfError(tok, "expected value")
-	}
-
-	return
-}
-
-// varDef parses a variable definition nodes.Node (nodes.VarDefNode)
-//
-// Example variable definition:
-//
-//	%i: 123
-//	%f	:45.67
-//	%s: "hello"
-//	%	r	:	'E'
-//
-func (p *Parser) varDef() (n nodes.Node, err error) {
-	nameToken, err := p.lexer.Next()
-	if err != nil {
-		return
-	}
-	if nameToken.Kind != lexer.TkIdent {
-		err = p.selfError(nameToken, "expected an identifier")
-		return
-	}
-
-	sept, err := p.lexer.Next()
-	if err != nil {
-		return nil, err
-	}
-	if sept.Kind != lexer.TkPunct {
-		err = p.selfError(sept, "expected a punctuator")
-		return
-	}
-	if sept.Raw != ":" {
-		err = p.selfError(sept, "expected ':'")
-		return
-	}
-
-	val, err := p.value()
-	if err != nil {
-		return nil, err
-	}
-
-	vt, _ := p.TypeOf(val)
-	n = &nodes.VarDefNode{
-		Var:     nameToken.Raw,
-		Value:   val,
-		VarType: vt,
-	}
-	p.Scope.SetVar(nameToken.Raw, n.(*nodes.VarDefNode))
-
-	return
-}
-
-func (p *Parser) funcOrExtern() (n nodes.Node, err error) {
-	nameToken, err := p.lexer.Next()
-	if err != nil {
-		return
-	}
-	if nameToken.Kind != lexer.TkIdent {
-		err = p.selfError(nameToken, "expected an identifier")
-		return
-	}
-
-	var typeToken *lexer.Token
-	funcType := values.VtUndefined
-	var ok bool
-	sepToken, err := p.lexer.Next()
-	if err != nil {
-		return
-	}
-	if sepToken.Kind == lexer.TkPunct && sepToken.Raw == "/" {
-		typeToken, err = p.lexer.Next()
-		if err != nil {
-			return
-		}
-		if typeToken.Kind != lexer.TkIdent {
-			err = p.selfError(typeToken, "expected Identifier, got "+typeToken.Kind.String())
-			return
-		}
-		funcType, ok = values.ParseType(typeToken.Raw)
-		if !ok {
-			err = p.selfError(typeToken, "unknown type: "+funcType.String())
-			return
-		}
-	} else {
-		p.lexer.Rollback(sepToken)
-	}
-
-	var body []nodes.Node
-	var argName *lexer.Token
-	args := []values.FuncArg{}
+	var tok *lexer.Token
 	for {
-		argName, err = p.lexer.Next()
-		if err != nil {
-			return nil, err
+		// first, consume the #
+		tok, err = p.lexer.Next()
+		// the selector *could* be the last thing in a file, so we just return
+		// on EOF
+		if errors.Is(err, io.EOF) {
+			err = nil
+			return
 		}
-		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '(' {
-			newScope := NewScope(p.Scope)
-			for _, a := range args {
-				newScope.SetVar(a.Name, &nodes.VarDefNode{
-					VarType: a.Type,
-					Var:     a.Name,
-				})
-			}
-			p.Scope = newScope
+		if err != nil {
+			return
+		}
 
-			p.lexer.Rollback(argName)
-			body, err = p.block()
+		// rollback the token we read in case it isn't a #
+		// we have just consumed an element of the selector, so if we don't have
+		// another # that means that is the end of the selector
+		if tok.Kind != lexer.TkPunct || tok.Raw[0] != '#' {
+			p.lexer.Rollback(tok)
+			return
+		}
+
+		// now, we consume the actual selector element
+		tok, err = p.lexer.Next()
+		if err != nil {
+			return
+		}
+		switch tok.Kind {
+		// ident: select a field on a structure
+		case lexer.TkIdent:
+			// determine if the parent selector is an array
+			var pt types.Type
+			pt, err = p.TypeOf(n)
 			if err != nil {
 				return
 			}
-			deducted := funcType == values.VtUndefined
-			for _, bn := range body {
-				if bn.Kind() == nodes.NdReturn {
-					rn := bn.(*nodes.ReturnNode)
-					t, _ := p.TypeOf(rn.Value)
-					if funcType == values.VtUndefined {
-						funcType = t
-					} else if t != funcType {
-						if deducted {
-							err = p.selfError(nameToken,
-								fmt.Sprintf("inconsistent return types: deducted %s, got %s",
-									funcType, t))
-						} else {
-							err = p.selfError(nameToken,
-								fmt.Sprintf("wrong return type: want %s, got %s",
-									funcType, t))
-						}
-						return
-					}
+			// append to the chain of selectors
+			if pt.Prim() == types.PArray {
+				n = &nodes.IndexNode{
+					Parent: n.(nodes.Selector),
+					Idx: &nodes.SelectorNode{
+						Parent: nil,
+						Child:  tok.Raw,
+						Pos:    tok.Where,
+					},
+					Pos: n.Where(),
+				}
+			} else {
+				n = &nodes.SelectorNode{
+					Parent: n.(nodes.Selector),
+					Child:  tok.Raw,
+					Pos:    n.Where(),
 				}
 			}
-
-			n = &nodes.FuncDefNode{
-				Name: nameToken.Raw,
-				Args: args,
-				Ret:  funcType,
-				Body: body,
-			}
-			p.Scope.SetFunc(nameToken.Raw, DefinedFunction(n.(*nodes.FuncDefNode)))
-			return
-		}
-		if argName.Kind == lexer.TkPunct && argName.Raw[0] == '?' {
-			var internToken *lexer.Token
-			internToken, err = p.lexer.Next()
+		// constant: index into an array
+		//	indexes are always unsigned integers, but base prefixes are allowed
+		case lexer.TkConstant:
+			// parse the index, this will error out if the index is not an unsigned
+			// integer
+			var idx uint64
+			idx, err = strconv.ParseUint(tok.Raw, 0, 32)
 			if err != nil {
 				return
 			}
-			intern := ""
-			if internToken.Kind != lexer.TkString {
-				p.lexer.Rollback(internToken)
-			} else {
-				intern = internToken.Raw
+			// append to the chain
+			n = &nodes.IndexNode{
+				Parent: n.(nodes.Selector),
+				Idx: &nodes.IntegerNode{
+					Int: int32(idx),
+					Pos: n.Where(),
+				},
+				Pos: n.Where(),
 			}
-			n = &nodes.FuncExternNode{
-				Name:   nameToken.Raw,
-				Intern: intern,
-				Args:   args,
-				Ret:    funcType,
+		// punct: can be a typecast
+		//	typecasts use the @ punctuator
+		case lexer.TkPunct:
+			if tok.Raw[0] != '@' {
+				// error out if the punctuator is not @
+				err = p.selfError(tok, "expected identifer, constant or '@'")
+				return
 			}
-			p.Scope.SetFunc(nameToken.Raw, ExternFunction(n.(*nodes.FuncExternNode)))
+			// get the type for typecast
+			// this also allows arrays to be typecast (makes sense if you think about
+			// it)
+			var t types.Type
+			t, err = p.parseType()
+			if err != nil {
+				return
+			}
+			// append to the chain
+			n = &nodes.TypecastNode{
+				Parent: n.(nodes.Selector),
+				Type:   t,
+				Pos:    n.Where(),
+			}
+		// any other token is not allowed
+		default:
+			err = p.selfError(tok, "expected identifer, constant or '@'")
 			return
 		}
-		if argName.Kind != lexer.TkIdent {
-			return nil, p.selfError(argName, "expected an identifier")
-		}
-		sept, err := p.lexer.Next()
-		if err != nil {
-			return nil, err
-		}
-		if sept.Kind != lexer.TkPunct {
-			return nil, p.selfError(sept, "expected a punctuator")
-		}
-		if sept.Raw[0] != '/' {
-			return nil, p.selfError(sept, "expected '/'")
-		}
-		argType, err := p.lexer.Next()
-		if err != nil {
-			return nil, err
-		}
-		if argType.Kind != lexer.TkIdent {
-			return nil, p.selfError(argType, "expected an identifier")
-		}
-		t, ok := values.ParseType(argType.Raw)
-		if !ok {
-			return nil, p.selfError(argType, "unknown type: "+argType.Raw)
-		}
-		args = append(args, values.FuncArg{Name: argName.Raw, Type: t})
 	}
 }
 
 func (p *Parser) ret() (n nodes.Node, err error) {
-	v, err := p.value()
+	v, err := p.Value()
 	if err != nil {
 		return
 	}
 	n = &nodes.ReturnNode{
 		Value: v,
+		Pos:   v.Where(),
 	}
 	return
 }
@@ -382,134 +208,6 @@ func (p *Parser) block() (ns []nodes.Node, err error) {
 	return
 }
 
-func (p *Parser) condition() (n nodes.Node, err error) {
-	condition, err := p.value()
-	if err != nil {
-		return
-	}
-	p.Scope = NewScope(p.Scope)
-	ifb, err := p.block()
-	if err != nil {
-		return
-	}
-
-	var (
-		elseb []nodes.Node
-
-		elifn    []*nodes.IfSubNode
-		subcond  nodes.Node
-		subblock []nodes.Node
-
-		tok *lexer.Token
-	)
-	for {
-		tok, err = p.lexer.Next()
-		if errors.Is(err, io.EOF) {
-			err = nil
-			break
-		}
-		if err != nil {
-			return
-		}
-		if tok.Kind != lexer.TkPunct || tok.Raw != ":" {
-			p.lexer.Rollback(tok)
-			break
-		}
-		tok, err = p.lexer.Next()
-		if err != nil {
-			return
-		}
-		if tok.Kind == lexer.TkPunct && tok.Raw == "?" {
-			subcond, err = p.value()
-			if err != nil {
-				return
-			}
-			subblock, err = p.block()
-			if err != nil {
-				return nil, err
-			}
-			elifn = append(elifn, &nodes.IfSubNode{
-				Condition: subcond,
-				Block:     subblock,
-			})
-		} else {
-			p.lexer.Rollback(tok)
-			elseb, err = p.block()
-			if err != nil {
-				return
-			}
-		}
-	}
-
-	p.Scope = p.Scope.Parent
-
-	n = &nodes.IfNode{
-		Condition:   condition,
-		IfBlock:     ifb,
-		ElseIfNodes: elifn,
-		ElseBlock:   elseb,
-	}
-	return
-}
-
-func (p *Parser) loop() (n nodes.Node, err error) {
-	condition, err := p.value()
-	if err != nil {
-		return
-	}
-
-	p.Scope = NewScope(p.Scope)
-	body, err := p.block()
-	if err != nil {
-		return
-	}
-
-	p.Scope = p.Scope.Parent
-	n = &nodes.WhileNode{
-		Condition: condition,
-		Body:      body,
-	}
-	return
-}
-
-func (p *Parser) constant() (err error) {
-	nameToken, err := p.lexer.Next()
-	if err != nil {
-		return
-	}
-	if nameToken.Kind != lexer.TkIdent {
-		err = p.selfError(nameToken, "expected an identifier")
-		return
-	}
-
-	sept, err := p.lexer.Next()
-	if err != nil {
-		return err
-	}
-	if sept.Kind != lexer.TkPunct {
-		err = p.selfError(sept, "expected a punctuator")
-		return
-	}
-	if sept.Raw != ":" {
-		err = p.selfError(sept, "expected ':'")
-		return
-	}
-
-	n, err := p.value()
-	if err != nil {
-		return err
-	}
-	v, err := p.Sim.Const(n)
-	if err != nil {
-		return err
-	}
-
-	if !p.Scope.SetConst(nameToken.Raw, v) {
-		return p.selfError(nameToken, "constant value cannot be redefined")
-	}
-	return nil
-}
-
 func (p *Parser) internalNext(tok *lexer.Token) (n nodes.Node, err error) {
 	switch tok.Kind {
 	case lexer.TkPunct:
@@ -532,43 +230,22 @@ func (p *Parser) internalNext(tok *lexer.Token) (n nodes.Node, err error) {
 			}
 			return p.Next()
 		}
+		if tok.Raw == "@" {
+			return p.structn()
+		}
 		if p.Scope.Parent != nil && tok.Raw[0] == '>' {
 			return p.ret()
 		}
 		err = p.selfError(tok, "unexpected top-level punctuator: "+tok.Raw)
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
-			f, ok := p.Scope.FindFunc(tok.Raw[:len(tok.Raw)-1])
+			fnm := tok.Raw[:len(tok.Raw)-1]
+			f, ok := p.Scope.FindFunc(fnm)
 			if !ok {
-				err = p.selfError(tok, "unknown function: "+tok.Raw)
+				err = p.selfError(tok, "unknown function: "+fnm)
 				return
 			}
-			n, err = p.funcCall(f)
-			fn := n.(*nodes.FuncCallNode)
-			var eng, ver *values.Value
-			if fn.Func == "skol" {
-				if len(fn.Args) < 1 {
-					err = p.selfError(tok, "not enough arguments for engine check")
-					return
-				}
-				eng, err = p.Sim.Const(fn.Args[0])
-				if err != nil {
-					return
-				}
-				ver, err = p.Sim.Const(fn.Args[1])
-				if err != nil {
-					return
-				}
-				if !strings.EqualFold(eng.Str, p.engine) {
-					err = p.selfError(tok, "this file requires the "+eng.Str+" engine")
-					return
-				}
-				if ver.Float > common.VersionF {
-					err = p.selfError(tok, "this file requires skol "+fmt.Sprint(ver.Float))
-					return
-				}
-				n, err = p.Next()
-			}
+			n, err = p.funcCall(fnm, f, tok.Where)
 		} else {
 			err = p.selfError(tok, "unexpected top-level identifier: "+tok.Raw)
 		}
@@ -585,53 +262,10 @@ func (p *Parser) Next() (n nodes.Node, err error) {
 		return nil, err
 	}
 	n, err = p.internalNext(tok)
-	return
-}
-
-func (p *Parser) TypeOf(n nodes.Node) (t values.ValueType, ok bool) {
-	switch n.Kind() {
-	case nodes.NdInteger:
-		t = values.VtInteger
-	case nodes.NdFloat:
-		t = values.VtFloat
-	case nodes.NdChar:
-		t = values.VtChar
-	case nodes.NdString:
-		t = values.VtString
-	case nodes.NdReturn:
-		t, ok = p.TypeOf(n.(*nodes.ReturnNode).Value)
-	case nodes.NdVarRef:
-		var v *nodes.VarDefNode
-		v, ok = p.Scope.FindVar(n.(*nodes.VarRefNode).Var)
-		if !ok {
-			return
-		}
-		t = v.VarType
-	case nodes.NdFuncCall:
-		var f *Function
-		f, ok = p.Scope.FindFunc(n.(*nodes.FuncCallNode).Func)
-		if !ok {
-			return
-		}
-		t = f.Ret
-	default:
-		ok = false
+	if err != nil {
+		debug.Log(debug.AttrParser, "Error %s", err)
+	} else {
+		debug.Log(debug.AttrParser, "%s node at %s", n.Kind(), n.Where())
 	}
 	return
-}
-
-func (p *Parser) ToNode(v *values.Value) nodes.Node {
-	switch v.ValueType {
-	case values.VtBool:
-		return &nodes.BooleanNode{v.Bool}
-	case values.VtChar:
-		return &nodes.CharNode{v.Char}
-	case values.VtFloat:
-		return &nodes.FloatNode{v.Float}
-	case values.VtInteger:
-		return &nodes.IntegerNode{v.Int}
-	case values.VtString:
-		return &nodes.StringNode{v.Str}
-	}
-	panic(v.ValueType.String())
 }

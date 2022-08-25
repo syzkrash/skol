@@ -1,0 +1,21 @@
+skol! "sim" 0.3
+
+// a vector of 2 ints
+@Vec2i(
+  x/int
+  y/int
+)
+
+// some Vec2i instance
+// this will cause my_vec to be a Vec2i forever
+%my_vec: @Vec2i 12 34
+
+$add_vec2i a/Vec2i b/Vec2i (
+  >@Vec2i add_i! a#x b#x add_i! a#y b#y
+)
+
+%my_vec: add_vec2i! my_vec @Vec2i 1 2
+
+print! to_str! my_vec#x
+print! to_str! my_vec#y
+print! ""

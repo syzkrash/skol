@@ -2,8 +2,9 @@ package lexer
 
 import (
 	"errors"
-	"fmt"
 	"io"
+
+	"github.com/syzkrash/skol/debug"
 )
 
 type Lexer struct {
@@ -17,12 +18,13 @@ func NewLexer(src io.RuneScanner, fn string) *Lexer {
 	}
 }
 
-func (l *Lexer) selfError(msg string) error {
-	fmt.Println(l.src.Position)
+func (l *Lexer) selfError(ch rune, msg string) error {
+
 	return &LexerError{
 		msg:   msg,
 		cause: nil,
 		Where: l.src.Position,
+		Char:  ch,
 	}
 }
 
@@ -40,12 +42,13 @@ func (l *Lexer) nextIdent(c rune) (tok *Token, err error) {
 	for {
 		c, _, err = l.src.ReadRune()
 		if errors.Is(err, io.EOF) {
+			err = nil
 			goto finish
 		}
 		if err != nil {
 			return
 		}
-		if !isIdent(c) {
+		if !isIdent(c) && !isDigit(c) {
 			if err = l.src.UnreadRune(); err != nil {
 				return
 			}
@@ -164,7 +167,7 @@ func (l *Lexer) nextChar() (tok *Token, err error) {
 
 func (l *Lexer) nextPunctuator(c rune) (tok *Token, ok bool) {
 	switch c {
-	case '(', ')', '$', '%', ':', '/', '>', '?', '*', '#':
+	case '(', ')', '[', ']', '$', '%', ':', '/', '>', '?', '*', '#', '@':
 		tok = &Token{
 			Kind:  TkPunct,
 			Where: l.src.Position,
@@ -210,6 +213,11 @@ func (l *Lexer) ignoreBlockComment() (err error) {
 func (l *Lexer) commentOrSlash() (comment bool, err error) {
 	var c rune
 	c, _, err = l.src.ReadRune()
+	if errors.Is(err, io.EOF) {
+		err = nil
+		comment = false
+		return
+	}
 	if err != nil {
 		return
 	}
@@ -281,7 +289,7 @@ func (l *Lexer) internalNext() (tok *Token, err error) {
 		var ok bool
 		tok, ok = l.nextPunctuator(c)
 		if !ok {
-			err = l.selfError("illegal token: " + string(c))
+			err = l.selfError(c, "illegal token: "+string(c))
 		}
 	}
 
@@ -298,6 +306,11 @@ func (l *Lexer) Next() (tok *Token, err error) {
 	var lerr *LexerError
 	if err != nil && !errors.As(err, &lerr) {
 		err = l.otherError(err)
+	}
+	if err != nil {
+		debug.Log(debug.AttrLexer, "Error %s", err)
+	} else {
+		debug.Log(debug.AttrLexer, "%s token `%s` at %s", tok.Kind, tok.Raw, tok.Where)
 	}
 	return
 }
