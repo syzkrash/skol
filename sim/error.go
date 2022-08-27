@@ -3,12 +3,12 @@ package sim
 import (
 	"fmt"
 
-	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/ast"
 )
 
 type SimError struct {
 	msg   string
-	Node  nodes.Node
+	Cause ast.MetaNode
 	Calls []*Call
 }
 
@@ -19,7 +19,7 @@ func (s *SimError) Print() {
 	for _, c := range s.Calls {
 		fmt.Println("   ", c.String())
 	}
-	fmt.Println("-->", "("+s.Node.Kind().String()+")", "at", s.Node.Where())
+	fmt.Println("-->", "("+s.Cause.Node.Kind().String()+")", "at", s.Cause.Where)
 	fmt.Println()
 }
 

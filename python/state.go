@@ -34,7 +34,7 @@ func (p *pythonState) Generate(output io.StringWriter) error {
 	if err != nil {
 		return err
 	}
-	return p.statement(n)
+	return p.statement(n.Node)
 }
 
 func (*pythonState) Ext() string {

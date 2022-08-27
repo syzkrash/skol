@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/parser"
-	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
@@ -21,25 +21,28 @@ func NewTypechecker(src io.RuneScanner, fn, eng string) *Typechecker {
 	}
 }
 
-func typeError(n nodes.Node, want, got types.Type, format string, a ...any) error {
+func typeError(mn ast.MetaNode, want, got types.Type, format string, a ...any) error {
 	return &TypeError{
-		msg:  fmt.Sprintf(format, a...),
-		Got:  got,
-		Want: want,
-		Node: n,
+		msg:   fmt.Sprintf(format, a...),
+		Got:   got,
+		Want:  want,
+		Cause: mn,
 	}
 }
 
-func (t *Typechecker) checkSelector(s nodes.Selector) (err error) {
+func (t *Typechecker) checkSelector(mn ast.MetaNode, s ast.Selector) (err error) {
 	path := s.Path()
 	root, _ := t.Parser.Scope.FindVar(path[0].Name)
-	typeNow := root.VarType
+	typeNow, err := t.Parser.TypeOf(root)
+	if err != nil {
+		return
+	}
 	for _, e := range path[1:] {
 		// again, the selector resolve algorithm
 		// see /parser/types.go, line 137
 		if e.Cast != nil {
 			if !typeNow.Equals(e.Cast) {
-				return typeError(s, typeNow, e.Cast,
+				return typeError(mn, typeNow, e.Cast,
 					"cast to incompatible type")
 			}
 			typeNow = e.Cast
@@ -47,7 +50,7 @@ func (t *Typechecker) checkSelector(s nodes.Selector) (err error) {
 		}
 		if e.Name != "" {
 			if typeNow.Prim() != types.PStruct {
-				return typeError(s, typeNow, nil,
+				return typeError(mn, typeNow, nil,
 					"can only access fields on structures (acessing '%s' on %s)",
 					e.Name, typeNow)
 			}
@@ -60,15 +63,14 @@ func (t *Typechecker) checkSelector(s nodes.Selector) (err error) {
 				}
 			}
 			if !ok {
-				return typeError(s, typeNow, nil,
+				return typeError(mn, typeNow, nil,
 					"unknown field: '%s'", e.Name)
 			}
 			continue
 		}
 		if typeNow.Prim() != types.PArray {
-			return typeError(s, typeNow, nil,
-				"can only index arrays (accessing index %d of %s)",
-				e.Idx, typeNow)
+			return typeError(mn, typeNow, nil,
+				"can only index arrays")
 		}
 		at := typeNow.(types.ArrayType)
 		typeNow = t.Parser.EnsureResultType(at.Element)
@@ -76,14 +78,15 @@ func (t *Typechecker) checkSelector(s nodes.Selector) (err error) {
 	return
 }
 
-func (t *Typechecker) checkNode(n nodes.Node) (err error) {
+func (t *Typechecker) checkNode(mn ast.MetaNode) (err error) {
+	n := mn.Node
 	switch n.Kind() {
-	case nodes.NdFuncCall:
-		fcn := n.(*nodes.FuncCallNode)
+	case ast.NFuncCall:
+		fcn := n.(ast.FuncCallNode)
 		fdef, _ := t.Parser.Scope.FindFunc(fcn.Func)
 		paramTypes := []types.Type{}
 		for i, param := range fdef.Args {
-			atype, err := t.Parser.TypeOf(fcn.Args[i])
+			atype, err := t.Parser.TypeOf(fcn.Args[i].Node)
 			if err != nil {
 				return err
 			}
@@ -101,54 +104,56 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 			}
 		}
 
-	case nodes.NdFuncDef:
-		fdn := n.(*nodes.FuncDefNode)
+	case ast.NFuncDef:
+		fdn := n.(ast.FuncDefNode)
 		if fdn.Ret.Equals(types.Any) {
-			return typeError(n, types.Nothing, types.Nothing,
+			return typeError(mn, types.Nothing, types.Nothing,
 				"functions cannot return Any")
 		}
 		t.Parser.Scope = &parser.Scope{
 			Parent: t.Parser.Scope,
 			Funcs:  map[string]*values.Function{},
-			Vars:   map[string]*nodes.VarDefNode{},
-			Consts: map[string]*values.Value{},
+			Vars:   map[string]ast.Node{},
+			Consts: map[string]ast.Node{},
 			Types:  map[string]types.Type{},
 		}
-		for _, a := range fdn.Args {
-			t.Parser.Scope.SetVar(a.Name, &nodes.VarDefNode{
-				Var:     a.Name,
-				VarType: a.Type,
-			})
+		for _, a := range fdn.Proto {
+			an, ok := t.Parser.NodeOf(a.Type)
+			if !ok {
+				err = common.Error(mn, "cannot typecheck value of type %s", a.Type)
+				return
+			}
+			t.Parser.Scope.SetVar(a.Name, an)
 		}
 		for _, bn := range fdn.Body {
 			err = t.checkNodeInFunc(bn, fdn.Ret)
 			if err != nil {
-				return err
+				return
 			}
 		}
 		t.Parser.Scope = t.Parser.Scope.Parent
 
-	case nodes.NdIf:
-		cn := n.(*nodes.IfNode)
-		ctype, err := t.Parser.TypeOf(cn.Condition)
+	case ast.NIf:
+		cn := n.(ast.IfNode)
+		ctype, err := t.Parser.TypeOf(cn.Main.Cond.Node)
 		if err != nil {
 			return err
 		}
 		if !types.Bool.Equals(ctype) {
-			return typeError(cn.Condition, types.Bool, ctype,
+			return typeError(cn.Main.Cond, types.Bool, ctype,
 				"conditional must be a boolean")
 		}
-		for _, bn := range cn.IfBlock {
+		for _, bn := range cn.Main.Block {
 			if err = t.checkNode(bn); err != nil {
 				return err
 			}
 		}
-		for _, bn := range cn.ElseBlock {
+		for _, bn := range cn.Else {
 			if err = t.checkNode(bn); err != nil {
 				return err
 			}
 		}
-		for _, branch := range cn.ElseIfNodes {
+		for _, branch := range cn.Other {
 			for _, bn := range branch.Block {
 				if err = t.checkNode(bn); err != nil {
 					return err
@@ -156,26 +161,26 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 			}
 		}
 
-	case nodes.NdWhile:
-		cn := n.(*nodes.WhileNode)
-		ctype, err := t.Parser.TypeOf(cn.Condition)
+	case ast.NWhile:
+		cn := n.(ast.WhileNode)
+		ctype, err := t.Parser.TypeOf(cn.Cond.Node)
 		if err != nil {
 			return err
 		}
 		if !types.Bool.Equals(ctype) {
-			return typeError(cn.Condition, types.Bool, ctype,
+			return typeError(cn.Cond, types.Bool, ctype,
 				"conditional must be a boolean")
 		}
-		for _, bn := range cn.Body {
+		for _, bn := range cn.Block {
 			if err = t.checkNode(bn); err != nil {
 				return err
 			}
 		}
 
-	case nodes.NdNewStruct:
-		nsn := n.(*nodes.NewStructNode)
-		for i, f := range nsn.Type.(types.StructType).Fields {
-			atype, err := t.Parser.TypeOf(nsn.Args[i])
+	case ast.NStruct:
+		nsn := n.(ast.StructNode)
+		for i, f := range nsn.Type.Fields {
+			atype, err := t.Parser.TypeOf(nsn.Args[i].Node)
 			if err != nil {
 				return err
 			}
@@ -185,38 +190,35 @@ func (t *Typechecker) checkNode(n nodes.Node) (err error) {
 			}
 		}
 
-	case nodes.NdVarDef:
-		vdn := n.(*nodes.VarDefNode)
-		if vdn.VarType.Equals(types.Any) {
-			return typeError(n, types.Nothing, types.Nothing,
-				"variables cannot be of type Any")
-		}
-		switch vdn.Value.Kind() {
-		case nodes.NdArray:
-			an := vdn.Value.(*nodes.ArrayNode)
-			for _, e := range an.Elements {
-				et, err := t.Parser.TypeOf(e)
+	case ast.NVarSet:
+		vdn := n.(ast.VarSetNode)
+		switch vdn.Value.Node.Kind() {
+		case ast.NArray:
+			an := vdn.Value.Node.(ast.ArrayNode)
+			for _, e := range an.Elems {
+				et, err := t.Parser.TypeOf(e.Node)
 				if err != nil {
 					return err
 				}
 				if !an.Type.Equals(et) {
-					return typeError(an, an.Type, et,
+					return typeError(vdn.Value, an.Type, et,
 						"value of incompatible type in array")
 				}
 			}
 		}
-		if sel, ok := vdn.Value.(nodes.Selector); ok {
-			return t.checkSelector(sel)
+		if sel, ok := vdn.Value.Node.(ast.Selector); ok {
+			return t.checkSelector(vdn.Value, sel)
 		}
 	}
 	return nil
 }
 
-func (t *Typechecker) checkNodeInFunc(n nodes.Node, ret types.Type) (err error) {
+func (t *Typechecker) checkNodeInFunc(mn ast.MetaNode, ret types.Type) (err error) {
+	n := mn.Node
 	switch n.Kind() {
-	case nodes.NdReturn:
-		rn := n.(*nodes.ReturnNode)
-		vtype, err := t.Parser.TypeOf(rn.Value)
+	case ast.NReturn:
+		rn := n.(ast.ReturnNode)
+		vtype, err := t.Parser.TypeOf(rn.Value.Node)
 		if err != nil {
 			return err
 		}
@@ -226,27 +228,27 @@ func (t *Typechecker) checkNodeInFunc(n nodes.Node, ret types.Type) (err error) 
 		}
 		return nil
 
-	case nodes.NdIf:
-		cn := n.(*nodes.IfNode)
-		ctype, err := t.Parser.TypeOf(cn.Condition)
+	case ast.NIf:
+		cn := n.(ast.IfNode)
+		ctype, err := t.Parser.TypeOf(cn.Main.Cond.Node)
 		if err != nil {
 			return err
 		}
 		if !types.Bool.Equals(ctype) {
-			return typeError(cn.Condition, types.Bool, ctype,
+			return typeError(cn.Main.Cond, types.Bool, ctype,
 				"conditional must be a boolean")
 		}
-		for _, bn := range cn.IfBlock {
+		for _, bn := range cn.Main.Block {
 			if err = t.checkNodeInFunc(bn, ret); err != nil {
 				return err
 			}
 		}
-		for _, bn := range cn.ElseBlock {
+		for _, bn := range cn.Else {
 			if err = t.checkNodeInFunc(bn, ret); err != nil {
 				return err
 			}
 		}
-		for _, branch := range cn.ElseIfNodes {
+		for _, branch := range cn.Other {
 			for _, bn := range branch.Block {
 				if err = t.checkNodeInFunc(bn, ret); err != nil {
 					return err
@@ -254,54 +256,55 @@ func (t *Typechecker) checkNodeInFunc(n nodes.Node, ret types.Type) (err error) 
 			}
 		}
 
-	case nodes.NdWhile:
-		cn := n.(*nodes.WhileNode)
-		ctype, err := t.Parser.TypeOf(cn.Condition)
+	case ast.NWhile:
+		cn := n.(ast.WhileNode)
+		ctype, err := t.Parser.TypeOf(cn.Cond.Node)
 		if err != nil {
 			return err
 		}
 		if !types.Bool.Equals(ctype) {
-			return typeError(cn.Condition, types.Bool, ctype,
+			return typeError(cn.Cond, types.Bool, ctype,
 				"conditional must be a boolean")
 		}
-		for _, bn := range cn.Body {
+		for _, bn := range cn.Block {
 			if err = t.checkNodeInFunc(bn, ret); err != nil {
 				return err
 			}
 		}
 
 	default:
-		return t.checkNode(n)
+		return t.checkNode(mn)
 	}
 
 	return nil
 }
 
-func (t *Typechecker) Next() (n nodes.Node, err error) {
-	n, err = t.Parser.Next()
+func (t *Typechecker) Next() (mn ast.MetaNode, err error) {
+	mn, err = t.Parser.Next()
 	if err != nil {
 		return
 	}
-	err = t.checkNode(n)
-	if err == nil && n.Kind() == nodes.NdFuncCall {
-		fcn := n.(*nodes.FuncCallNode)
+	n := mn.Node
+	err = t.checkNode(mn)
+	if err == nil && n.Kind() == ast.NFuncCall {
+		fcn := n.(ast.FuncCallNode)
 		// we can check for the skol function since it'd be typechecked by now
 		if fcn.Func == "skol" {
 			verVal, err := t.Parser.Sim.Expr(fcn.Args[1])
 			if err != nil {
-				return n, err
+				return mn, err
 			}
 			engVal, err := t.Parser.Sim.Expr(fcn.Args[0])
 			if err != nil {
-				return n, err
+				return mn, err
 			}
 			if verVal.Data.(float32) > common.VersionF {
-				return n, common.Error(n,
+				return mn, common.Error(mn,
 					"this script requires skol %.1f or above",
 					verVal.Data.(float32))
 			}
 			if engVal.Data.(string) != t.Parser.Engine {
-				return n, common.Error(n,
+				return mn, common.Error(mn,
 					"this script required the %s engine",
 					engVal.Data.(string))
 			}

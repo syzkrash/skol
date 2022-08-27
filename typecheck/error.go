@@ -3,15 +3,15 @@ package typecheck
 import (
 	"fmt"
 
-	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
 type TypeError struct {
-	Got  types.Type
-	Want types.Type
-	Node nodes.Node
-	msg  string
+	Got   types.Type
+	Want  types.Type
+	Cause ast.MetaNode
+	msg   string
 }
 
 func (e *TypeError) Error() string {
@@ -22,7 +22,7 @@ func (e *TypeError) Print() {
 	fmt.Println("\x1b[31m\x1b[1mType error:\x1b[0m")
 	fmt.Println("   ", e.msg)
 	fmt.Println("\x1b[1mCaused by:\x1b[0m")
-	fmt.Println("   ", e.Node.Kind(), "at", e.Node.Where())
+	fmt.Println("   ", e.Cause.Node.Kind(), "at", e.Cause.Where)
 	if e.Want.Prim() != types.PNothing {
 		fmt.Println("\x1b[1mWanted type:\x1b[0m")
 		fmt.Println("   ", e.Want.String())

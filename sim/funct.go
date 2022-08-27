@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/parser/defaults"
-	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
@@ -16,7 +16,7 @@ type NativeFunc func(*Simulator, ArgMap) (*values.Value, error)
 type Funct struct {
 	Args     []values.FuncArg
 	Ret      types.Type
-	Body     []nodes.Node
+	Body     ast.Block
 	IsNative bool
 	Native   NativeFunc
 }

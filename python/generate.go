@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
@@ -30,8 +30,7 @@ func (p *pythonState) vt2pt(t types.Type) string {
 	return ""
 }
 
-func (p *pythonState) class(s *nodes.StructNode) (err error) {
-	str := s.Type.(types.StructType)
+func (p *pythonState) class(s ast.StructDefNode) (err error) {
 	w := p.out.(io.Writer)
 
 	// begin class definition
@@ -41,7 +40,7 @@ func (p *pythonState) class(s *nodes.StructNode) (err error) {
 	// add __slots__
 	//		__slots__ = ('a', 'b', 'c', ...,)
 	fmt.Fprint(w, indent+"__slots__ = (")
-	for _, f := range str.Fields {
+	for _, f := range s.Fields {
 		fmt.Fprintf(w, "\"%s\", ", f.Name)
 	}
 	fmt.Fprint(w, ")\n")
@@ -50,14 +49,14 @@ func (p *pythonState) class(s *nodes.StructNode) (err error) {
 	//		a: int
 	//		b: str
 	//		...
-	for _, f := range str.Fields {
+	for _, f := range s.Fields {
 		fmt.Fprintf(w, indent+"%s: %s\n", f.Name, p.vt2pt(f.Type))
 	}
 
 	// add constructor
 	//	def __init__(self, a: int, b: str, ...,):
 	fmt.Fprint(w, indent+"def __init__(")
-	for _, f := range str.Fields {
+	for _, f := range s.Fields {
 		fmt.Fprintf(w, "%s: %s, ", f.Name, p.vt2pt(f.Type))
 	}
 	fmt.Fprint(w, "):\n")
@@ -66,7 +65,7 @@ func (p *pythonState) class(s *nodes.StructNode) (err error) {
 	//		self.a = a
 	//		self.b = b
 	//		...
-	for _, f := range str.Fields {
+	for _, f := range s.Fields {
 		fmt.Fprintf(w, indent+indent+"self.%s = %s\n", f.Name, f.Name)
 	}
 
@@ -75,7 +74,7 @@ func (p *pythonState) class(s *nodes.StructNode) (err error) {
 	return
 }
 
-func (p *pythonState) statement(n nodes.Node) (err error) {
+func (p *pythonState) statement(n ast.Node) (err error) {
 	defer p.out.WriteString("\n")
 
 	for i := 0; i < int(p.ind); i++ {
@@ -83,34 +82,34 @@ func (p *pythonState) statement(n nodes.Node) (err error) {
 	}
 
 	switch n.Kind() {
-	case nodes.NdVarDef:
-		return p.varDef(n.(*nodes.VarDefNode))
-	case nodes.NdFuncCall:
-		return p.callOrExpr(n.(*nodes.FuncCallNode))
-	case nodes.NdFuncDef:
-		return p.funcDef(n.(*nodes.FuncDefNode))
-	case nodes.NdReturn:
-		return p.ret(n.(*nodes.ReturnNode))
-	case nodes.NdIf:
-		return p.ifn(n.(*nodes.IfNode))
-	case nodes.NdWhile:
-		return p.while(n.(*nodes.WhileNode))
-	case nodes.NdStruct:
-		return p.class(n.(*nodes.StructNode))
-	case nodes.NdFuncExtern:
+	case ast.NVarSet:
+		return p.varSet(n.(ast.VarSetNode))
+	case ast.NFuncCall:
+		return p.callOrExpr(n.(ast.FuncCallNode))
+	case ast.NFuncDef:
+		return p.funcDef(n.(ast.FuncDefNode))
+	case ast.NReturn:
+		return p.ret(n.(ast.ReturnNode))
+	case ast.NIf:
+		return p.ifn(n.(ast.IfNode))
+	case ast.NWhile:
+		return p.while(n.(ast.WhileNode))
+	case ast.NStruct:
+		return p.class(n.(ast.StructDefNode))
+	case ast.NFuncExtern:
 		// special case for externs
 		return nil
 	}
 	return fmt.Errorf("%s node is not a statement", n.Kind())
 }
 
-func (p *pythonState) integer(n *nodes.IntegerNode) (err error) {
-	_, err = p.out.WriteString(strconv.Itoa(int(n.Int)))
+func (p *pythonState) integer(n ast.IntNode) (err error) {
+	_, err = p.out.WriteString(strconv.Itoa(int(n.Value)))
 	return
 }
 
-func (p *pythonState) boolean(n *nodes.BooleanNode) (err error) {
-	if n.Bool {
+func (p *pythonState) boolean(n ast.BoolNode) (err error) {
+	if n.Value {
 		_, err = p.out.WriteString("True")
 	} else {
 		_, err = p.out.WriteString("False")
@@ -118,27 +117,27 @@ func (p *pythonState) boolean(n *nodes.BooleanNode) (err error) {
 	return
 }
 
-func (p *pythonState) float(n *nodes.FloatNode) (err error) {
-	_, err = p.out.WriteString(strconv.FormatFloat(float64(n.Float), 'g', 10, 64))
+func (p *pythonState) float(n ast.FloatNode) (err error) {
+	_, err = p.out.WriteString(strconv.FormatFloat(float64(n.Value), 'g', 10, 64))
 	return
 }
 
-func (p *pythonState) string(n *nodes.StringNode) (err error) {
-	_, err = p.out.WriteString("\"" + strings.ReplaceAll(n.Str, "\"", "\\\"") + "\"")
+func (p *pythonState) string(n ast.StringNode) (err error) {
+	_, err = p.out.WriteString("\"" + strings.ReplaceAll(n.Value, "\"", "\\\"") + "\"")
 	return
 }
 
-func (p *pythonState) char(n *nodes.CharNode) (err error) {
-	_, err = p.out.WriteString(strconv.FormatInt(int64(n.Char), 10))
+func (p *pythonState) char(n ast.CharNode) (err error) {
+	_, err = p.out.WriteString(strconv.FormatInt(int64(n.Value), 10))
 	return
 }
 
-func (p *pythonState) callOrExpr(n *nodes.FuncCallNode) (err error) {
+func (p *pythonState) callOrExpr(n ast.FuncCallNode) (err error) {
 	if n.Func == "import" {
-		return p.impt(n.Args[0].(*nodes.StringNode).Str)
+		return p.impt(n.Args[0].Node.(ast.StringNode).Value)
 	}
 	if oper, ok := operators[n.Func]; ok {
-		return p.expr(oper, n.Args[0], n.Args[1])
+		return p.expr(oper, n.Args[0].Node, n.Args[1].Node)
 	}
 	if sgen, ok := specialGenerators[n.Func]; ok {
 		return sgen(p, n)
@@ -146,7 +145,7 @@ func (p *pythonState) callOrExpr(n *nodes.FuncCallNode) (err error) {
 	return p.funcCall(n)
 }
 
-func (p *pythonState) expr(oper string, lhs, rhs nodes.Node) (err error) {
+func (p *pythonState) expr(oper string, lhs, rhs ast.Node) (err error) {
 	_, err = p.out.WriteString("(")
 	if err != nil {
 		return
@@ -167,7 +166,7 @@ func (p *pythonState) expr(oper string, lhs, rhs nodes.Node) (err error) {
 	return
 }
 
-func (p *pythonState) funcCall(n *nodes.FuncCallNode) (err error) {
+func (p *pythonState) funcCall(n ast.FuncCallNode) (err error) {
 	if nn, rename := renames[n.Func]; rename {
 		_, err = p.out.WriteString(nn)
 		if err != nil {
@@ -190,13 +189,13 @@ func (p *pythonState) funcCall(n *nodes.FuncCallNode) (err error) {
 	}
 
 	if len(n.Args) == 1 {
-		err = p.value(n.Args[0])
+		err = p.value(n.Args[0].Node)
 		if err != nil {
 			return
 		}
 	} else if len(n.Args) > 1 {
 		for _, a := range n.Args[:len(n.Args)-1] {
-			err = p.value(a)
+			err = p.value(a.Node)
 			if err != nil {
 				return
 			}
@@ -205,7 +204,7 @@ func (p *pythonState) funcCall(n *nodes.FuncCallNode) (err error) {
 				return
 			}
 		}
-		err = p.value(n.Args[len(n.Args)-1])
+		err = p.value(n.Args[len(n.Args)-1].Node)
 		if err != nil {
 			return
 		}
@@ -227,8 +226,8 @@ func (p *pythonState) impt(mod string) (err error) {
 	return
 }
 
-func (p *pythonState) instantiate(n *nodes.NewStructNode) (err error) {
-	_, err = p.out.WriteString(n.Type.(types.StructType).Name)
+func (p *pythonState) instantiate(n ast.StructNode) (err error) {
+	_, err = p.out.WriteString(n.Type.Name)
 	if err != nil {
 		return
 	}
@@ -237,19 +236,19 @@ func (p *pythonState) instantiate(n *nodes.NewStructNode) (err error) {
 		return
 	}
 	if len(n.Args) == 1 {
-		err = p.value(n.Args[0])
+		err = p.value(n.Args[0].Node)
 		if err != nil {
 			return
 		}
 	} else {
 		for _, a := range n.Args[:len(n.Args)-1] {
-			err = p.value(a)
+			err = p.value(a.Node)
 			if err != nil {
 				return
 			}
 			p.out.WriteString(", ")
 		}
-		err = p.value(n.Args[len(n.Args)-1])
+		err = p.value(n.Args[len(n.Args)-1].Node)
 		if err != nil {
 			return
 		}
@@ -258,7 +257,7 @@ func (p *pythonState) instantiate(n *nodes.NewStructNode) (err error) {
 	return
 }
 
-func (p *pythonState) selector(s nodes.Selector) (err error) {
+func (p *pythonState) selector(s ast.Selector) (err error) {
 	w := p.out.(io.Writer)
 	path := s.Path()
 
@@ -277,97 +276,85 @@ func (p *pythonState) selector(s nodes.Selector) (err error) {
 			// don't do anything since Python is dynamically typed anyway
 		} else if e.Name != "" {
 			fmt.Fprintf(w, ".%s", e.Name)
+		} else if e.IdxS != nil {
+			fmt.Fprintf(w, "[%s]", e.IdxS.(ast.SelectorNode).Child)
 		} else {
 			// this is not correct, since this will return a regular value, whereas
 			// skol arrays return a result type when indexing
 			// ¯\_(ツ)_/¯
-			if e.Idx.Kind() == nodes.NdSelector {
-				fmt.Fprintf(w, "[%s]", e.Idx.(*nodes.SelectorNode).Child)
-			} else {
-				fmt.Fprintf(w, "[%d]", e.Idx.(*nodes.IntegerNode).Int)
-			}
+			fmt.Fprintf(w, "[%d]", e.IdxC)
 		}
 	}
 	return
 }
 
-func (p *pythonState) value(n nodes.Node) error {
+func (p *pythonState) value(n ast.Node) error {
 	switch n.Kind() {
-	case nodes.NdInteger:
-		return p.integer(n.(*nodes.IntegerNode))
-	case nodes.NdBoolean:
-		return p.boolean(n.(*nodes.BooleanNode))
-	case nodes.NdFloat:
-		return p.float(n.(*nodes.FloatNode))
-	case nodes.NdString:
-		return p.string(n.(*nodes.StringNode))
-	case nodes.NdChar:
-		return p.char(n.(*nodes.CharNode))
-	case nodes.NdFuncCall:
-		return p.callOrExpr(n.(*nodes.FuncCallNode))
-	case nodes.NdNewStruct:
-		return p.instantiate(n.(*nodes.NewStructNode))
-	case nodes.NdArray:
-		return p.list(n.(*nodes.ArrayNode))
+	case ast.NInt:
+		return p.integer(n.(ast.IntNode))
+	case ast.NBool:
+		return p.boolean(n.(ast.BoolNode))
+	case ast.NFloat:
+		return p.float(n.(ast.FloatNode))
+	case ast.NString:
+		return p.string(n.(ast.StringNode))
+	case ast.NChar:
+		return p.char(n.(ast.CharNode))
+	case ast.NFuncCall:
+		return p.callOrExpr(n.(ast.FuncCallNode))
+	case ast.NStruct:
+		return p.instantiate(n.(ast.StructNode))
+	case ast.NArray:
+		return p.list(n.(ast.ArrayNode))
 	default:
-		if s, ok := n.(nodes.Selector); ok {
+		if s, ok := n.(ast.Selector); ok {
 			return p.selector(s)
 		}
 	}
 	return fmt.Errorf("%s node is not a value", n.Kind())
 }
 
-func (p *pythonState) stringOrVar(n nodes.Node) error {
+func (p *pythonState) stringOrVar(n ast.Node) error {
 	switch n.Kind() {
-	case nodes.NdString:
-		return p.string(n.(*nodes.StringNode))
+	case ast.NString:
+		return p.string(n.(ast.StringNode))
 	}
 	return fmt.Errorf("expected string or variable, got %s", n.Kind())
 }
 
-func (p *pythonState) integerOrVar(n nodes.Node) error {
+func (p *pythonState) integerOrVar(n ast.Node) error {
 	switch n.Kind() {
-	case nodes.NdInteger:
-		return p.integer(n.(*nodes.IntegerNode))
+	case ast.NInt:
+		return p.integer(n.(ast.IntNode))
 	}
 	return fmt.Errorf("expected integer or variable, got %s", n.Kind())
 }
 
-func (p *pythonState) charOrVar(n nodes.Node) error {
+func (p *pythonState) charOrVar(n ast.Node) error {
 	switch n.Kind() {
-	case nodes.NdChar:
-		return p.char(n.(*nodes.CharNode))
+	case ast.NChar:
+		return p.char(n.(ast.CharNode))
 	}
 	return fmt.Errorf("expected char or variable, got %s", n.Kind())
 }
 
-func (p *pythonState) varDef(n *nodes.VarDefNode) (err error) {
+func (p *pythonState) varSet(n ast.VarSetNode) (err error) {
 	_, err = p.out.WriteString(n.Var)
 	if err != nil {
 		return
-	}
-	if pyType := p.vt2pt(n.VarType); pyType != "" {
-		_, err = p.out.WriteString(": ")
-		if err != nil {
-			return
-		}
-		_, err = p.out.WriteString(pyType)
-		if err != nil {
-			return
-		}
 	}
 	_, err = p.out.WriteString(" = ")
 	if err != nil {
 		return
 	}
-	err = p.value(n.Value)
+	err = p.value(n.Value.Node)
 	return
 }
 
-func (p *pythonState) block(n []nodes.Node) (err error) {
+func (p *pythonState) block(b ast.Block) (err error) {
 	p.ind++
-	for _, s := range n {
-		err = p.statement(s)
+	for _, s := range b {
+		err = p.statement(s.Node)
 		if err != nil {
 			return
 		}
@@ -376,7 +363,7 @@ func (p *pythonState) block(n []nodes.Node) (err error) {
 	return
 }
 
-func (p *pythonState) funcDef(n *nodes.FuncDefNode) (err error) {
+func (p *pythonState) funcDef(n ast.FuncDefNode) (err error) {
 	_, err = p.out.WriteString("def ")
 	if err != nil {
 		return
@@ -390,8 +377,8 @@ func (p *pythonState) funcDef(n *nodes.FuncDefNode) (err error) {
 		return
 	}
 
-	i := len(n.Args)
-	for _, a := range n.Args {
+	i := len(n.Proto)
+	for _, a := range n.Proto {
 		_, err = p.out.WriteString(a.Name)
 		if err != nil {
 			return
@@ -440,20 +427,20 @@ func (p *pythonState) funcDef(n *nodes.FuncDefNode) (err error) {
 	return p.block(n.Body)
 }
 
-func (p *pythonState) ret(n *nodes.ReturnNode) (err error) {
+func (p *pythonState) ret(n ast.ReturnNode) (err error) {
 	_, err = p.out.WriteString("return ")
 	if err != nil {
 		return
 	}
-	return p.value(n.Value)
+	return p.value(n.Value.Node)
 }
 
-func (p *pythonState) ifn(n *nodes.IfNode) (err error) {
+func (p *pythonState) ifn(n ast.IfNode) (err error) {
 	_, err = p.out.WriteString("if ")
 	if err != nil {
 		return
 	}
-	err = p.value(n.Condition)
+	err = p.value(n.Main.Cond.Node)
 	if err != nil {
 		return
 	}
@@ -461,12 +448,12 @@ func (p *pythonState) ifn(n *nodes.IfNode) (err error) {
 	if err != nil {
 		return
 	}
-	err = p.block(n.IfBlock)
+	err = p.block(n.Main.Block)
 	if err != nil {
 		return
 	}
 
-	for _, elif := range n.ElseIfNodes {
+	for _, elif := range n.Other {
 		for i := 0; i < int(p.ind); i++ {
 			p.out.WriteString(indent)
 		}
@@ -475,7 +462,7 @@ func (p *pythonState) ifn(n *nodes.IfNode) (err error) {
 		if err != nil {
 			return
 		}
-		err = p.value(elif.Condition)
+		err = p.value(elif.Cond.Node)
 		if err != nil {
 			return
 		}
@@ -489,7 +476,7 @@ func (p *pythonState) ifn(n *nodes.IfNode) (err error) {
 		}
 	}
 
-	if len(n.ElseBlock) > 0 {
+	if len(n.Else) > 0 {
 		for i := 0; i < int(p.ind); i++ {
 			p.out.WriteString(indent)
 		}
@@ -498,7 +485,7 @@ func (p *pythonState) ifn(n *nodes.IfNode) (err error) {
 		if err != nil {
 			return
 		}
-		err = p.block(n.ElseBlock)
+		err = p.block(n.Else)
 		if err != nil {
 			return
 		}
@@ -507,12 +494,12 @@ func (p *pythonState) ifn(n *nodes.IfNode) (err error) {
 	return
 }
 
-func (p *pythonState) while(n *nodes.WhileNode) (err error) {
+func (p *pythonState) while(n ast.WhileNode) (err error) {
 	_, err = p.out.WriteString("while ")
 	if err != nil {
 		return
 	}
-	err = p.value(n.Condition)
+	err = p.value(n.Cond.Node)
 	if err != nil {
 		return
 	}
@@ -520,20 +507,20 @@ func (p *pythonState) while(n *nodes.WhileNode) (err error) {
 	if err != nil {
 		return
 	}
-	return p.block(n.Body)
+	return p.block(n.Block)
 }
 
-func (p *pythonState) list(n *nodes.ArrayNode) (err error) {
+func (p *pythonState) list(n ast.ArrayNode) (err error) {
 	w := p.out.(io.Writer)
 	fmt.Fprint(w, "[")
-	if len(n.Elements) == 1 {
-		p.value(n.Elements[0])
-	} else if len(n.Elements) > 1 {
-		for _, e := range n.Elements[:len(n.Elements)-1] {
-			p.value(e)
+	if len(n.Elems) == 1 {
+		p.value(n.Elems[0].Node)
+	} else if len(n.Elems) > 1 {
+		for _, e := range n.Elems[:len(n.Elems)-1] {
+			p.value(e.Node)
 			p.out.WriteString(", ")
 		}
-		p.value(n.Elements[len(n.Elements)-1])
+		p.value(n.Elems[len(n.Elems)-1].Node)
 	}
 	fmt.Fprint(w, "]")
 	return

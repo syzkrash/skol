@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/typecheck"
 )
 
@@ -35,7 +35,7 @@ func (*SimEngine) Ext() string {
 }
 
 func (s *SimEngine) Run(string) (err error) {
-	var n nodes.Node
+	var n ast.MetaNode
 	for {
 		n, err = s.c.Next()
 		if errors.Is(err, io.EOF) {

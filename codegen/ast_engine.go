@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/syzkrash/skol/parser/nodes"
-	"github.com/syzkrash/skol/parser/values/types"
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/typecheck"
 )
 
@@ -34,109 +33,102 @@ func (g *ASTGenerator) Generate(output io.StringWriter) error {
 	return g.internalGenerate(output.(io.Writer), n)
 }
 
-func (g *ASTGenerator) internalGenerate(w io.Writer, n nodes.Node) error {
+func (g *ASTGenerator) internalGenerate(w io.Writer, mn ast.MetaNode) error {
 	for i := 0; i < int(g.indent); i++ {
 		fmt.Fprint(w, indent)
 	}
+	n := mn.Node
 	switch n.Kind() {
-	case nodes.NdInteger:
-		fmt.Fprint(w, "Integer")
-	case nodes.NdBoolean:
-		fmt.Fprint(w, "Boolean")
-	case nodes.NdFloat:
+	case ast.NInt:
+		fmt.Fprint(w, "Int")
+	case ast.NBool:
+		fmt.Fprint(w, "Bool")
+	case ast.NFloat:
 		fmt.Fprint(w, "Float")
-	case nodes.NdString:
+	case ast.NString:
 		fmt.Fprint(w, "String")
-	case nodes.NdChar:
+	case ast.NChar:
 		fmt.Fprint(w, "Char")
-	case nodes.NdVarDef:
-		vdn := n.(*nodes.VarDefNode)
-		fmt.Fprintf(w, "VarDef (%s):\n", vdn.Var)
+	case ast.NVarSet:
+		vdn := n.(ast.VarSetNode)
+		fmt.Fprintf(w, "VarSet (%s):\n", vdn.Var)
 		g.indent++
 		g.internalGenerate(w, vdn.Value)
 		g.indent--
-	case nodes.NdFuncCall:
-		fcn := n.(*nodes.FuncCallNode)
+	case ast.NFuncCall:
+		fcn := n.(ast.FuncCallNode)
 		fmt.Fprintf(w, "FuncCall (%s):\n", fcn.Func)
 		g.indent++
 		for _, an := range fcn.Args {
 			g.internalGenerate(w, an)
 		}
 		g.indent--
-	case nodes.NdFuncDef:
-		fdn := n.(*nodes.FuncDefNode)
-		fmt.Fprintf(w, "FuncDef (%s; ", fdn.Name)
-		for _, a := range fdn.Args {
-			fmt.Fprintf(w, "%s %s  ", a.Type, a.Name)
-		}
-		fmt.Fprintf(w, "; %s):\n", fdn.Ret)
+	case ast.NFuncDef:
+		fdn := n.(ast.FuncDefNode)
+		fmt.Fprintf(w, "FuncDef (%s)", fdn.Name)
 		g.indent++
 		for _, bn := range fdn.Body {
 			g.internalGenerate(w, bn)
 		}
 		g.indent--
-	case nodes.NdFuncExtern:
-		fdn := n.(*nodes.FuncExternNode)
-		fmt.Fprintf(w, "FuncExtern (%s; ", fdn.Name)
-		for _, a := range fdn.Args {
-			fmt.Fprintf(w, "%s %s  ", a.Type, a.Name)
-		}
-		fmt.Fprintf(w, "; %s)", fdn.Ret)
-	case nodes.NdReturn:
+	case ast.NFuncExtern:
+		fdn := n.(ast.FuncExternNode)
+		fmt.Fprintf(w, "FuncExtern (%s)", fdn.Name)
+	case ast.NReturn:
 		fmt.Fprintln(w, "Return:")
 		g.indent++
-		g.internalGenerate(w, n.(*nodes.ReturnNode).Value)
+		g.internalGenerate(w, n.(ast.ReturnNode).Value)
 		g.indent--
-	case nodes.NdIf:
-		in := n.(*nodes.IfNode)
+	case ast.NIf:
+		in := n.(ast.IfNode)
 		fmt.Fprintln(w, "If:")
 		g.indent++
-		g.internalGenerate(w, in.Condition)
+		g.internalGenerate(w, in.Main.Cond)
 		g.indent++
-		for _, bn := range in.IfBlock {
+		for _, bn := range in.Main.Block {
 			g.internalGenerate(w, bn)
 		}
 		g.indent -= 2
-	case nodes.NdWhile:
-		wn := n.(*nodes.WhileNode)
+	case ast.NWhile:
+		wn := n.(ast.WhileNode)
 		fmt.Fprintln(w, "While:")
 		g.indent++
-		g.internalGenerate(w, wn.Condition)
+		g.internalGenerate(w, wn.Cond)
 		g.indent++
-		for _, bn := range wn.Body {
+		for _, bn := range wn.Block {
 			g.internalGenerate(w, bn)
 		}
 		g.indent -= 2
-	case nodes.NdStruct:
-		sn := n.(*nodes.StructNode)
-		fmt.Fprintf(w, "Struct (%s):\n", sn.Name)
+	case ast.NStructDef:
+		sn := n.(ast.StructDefNode)
+		fmt.Fprintf(w, "StructDef (%s):\n", sn.Name)
 		g.indent++
-		for _, f := range sn.Type.(types.StructType).Fields {
+		for _, f := range sn.Fields {
 			for i := 0; i < int(g.indent); i++ {
 				fmt.Fprint(w, indent)
 			}
 			fmt.Fprintf(w, "%s %s\n", f.Type, f.Name)
 		}
 		g.indent--
-	case nodes.NdNewStruct:
-		nsn := n.(*nodes.NewStructNode)
-		s := nsn.Type.(types.StructType)
-		fmt.Fprintf(w, "NewStruct (%s):\n", s.Name)
+	case ast.NStruct:
+		nsn := n.(ast.StructNode)
+		s := nsn.Type
+		fmt.Fprintf(w, "Struct (%s):\n", s.Name)
 		g.indent++
 		for _, an := range nsn.Args {
 			g.internalGenerate(w, an)
 		}
 		g.indent--
-	case nodes.NdArray:
-		an := n.(*nodes.ArrayNode)
+	case ast.NArray:
+		an := n.(ast.ArrayNode)
 		fmt.Fprintf(w, "Array (%s):\n", an.Type)
 		g.indent++
-		for _, en := range an.Elements {
+		for _, en := range an.Elems {
 			g.internalGenerate(w, en)
 		}
 		g.indent--
 	default:
-		if sel, ok := n.(nodes.Selector); ok {
+		if sel, ok := n.(ast.Selector); ok {
 			fmt.Fprintln(w, "Selector:")
 			g.indent++
 			for _, e := range sel.Path() {
@@ -147,8 +139,10 @@ func (g *ASTGenerator) internalGenerate(w io.Writer, n nodes.Node) error {
 					fmt.Fprintf(w, "Cast to %s\n", e.Cast)
 				} else if e.Name != "" {
 					fmt.Fprintf(w, "Access field '%s'\n", e.Name)
+				} else if e.IdxS != nil {
+					fmt.Fprintf(w, "Access index %+v\n", e.IdxS)
 				} else {
-					fmt.Fprintf(w, "Access index %d\n", e.Idx)
+					fmt.Fprintf(w, "Access index %d\n", e.IdxC)
 				}
 			}
 			g.indent--

@@ -1,7 +1,7 @@
 package python
 
 import (
-	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/ast"
 )
 
 var operators = map[string]string{
@@ -30,15 +30,15 @@ var renames = map[string]string{
 	"to_bool": "bool",
 }
 
-type specialGenerator func(p *pythonState, n *nodes.FuncCallNode) error
+type specialGenerator func(p *pythonState, n ast.FuncCallNode) error
 
 var specialGenerators = map[string]specialGenerator{
-	"char_at": func(p *pythonState, n *nodes.FuncCallNode) (err error) {
+	"char_at": func(p *pythonState, n ast.FuncCallNode) (err error) {
 		_, err = p.out.WriteString("bytes(")
 		if err != nil {
 			return err
 		}
-		err = p.stringOrVar(n.Args[0])
+		err = p.stringOrVar(n.Args[0].Node)
 		if err != nil {
 			return err
 		}
@@ -46,15 +46,15 @@ var specialGenerators = map[string]specialGenerator{
 		if err != nil {
 			return err
 		}
-		err = p.integerOrVar(n.Args[1])
+		err = p.integerOrVar(n.Args[1].Node)
 		if err != nil {
 			return err
 		}
 		_, err = p.out.WriteString("]")
 		return err
 	},
-	"substr": func(p *pythonState, n *nodes.FuncCallNode) (err error) {
-		err = p.stringOrVar(n.Args[0])
+	"substr": func(p *pythonState, n ast.FuncCallNode) (err error) {
+		err = p.stringOrVar(n.Args[0].Node)
 		if err != nil {
 			return err
 		}
@@ -62,7 +62,7 @@ var specialGenerators = map[string]specialGenerator{
 		if err != nil {
 			return err
 		}
-		err = p.integerOrVar(n.Args[1])
+		err = p.integerOrVar(n.Args[1].Node)
 		if err != nil {
 			return err
 		}
@@ -70,15 +70,15 @@ var specialGenerators = map[string]specialGenerator{
 		if err != nil {
 			return err
 		}
-		err = p.integerOrVar(n.Args[2])
+		err = p.integerOrVar(n.Args[2].Node)
 		if err != nil {
 			return err
 		}
 		_, err = p.out.WriteString("]")
 		return err
 	},
-	"char_append": func(p *pythonState, n *nodes.FuncCallNode) (err error) {
-		err = p.stringOrVar(n.Args[0])
+	"char_append": func(p *pythonState, n ast.FuncCallNode) (err error) {
+		err = p.stringOrVar(n.Args[0].Node)
 		if err != nil {
 			return err
 		}
@@ -86,7 +86,7 @@ var specialGenerators = map[string]specialGenerator{
 		if err != nil {
 			return err
 		}
-		err = p.charOrVar(n.Args[1])
+		err = p.charOrVar(n.Args[1].Node)
 		if err != nil {
 			return err
 		}

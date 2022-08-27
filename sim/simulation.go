@@ -3,8 +3,8 @@ package sim
 import (
 	"fmt"
 
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/lexer"
-	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
@@ -14,15 +14,15 @@ type Simulator struct {
 	Calls []*Call
 }
 
-func (s *Simulator) Error(msg string, n nodes.Node) error {
+func (s *Simulator) Error(msg string, n ast.MetaNode) error {
 	return &SimError{
 		msg:   msg,
-		Node:  n,
+		Cause: n,
 		Calls: s.Calls,
 	}
 }
 
-func (s *Simulator) Errorf(n nodes.Node, format string, a ...any) error {
+func (s *Simulator) Errorf(n ast.MetaNode, format string, a ...any) error {
 	return s.Error(fmt.Sprintf(format, a...), n)
 }
 
@@ -45,43 +45,52 @@ func (s *Simulator) popCall() {
 	s.Calls = s.Calls[:len(s.Calls)-1]
 }
 
-func (s *Simulator) Stmt(n nodes.Node) error {
+func (s *Simulator) Stmt(mn ast.MetaNode) error {
+	n := mn.Node
 	switch n.Kind() {
-	case nodes.NdVarDef:
-		vdn := n.(*nodes.VarDefNode)
+	case ast.NVarSet:
+		vdn := n.(ast.VarSetNode)
 		val, err := s.Expr(vdn.Value)
 		if err != nil {
 			return err
 		}
 		s.Scope.SetVar(vdn.Var, val)
 		return nil
-	case nodes.NdFuncDef:
-		fdn := n.(*nodes.FuncDefNode)
+	case ast.NFuncDef:
+		fdn := n.(ast.FuncDefNode)
+		args := make([]values.FuncArg, len(fdn.Proto))
+		for i, a := range fdn.Proto {
+			args[i] = values.FuncArg{Name: a.Name, Type: a.Type}
+		}
 		s.Scope.SetFunc(fdn.Name, &Funct{
-			Args: fdn.Args,
+			Args: args,
 			Ret:  fdn.Ret,
 			Body: fdn.Body,
 		})
 		return nil
-	case nodes.NdFuncExtern:
-		fen := n.(*nodes.FuncExternNode)
+	case ast.NFuncExtern:
+		fen := n.(ast.FuncExternNode)
+		args := make([]values.FuncArg, len(fen.Proto))
+		for i, a := range fen.Proto {
+			args[i] = values.FuncArg{Name: a.Name, Type: a.Type}
+		}
 		s.Scope.SetFunc(fen.Name, &Funct{
-			Args: fen.Args,
+			Args: args,
 			Ret:  fen.Ret,
-			Body: []nodes.Node{},
+			Body: ast.Block{},
 		})
 		return nil
-	case nodes.NdIf:
-		ifn := n.(*nodes.IfNode)
-		val, err := s.Expr(ifn.Condition)
+	case ast.NIf:
+		ifn := n.(ast.IfNode)
+		val, err := s.Expr(ifn.Main.Cond)
 		if err != nil {
 			return err
 		}
 		if val.ToBool() {
-			return s.block(ifn.IfBlock)
+			return s.block(ifn.Main.Block)
 		}
-		for _, branch := range ifn.ElseIfNodes {
-			val, err = s.Expr(branch.Condition)
+		for _, branch := range ifn.Other {
+			val, err = s.Expr(branch.Cond)
 			if err != nil {
 				return err
 			}
@@ -89,10 +98,10 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 				return s.block(branch.Block)
 			}
 		}
-		return s.block(ifn.ElseBlock)
-	case nodes.NdWhile:
-		whn := n.(*nodes.WhileNode)
-		val, err := s.Expr(whn.Condition)
+		return s.block(ifn.Else)
+	case ast.NWhile:
+		whn := n.(ast.WhileNode)
+		val, err := s.Expr(whn.Cond)
 		if err != nil {
 			return err
 		}
@@ -100,11 +109,11 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 			return nil
 		}
 		for {
-			err = s.block(whn.Body)
+			err = s.block(whn.Block)
 			if err != nil {
 				return err
 			}
-			val, err = s.Expr(whn.Condition)
+			val, err = s.Expr(whn.Cond)
 			if err != nil {
 				return err
 			}
@@ -112,11 +121,11 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 				return nil
 			}
 		}
-	case nodes.NdFuncCall:
-		fcn := n.(*nodes.FuncCallNode)
+	case ast.NFuncCall:
+		fcn := n.(ast.FuncCallNode)
 		funct, ok := s.Scope.FindFunc(fcn.Func)
 		if !ok {
-			return s.Errorf(n, "unknown function: %s", fcn.Func)
+			return s.Errorf(mn, "unknown function: %s", fcn.Func)
 		}
 		argv := map[string]*values.Value{}
 		for i := 0; i < len(fcn.Args); i++ {
@@ -131,7 +140,7 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 			Vars:   argv,
 			Funcs:  map[string]*Funct{},
 		}
-		s.pushCall(fcn.Func, fcn.Where())
+		s.pushCall(fcn.Func, mn.Where)
 		if funct.IsNative {
 			_, err := funct.Native(s, argv)
 			if err != nil {
@@ -148,20 +157,20 @@ func (s *Simulator) Stmt(n nodes.Node) error {
 		s.popCall()
 		s.Scope = s.Scope.parent
 		return nil
-	case nodes.NdStruct:
+	case ast.NStruct:
 		// do nothing -- types are handled entirely inside the parser
 		return nil
 	}
-	return s.Errorf(n, "%s is not a statement", n)
+	return s.Errorf(mn, "%s is not a statement", n)
 }
 
-func (s *Simulator) selector(sel nodes.Selector) (*values.Value, error) {
+func (s *Simulator) selector(mn ast.MetaNode, sel ast.Selector) (*values.Value, error) {
 	p := sel.Path()
 	var v *values.Value
 	var ok bool
 	v, ok = s.Scope.FindVar(p[0].Name)
 	if !ok {
-		return nil, s.Errorf(sel, "variable %s not found", p[0].Name)
+		return nil, s.Errorf(mn, "variable %s not found", p[0].Name)
 	}
 	if len(p) == 1 {
 		return v, nil
@@ -177,26 +186,27 @@ func (s *Simulator) selector(sel nodes.Selector) (*values.Value, error) {
 			v = v.Data.(map[string]*values.Value)[e.Name]
 			continue
 		}
-		var idx uint
-		if e.Idx.Kind() == nodes.NdInteger {
-			idx = uint(e.Idx.(*nodes.IntegerNode).Int)
-		} else { // can only be NdInteger or NdSelector
-			vn := e.Idx.(*nodes.SelectorNode).Child
+		var idx int
+		if e.IdxS != nil {
+			p := e.IdxS.Path()
+			vn := p[len(p)-1].Name
 			val, ok := s.Scope.FindVar(vn)
 			if !ok {
-				return nil, s.Errorf(e.Idx, "unknown variable, %s", vn)
+				return nil, s.Errorf(mn, "unknown variable: %s", vn)
 			}
 			if !types.Int.Equals(val.Type) {
-				return nil, s.Errorf(e.Idx, "can only index with integers")
+				return nil, s.Errorf(mn, "can only index with integers")
 			}
-			idx = uint(val.Int())
+			idx = int(val.Int())
+		} else {
+			idx = e.IdxC
 		}
 		arraytype := v.Type.(types.ArrayType)
 		arraydata := v.Data.([]*values.Value)
 		resulttype := types.MakeStruct(arraytype.Element.String()+"Result",
 			"ok", types.Bool,
 			"val", arraytype.Element)
-		if idx >= uint(len(arraydata)) {
+		if idx >= len(arraydata) {
 			v = &values.Value{
 				Type: resulttype,
 				Data: map[string]*values.Value{
@@ -216,26 +226,27 @@ func (s *Simulator) selector(sel nodes.Selector) (*values.Value, error) {
 	return v, nil
 }
 
-func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
+func (s *Simulator) Expr(mn ast.MetaNode) (*values.Value, error) {
+	n := mn.Node
 	switch n.Kind() {
-	case nodes.NdInteger:
-		return values.NewValue(n.(*nodes.IntegerNode).Int), nil
-	case nodes.NdBoolean:
-		return values.NewValue(n.(*nodes.BooleanNode).Bool), nil
-	case nodes.NdFloat:
-		return values.NewValue(n.(*nodes.FloatNode).Float), nil
-	case nodes.NdString:
-		return values.NewValue(n.(*nodes.StringNode).Str), nil
-	case nodes.NdChar:
-		return values.NewValue(n.(*nodes.CharNode).Char), nil
-	case nodes.NdFuncCall:
-		fcn := n.(*nodes.FuncCallNode)
+	case ast.NInt:
+		return values.NewValue(n.(ast.IntNode).Value), nil
+	case ast.NBool:
+		return values.NewValue(n.(ast.BoolNode).Value), nil
+	case ast.NFloat:
+		return values.NewValue(n.(ast.FloatNode).Value), nil
+	case ast.NString:
+		return values.NewValue(n.(ast.StringNode).Value), nil
+	case ast.NChar:
+		return values.NewValue(n.(ast.CharNode).Value), nil
+	case ast.NFuncCall:
+		fcn := n.(ast.FuncCallNode)
 		funct, ok := s.Scope.FindFunc(fcn.Func)
 		if !ok {
-			return nil, s.Errorf(n, "unknown function: %s", fcn.Func)
+			return nil, s.Errorf(mn, "unknown function: %s", fcn.Func)
 		}
 		if funct.Ret.Equals(types.Nothing) {
-			return nil, s.Errorf(n, "function %s does not return a values.Value", fcn.Func)
+			return nil, s.Errorf(mn, "function %s does not return a values.Value", fcn.Func)
 		}
 		argv := map[string]*values.Value{}
 		for i := 0; i < len(fcn.Args); i++ {
@@ -250,7 +261,7 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 			Vars:   argv,
 			Funcs:  map[string]*Funct{},
 		}
-		s.pushCall(fcn.Func, fcn.Where())
+		s.pushCall(fcn.Func, mn.Where)
 		var val *values.Value = values.Default(funct.Ret)
 		var err error
 		if funct.IsNative {
@@ -270,9 +281,9 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 			}
 		}
 		s.popCall()
-		return nil, s.Errorf(n, "function %s did not return", fcn.Func)
-	case nodes.NdNewStruct:
-		nsn := n.(*nodes.NewStructNode)
+		return nil, s.Errorf(mn, "function %s did not return", fcn.Func)
+	case ast.NStruct:
+		nsn := n.(ast.StructNode)
 		var v *values.Value
 		fields := map[string]*values.Value{}
 		for i, f := range nsn.Args {
@@ -280,28 +291,29 @@ func (s *Simulator) Expr(n nodes.Node) (*values.Value, error) {
 			if err != nil {
 				return nil, err
 			}
-			fields[nsn.Type.(types.StructType).Fields[i].Name] = v
+			fields[nsn.Type.Fields[i].Name] = v
 		}
-		v = &values.Value{nsn.Type, fields}
+		v = &values.Value{Type: nsn.Type, Data: fields}
 		return v, nil
 	default:
-		if sel, ok := n.(nodes.Selector); ok {
-			return s.selector(sel)
+		if sel, ok := n.(ast.Selector); ok {
+			return s.selector(mn, sel)
 		}
 	}
-	return nil, s.Errorf(n, "%s node is not a value", n.Kind())
+	return nil, s.Errorf(mn, "%s node is not a value", n.Kind())
 }
 
-func (s *Simulator) Const(n nodes.Node) (*values.Value, error) {
+func (s *Simulator) Const(mn ast.MetaNode) (*values.Value, error) {
+	n := mn.Node
 	switch n.Kind() {
-	case nodes.NdInteger, nodes.NdBoolean, nodes.NdFloat, nodes.NdString, nodes.NdChar:
-		return s.Expr(n)
+	case ast.NInt, ast.NBool, ast.NFloat, ast.NString, ast.NChar:
+		return s.Expr(mn)
 	default:
-		return nil, s.Errorf(n, "%s node is not constant", n.Kind())
+		return nil, s.Errorf(mn, "%s node is not constant", n.Kind())
 	}
 }
 
-func (s *Simulator) block(b []nodes.Node) error {
+func (s *Simulator) block(b ast.Block) error {
 	s.Scope = &Scope{
 		parent: s.Scope,
 		Vars:   map[string]*values.Value{},
@@ -316,21 +328,22 @@ func (s *Simulator) block(b []nodes.Node) error {
 	return nil
 }
 
-func (s *Simulator) stmtInFunc(n nodes.Node) (*values.Value, error) {
+func (s *Simulator) stmtInFunc(mn ast.MetaNode) (*values.Value, error) {
+	n := mn.Node
 	switch n.Kind() {
-	case nodes.NdVarDef, nodes.NdFuncDef, nodes.NdFuncExtern, nodes.NdFuncCall:
-		return nil, s.Stmt(n)
-	case nodes.NdIf:
-		ifn := n.(*nodes.IfNode)
-		val, err := s.Expr(ifn.Condition)
+	case ast.NVarDef, ast.NFuncDef, ast.NFuncExtern, ast.NFuncCall:
+		return nil, s.Stmt(mn)
+	case ast.NIf:
+		ifn := n.(ast.IfNode)
+		val, err := s.Expr(ifn.Main.Cond)
 		if err != nil {
 			return nil, err
 		}
 		if val.ToBool() {
-			return s.blockInFunc(ifn.IfBlock)
+			return s.blockInFunc(ifn.Main.Block)
 		}
-		for _, branch := range ifn.ElseIfNodes {
-			val, err = s.Expr(branch.Condition)
+		for _, branch := range ifn.Other {
+			val, err = s.Expr(branch.Cond)
 			if err != nil {
 				return nil, err
 			}
@@ -338,10 +351,10 @@ func (s *Simulator) stmtInFunc(n nodes.Node) (*values.Value, error) {
 				return s.blockInFunc(branch.Block)
 			}
 		}
-		return s.blockInFunc(ifn.ElseBlock)
-	case nodes.NdWhile:
-		whn := n.(*nodes.WhileNode)
-		val, err := s.Expr(whn.Condition)
+		return s.blockInFunc(ifn.Else)
+	case ast.NWhile:
+		whn := n.(ast.WhileNode)
+		val, err := s.Expr(whn.Cond)
 		if err != nil {
 			return nil, err
 		}
@@ -349,14 +362,14 @@ func (s *Simulator) stmtInFunc(n nodes.Node) (*values.Value, error) {
 			return nil, nil
 		}
 		for {
-			val, err = s.blockInFunc(whn.Body)
+			val, err = s.blockInFunc(whn.Block)
 			if err != nil {
 				return nil, err
 			}
 			if val != nil {
 				return val, nil
 			}
-			val, err = s.Expr(whn.Condition)
+			val, err = s.Expr(whn.Cond)
 			if err != nil {
 				return nil, err
 			}
@@ -364,13 +377,13 @@ func (s *Simulator) stmtInFunc(n nodes.Node) (*values.Value, error) {
 				return nil, nil
 			}
 		}
-	case nodes.NdReturn:
-		return s.Expr(n.(*nodes.ReturnNode).Value)
+	case ast.NReturn:
+		return s.Expr(n.(ast.ReturnNode).Value)
 	}
-	return nil, s.Errorf(n, "%s is not a statement", n)
+	return nil, s.Errorf(mn, "%s is not a statement", n)
 }
 
-func (s *Simulator) blockInFunc(b []nodes.Node) (*values.Value, error) {
+func (s *Simulator) blockInFunc(b ast.Block) (*values.Value, error) {
 	s.Scope = &Scope{
 		parent: s.Scope,
 		Vars:   map[string]*values.Value{},
