@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/common"
-	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
@@ -39,132 +39,132 @@ func TestFuncCall(t *testing.T) {
 		Ret:  types.String,
 	}
 
-	cases := map[string]*nodes.FuncCallNode{
+	cases := map[string]ast.FuncCallNode{
 		"hi!": {
 			Func: "hi",
-			Args: []nodes.Node{}},
+			Args: []ast.MetaNode{}},
 
 		"hello! \"Joe\"": {
 			Func: "hello",
-			Args: []nodes.Node{
-				&nodes.StringNode{Str: "Joe"},
+			Args: []ast.MetaNode{
+				{Node: ast.StringNode{Value: "Joe"}},
 			}},
 
 		"join! \";\" [](\"Hello\" \"world\")": {
 			Func: "join",
-			Args: []nodes.Node{
-				&nodes.StringNode{Str: ";"},
-				arrOf(types.String, "Hello", "world"),
+			Args: []ast.MetaNode{
+				{Node: ast.StringNode{Value: ";"}},
+				{Node: arrOf(types.String, "Hello", "world")},
 			}},
 
 		"join! \";\" [](hello! \"Joe\" hello! world!)": {
 			Func: "join",
-			Args: []nodes.Node{
-				&nodes.StringNode{Str: ";"},
-				&nodes.ArrayNode{
-					Type: types.String,
-					Elements: []nodes.Node{
-						&nodes.FuncCallNode{
+			Args: []ast.MetaNode{
+				{Node: ast.StringNode{Value: ";"}},
+				{Node: ast.ArrayNode{
+					Type: types.ArrayType{Element: types.String},
+					Elems: []ast.MetaNode{
+						{Node: ast.FuncCallNode{
 							Func: "hello",
-							Args: []nodes.Node{
-								&nodes.StringNode{Str: "Joe"},
-							}},
-						&nodes.FuncCallNode{
+							Args: []ast.MetaNode{
+								{Node: ast.StringNode{Value: "Joe"}},
+							}}},
+						{Node: ast.FuncCallNode{
 							Func: "hello",
-							Args: []nodes.Node{
-								&nodes.FuncCallNode{
+							Args: []ast.MetaNode{
+								{Node: ast.FuncCallNode{
 									Func: "world",
-									Args: []nodes.Node{},
-								}},
-						}}}}},
+									Args: []ast.MetaNode{},
+								}}}},
+						}}}}}},
 	}
 
 	for in, out := range cases {
 		t.Log(in)
 		src.Reset(in)
-		expect(t, p, out)
+		expect(t, p, ast.MetaNode{Node: out})
 		t.Log("OK")
 	}
 }
 
-func TestNewStruct(t *testing.T) {
-	p, src := makeParser("NewStruct")
+func TestStruct(t *testing.T) {
+	p, src := makeParser("Struct")
 
 	V2I := types.MakeStruct("V2I",
 		"x", types.Int,
-		"y", types.Int)
+		"y", types.Int).(types.StructType)
 	V3I := types.MakeStruct("V3I",
 		"x", types.Int,
 		"y", types.Int,
-		"z", types.Int)
+		"z", types.Int).(types.StructType)
 	Rect := types.MakeStruct("Rect",
 		"pos", V2I,
-		"extents", V2I)
+		"extents", V2I).(types.StructType)
 	Cuboid := types.MakeStruct("Cuboid",
 		"pos", V3I,
-		"extents", V3I)
+		"extents", V3I).(types.StructType)
 
 	p.Scope.Types["V2I"] = V2I
 	p.Scope.Types["V3I"] = V3I
 	p.Scope.Types["Rect"] = Rect
 	p.Scope.Types["Cuboid"] = Cuboid
 
-	cases := map[string]*nodes.NewStructNode{
+	cases := map[string]ast.StructNode{
 		"@V2I 6 9": {
 			Type: V2I,
-			Args: []nodes.Node{
-				&nodes.IntegerNode{Int: 6},
-				&nodes.IntegerNode{Int: 9},
+			Args: []ast.MetaNode{
+				{Node: ast.IntNode{Value: 6}},
+				{Node: ast.IntNode{Value: 9}},
 			}},
 
 		"@V3I 4 2 0": {
 			Type: V3I,
-			Args: []nodes.Node{
-				&nodes.IntegerNode{Int: 4},
-				&nodes.IntegerNode{Int: 2},
-				&nodes.IntegerNode{Int: 0},
+			Args: []ast.MetaNode{
+				{Node: ast.IntNode{Value: 4}},
+				{Node: ast.IntNode{Value: 2}},
+				{Node: ast.IntNode{Value: 0}},
 			}},
 
 		"@Rect @V2I 12 34 @V2I 1 2": {
 			Type: Rect,
-			Args: []nodes.Node{
-				&nodes.NewStructNode{
+			Args: []ast.MetaNode{
+				{Node: ast.StructNode{
 					Type: V2I,
-					Args: []nodes.Node{
-						&nodes.IntegerNode{Int: 12},
-						&nodes.IntegerNode{Int: 34},
-					}},
-				&nodes.NewStructNode{
+					Args: []ast.MetaNode{
+						{Node: ast.IntNode{Value: 12}},
+						{Node: ast.IntNode{Value: 34}},
+					}}},
+				{Node: ast.StructNode{
 					Type: V2I,
-					Args: []nodes.Node{
-						&nodes.IntegerNode{Int: 1},
-						&nodes.IntegerNode{Int: 2},
-					}}}},
+					Args: []ast.MetaNode{
+						{Node: ast.IntNode{Value: 1}},
+						{Node: ast.IntNode{Value: 2}},
+					}}}}},
 
 		"@Cuboid @V3I 12 34 56 @V3I 3 3 3": {
 			Type: Cuboid,
-			Args: []nodes.Node{
-				&nodes.NewStructNode{
+			Args: []ast.MetaNode{
+				{Node: ast.StructNode{
 					Type: V3I,
-					Args: []nodes.Node{
-						&nodes.IntegerNode{Int: 12},
-						&nodes.IntegerNode{Int: 34},
-						&nodes.IntegerNode{Int: 56},
-					}},
-				&nodes.NewStructNode{
+					Args: []ast.MetaNode{
+						{Node: ast.IntNode{Value: 12}},
+						{Node: ast.IntNode{Value: 34}},
+						{Node: ast.IntNode{Value: 56}},
+					}}},
+				{Node: ast.StructNode{
 					Type: V3I,
-					Args: []nodes.Node{
-						&nodes.IntegerNode{Int: 3},
-						&nodes.IntegerNode{Int: 3},
-						&nodes.IntegerNode{Int: 3},
-					}}}},
+					Args: []ast.MetaNode{
+						{Node: ast.IntNode{Value: 3}},
+						{Node: ast.IntNode{Value: 3}},
+						{Node: ast.IntNode{Value: 3}},
+					}}}}},
 	}
 
 	for in, out := range cases {
 		t.Log(in)
 		src.Reset(in)
-		n := expectValue(t, p, nodes.NdNewStruct)
-		compare(t, "NewStruct", out, n)
+		n := expectValue(t, p, ast.NStruct)
+		compare(t, "NewStruct", ast.MetaNode{Node: out}, n)
 		t.Log("OK")
 	}
 }
@@ -190,16 +190,16 @@ func TestSelector(t *testing.T) {
 	p.Scope.Types["Y"] = Y
 	p.Scope.Types["X"] = X
 
-	p.Scope.Vars["a"] = &nodes.VarDefNode{
-		VarType: TA,
-		Var:     "a",
+	p.Scope.Vars["a"] = ast.StructNode{
+		Type: TA.(types.StructType),
+		Args: []ast.MetaNode{},
 	}
-	p.Scope.Vars["z"] = &nodes.VarDefNode{
-		VarType: Z,
-		Var:     "z",
+	p.Scope.Vars["z"] = ast.ArrayNode{
+		Type:  Z,
+		Elems: []ast.MetaNode{},
 	}
 
-	cases := map[string][]nodes.SelectorElem{
+	cases := map[string][]ast.SelectorElem{
 		"a": {
 			{Name: "a"},
 		},
@@ -214,14 +214,14 @@ func TestSelector(t *testing.T) {
 		},
 		"z#y": {
 			{Name: "z"},
-			{Idx: &nodes.SelectorNode{
+			{IdxS: ast.SelectorNode{
 				Parent: nil,
 				Child:  "y",
 			}},
 		},
 		"z#y#x": {
 			{Name: "z"},
-			{Idx: &nodes.SelectorNode{
+			{IdxS: ast.SelectorNode{
 				Parent: nil,
 				Child:  "y",
 			}},
@@ -241,16 +241,16 @@ func TestSelector(t *testing.T) {
 	for in, out := range cases {
 		t.Log(in)
 		src.Reset(in)
-		n, err := p.Value()
+		mn, err := p.Value()
 		if err != nil {
 			if pe, ok := err.(common.Printable); ok {
 				pe.Print()
 			}
 			t.Fatal(err)
 		}
-		s, ok := n.(nodes.Selector)
+		s, ok := mn.Node.(ast.Selector)
 		if !ok {
-			t.Fatalf("%d node is not a selector", n.Kind())
+			t.Fatalf("%d node is not a selector", mn.Node.Kind())
 		}
 		p := s.Path()
 		if len(out) != len(p) {
@@ -270,7 +270,7 @@ func TestSelector(t *testing.T) {
 				}
 				continue
 			}
-			compare(t, fmt.Sprintf("selector element %d", i), ee.Idx, ge.Idx)
+			compare(t, fmt.Sprintf("selector element %d", i), ast.MetaNode{Node: ee.IdxS}, ast.MetaNode{Node: ge.IdxS})
 		}
 	}
 }

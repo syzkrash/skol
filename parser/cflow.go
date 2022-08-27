@@ -4,32 +4,35 @@ import (
 	"errors"
 	"io"
 
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/debug"
 	"github.com/syzkrash/skol/lexer"
-	"github.com/syzkrash/skol/parser/nodes"
 )
 
-func (p *Parser) condition() (n nodes.Node, err error) {
-	condition, err := p.Value()
+func (p *Parser) condition() (n ast.Node, err error) {
+	var (
+		cond  ast.MetaNode
+		block ast.Block
+
+		out ast.IfNode
+
+		tok *lexer.Token
+	)
+
+	cond, err = p.Value()
 	if err != nil {
 		return
 	}
 	debug.Log(debug.AttrScope, "Entering new scope")
 	p.Scope = NewScope(p.Scope)
-	ifb, err := p.block()
+	block, err = p.block()
 	if err != nil {
 		return
 	}
 
-	var (
-		elseb []nodes.Node
+	out.Main.Cond = cond
+	out.Main.Block = block
 
-		elifn    []*nodes.IfSubNode
-		subcond  nodes.Node
-		subblock []nodes.Node
-
-		tok *lexer.Token
-	)
 	for {
 		tok, err = p.lexer.Next()
 		if errors.Is(err, io.EOF) {
@@ -48,21 +51,21 @@ func (p *Parser) condition() (n nodes.Node, err error) {
 			return
 		}
 		if tok.Kind == lexer.TkPunct && tok.Raw == "?" {
-			subcond, err = p.Value()
+			cond, err = p.Value()
 			if err != nil {
 				return
 			}
-			subblock, err = p.block()
+			block, err = p.block()
 			if err != nil {
 				return nil, err
 			}
-			elifn = append(elifn, &nodes.IfSubNode{
-				Condition: subcond,
-				Block:     subblock,
+			out.Other = append(out.Other, ast.Branch{
+				Cond:  cond,
+				Block: block,
 			})
 		} else {
 			p.lexer.Rollback(tok)
-			elseb, err = p.block()
+			out.Else, err = p.block()
 			if err != nil {
 				return
 			}
@@ -71,36 +74,29 @@ func (p *Parser) condition() (n nodes.Node, err error) {
 
 	debug.Log(debug.AttrScope, "Exitig scope")
 	p.Scope = p.Scope.Parent
+	n = out
 
-	n = &nodes.IfNode{
-		Condition:   condition,
-		IfBlock:     ifb,
-		ElseIfNodes: elifn,
-		ElseBlock:   elseb,
-		Pos:         condition.Where(),
-	}
 	return
 }
 
-func (p *Parser) loop() (n nodes.Node, err error) {
-	condition, err := p.Value()
+func (p *Parser) loop() (n ast.Node, err error) {
+	cond, err := p.Value()
 	if err != nil {
 		return
 	}
 
 	debug.Log(debug.AttrScope, "Entering new scope")
 	p.Scope = NewScope(p.Scope)
-	body, err := p.block()
+	block, err := p.block()
 	if err != nil {
 		return
 	}
 
 	debug.Log(debug.AttrScope, "Exiting scope")
 	p.Scope = p.Scope.Parent
-	n = &nodes.WhileNode{
-		Condition: condition,
-		Body:      body,
-		Pos:       condition.Where(),
+	n = ast.WhileNode{
+		Cond:  cond,
+		Block: block,
 	}
 	return
 }

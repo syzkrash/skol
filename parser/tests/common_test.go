@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/parser"
-	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
@@ -18,7 +18,7 @@ func makeParser(test string) (*parser.Parser, *strings.Reader) {
 	return parser.NewParser("Test"+test, r, "test"), r
 }
 
-func expect(t *testing.T, p *parser.Parser, exp nodes.Node) {
+func expect(t *testing.T, p *parser.Parser, exp ast.MetaNode) {
 	got, err := p.Next()
 	if err != nil {
 		if pe, ok := err.(common.Printable); ok {
@@ -30,58 +30,62 @@ func expect(t *testing.T, p *parser.Parser, exp nodes.Node) {
 	compare(t, "expect", exp, got)
 }
 
-func expectValue(t *testing.T, p *parser.Parser, k nodes.NodeKind) nodes.Node {
-	n, err := p.Value()
+func expectValue(t *testing.T, p *parser.Parser, k ast.NodeKind) ast.MetaNode {
+	mn, err := p.Value()
 	if err != nil {
 		if pe, ok := err.(common.Printable); ok {
 			pe.Print()
 		}
 		t.Fatal(err)
 	}
-	if n.Kind() != k {
-		t.Fatalf("expected %s, got %s", k, n.Kind())
+	if mn.Node.Kind() != k {
+		t.Fatalf("expected %s, got %s", k, mn.Node.Kind())
 	}
-	return n
+	return mn
 }
 
-func compareLiteral(t *testing.T, note string, exp, got nodes.Node) {
+func compareLiteral(t *testing.T, note string, mexp, mgot ast.MetaNode) {
+	exp := mexp.Node
+	got := mgot.Node
 	if exp.Kind() != got.Kind() {
 		t.Fatalf("%s: expected %s, got %s", note, exp.Kind(), got.Kind())
 	}
 	var ev, gv any
 	switch exp.Kind() {
-	case nodes.NdBoolean:
-		eb := exp.(*nodes.BooleanNode)
-		gb := got.(*nodes.BooleanNode)
-		ev = eb.Bool
-		gv = gb.Bool
-	case nodes.NdChar:
-		ec := exp.(*nodes.CharNode)
-		gc := got.(*nodes.CharNode)
-		ev = ec.Char
-		gv = gc.Char
-	case nodes.NdInteger:
-		ei := exp.(*nodes.IntegerNode)
-		gi := got.(*nodes.IntegerNode)
-		ev = ei.Int
-		gv = gi.Int
-	case nodes.NdFloat:
-		ef := exp.(*nodes.FloatNode)
-		gf := got.(*nodes.FloatNode)
-		ev = ef.Float
-		gv = gf.Float
-	case nodes.NdString:
-		es := exp.(*nodes.StringNode)
-		gs := got.(*nodes.StringNode)
-		ev = es.Str
-		gv = gs.Str
+	case ast.NBool:
+		eb := exp.(ast.BoolNode)
+		gb := got.(ast.BoolNode)
+		ev = eb.Value
+		gv = gb.Value
+	case ast.NChar:
+		ec := exp.(ast.CharNode)
+		gc := got.(ast.CharNode)
+		ev = ec.Value
+		gv = gc.Value
+	case ast.NInt:
+		ei := exp.(ast.IntNode)
+		gi := got.(ast.IntNode)
+		ev = ei.Value
+		gv = gi.Value
+	case ast.NFloat:
+		ef := exp.(ast.FloatNode)
+		gf := got.(ast.FloatNode)
+		ev = ef.Value
+		gv = gf.Value
+	case ast.NString:
+		es := exp.(ast.StringNode)
+		gs := got.(ast.StringNode)
+		ev = es.Value
+		gv = gs.Value
 	}
 	if ev != gv {
 		t.Fatalf("expected %v, got %v", ev, gv)
 	}
 }
 
-func compare(t *testing.T, note string, exp, got nodes.Node) {
+func compare(t *testing.T, note string, mexp, mgot ast.MetaNode) {
+	exp := mexp.Node
+	got := mgot.Node
 	if exp == nil && got != nil {
 		t.Fatalf("%s: expected nil, got %s", note, got.Kind())
 	}
@@ -95,11 +99,11 @@ func compare(t *testing.T, note string, exp, got nodes.Node) {
 		t.Fatalf("%s: expected %s, got %s", note, exp.Kind(), got.Kind())
 	}
 	switch exp.Kind() {
-	case nodes.NdBoolean, nodes.NdChar, nodes.NdInteger, nodes.NdFloat, nodes.NdString:
-		compareLiteral(t, "literal", exp, got)
-	case nodes.NdSelector, nodes.NdIndex, nodes.NdTypecast:
-		es := exp.(nodes.Selector)
-		gs := exp.(nodes.Selector)
+	case ast.NBool, ast.NChar, ast.NInt, ast.NFloat, ast.NString:
+		compareLiteral(t, "literal", mexp, mgot)
+	case ast.NSelector, ast.NIndexConst, ast.NIndexSelector, ast.NTypecast:
+		es := exp.(ast.Selector)
+		gs := exp.(ast.Selector)
 		ep := es.Path()
 		gp := gs.Path()
 		if len(ep) != len(gp) {
@@ -113,51 +117,54 @@ func compare(t *testing.T, note string, exp, got nodes.Node) {
 			if ee.Name != ge.Name {
 				t.Fatalf("%s: expected `%s` field, got `%s`", note, ee.Name, ge.Name)
 			}
-			if ee.Idx == nil && ge.Idx != nil {
-				t.Fatalf("%s: expected nil index, got %s", note, ge.Idx.Kind())
+			if ee.IdxS == nil && ge.IdxS != nil {
+				t.Fatalf("%s: expected nil index, got %s", note, ge.IdxS.Kind())
 			}
-			if ee.Idx != nil && ge.Idx == nil {
-				t.Fatalf("%s: expected %s index, got nil", note, ee.Idx.Kind())
+			if ee.IdxS != nil && ge.IdxS == nil {
+				t.Fatalf("%s: expected %s index, got nil", note, ee.IdxS.Kind())
 			}
-			if ee.Idx != nil && ge.Idx != nil {
-				if ee.Idx.Kind() != ge.Idx.Kind() {
-					t.Fatalf("%s: expected %s index, got %s", note, ee.Idx.Kind(), ge.Idx.Kind())
+			if ee.IdxS != nil && ge.IdxS != nil {
+				if ee.IdxS.Kind() != ge.IdxS.Kind() {
+					t.Fatalf("%s: expected %s index, got %s", note, ee.IdxS.Kind(), ge.IdxS.Kind())
 				}
 			}
-			compare(t, note+": Index", ee.Idx, ge.Idx)
-		}
-	case nodes.NdReturn:
-		er := exp.(*nodes.ReturnNode)
-		gr := exp.(*nodes.ReturnNode)
-		compare(t, "return", er.Value, gr.Value)
-	case nodes.NdIf:
-		eif := exp.(*nodes.IfNode)
-		gif := got.(*nodes.IfNode)
-		compareLiteral(t, note+": Condition", eif.Condition, gif.Condition)
-		if len(eif.IfBlock) != len(gif.IfBlock) {
-			t.Fatalf("%s: expected %d nodes in IfBlock, got %d", note, len(eif.IfBlock), len(gif.IfBlock))
-		}
-		for i, n := range eif.IfBlock {
-			compare(t, note+": IfBlock", n, gif.IfBlock[i])
-		}
-		if len(eif.ElseBlock) != len(gif.ElseBlock) {
-			t.Fatalf("%s: expected %d nodes in ElseBlock, got %d", note, len(eif.IfBlock), len(gif.IfBlock))
-		}
-		for i, n := range eif.ElseBlock {
-			compare(t, note+": ElseBlock", n, gif.ElseBlock[i])
-		}
-		if len(eif.ElseIfNodes) != len(gif.ElseIfNodes) {
-			t.Fatalf("%s: expected %d branches in ElseIfNodes, got %d", note, len(eif.IfBlock), len(gif.IfBlock))
-		}
-		for i, b := range eif.ElseIfNodes {
-			compare(t, note+": ElseIfNode", b.Condition, gif.ElseIfNodes[i].Condition)
-			for j, n := range b.Block {
-				compare(t, note+": ElseIfNode Block", n, gif.ElseIfNodes[i].Block[j])
+			compare(t, note+": IndexS", ast.MetaNode{Node: ee.IdxS}, ast.MetaNode{Node: ge.IdxS})
+			if ee.IdxC != ge.IdxC {
+				t.Fatalf("%s: expected %d index, got %d", note, ee.IdxC, ge.IdxC)
 			}
 		}
-	case nodes.NdFuncCall:
-		efc := exp.(*nodes.FuncCallNode)
-		gfc := exp.(*nodes.FuncCallNode)
+	case ast.NReturn:
+		er := exp.(ast.ReturnNode)
+		gr := exp.(ast.ReturnNode)
+		compare(t, "return", er.Value, gr.Value)
+	case ast.NIf:
+		eif := exp.(ast.IfNode)
+		gif := got.(ast.IfNode)
+		compareLiteral(t, note+": Cond", eif.Main.Cond, gif.Main.Cond)
+		if len(eif.Main.Block) != len(gif.Main.Block) {
+			t.Fatalf("%s: expected %d nodes in IfBlock, got %d", note, len(eif.Main.Block), len(gif.Main.Block))
+		}
+		for i, n := range eif.Main.Block {
+			compare(t, note+": IfBlock", n, gif.Main.Block[i])
+		}
+		if len(eif.Else) != len(gif.Else) {
+			t.Fatalf("%s: expected %d nodes in Else, got %d", note, len(eif.Else), len(gif.Else))
+		}
+		for i, n := range eif.Else {
+			compare(t, note+": Else", n, gif.Else[i])
+		}
+		if len(eif.Other) != len(gif.Other) {
+			t.Fatalf("%s: expected %d branches in Other, got %d", note, len(eif.Other), len(gif.Other))
+		}
+		for i, b := range eif.Other {
+			compare(t, note+": Other Cond", b.Cond, gif.Other[i].Cond)
+			for j, n := range b.Block {
+				compare(t, note+": Other Block", n, gif.Other[i].Block[j])
+			}
+		}
+	case ast.NFuncCall:
+		efc := exp.(ast.FuncCallNode)
+		gfc := exp.(ast.FuncCallNode)
 		if efc.Func != gfc.Func {
 			t.Fatalf("%s: expected `%s` function, got `%s`", note, efc.Func, gfc.Func)
 		}
@@ -167,43 +174,44 @@ func compare(t *testing.T, note string, exp, got nodes.Node) {
 		for i, ea := range efc.Args {
 			compare(t, note+": arguments", ea, gfc.Args[i])
 		}
-	case nodes.NdWhile:
-		ew := exp.(*nodes.WhileNode)
-		gw := exp.(*nodes.WhileNode)
-		compare(t, note+": Condition", ew.Condition, gw.Condition)
-		for i, en := range ew.Body {
-			compare(t, note+": Body", en, gw.Body[i])
+	case ast.NWhile:
+		ew := exp.(ast.WhileNode)
+		gw := exp.(ast.WhileNode)
+		compare(t, note+": Cond", ew.Cond, gw.Cond)
+		for i, en := range ew.Block {
+			compare(t, note+": Body", en, gw.Block[i])
 		}
-	case nodes.NdVarDef:
-		ev := exp.(*nodes.VarDefNode)
-		gv := got.(*nodes.VarDefNode)
+	case ast.NVarDef:
+		ev := exp.(ast.VarDefNode)
+		gv := got.(ast.VarDefNode)
 		if ev.Var != gv.Var {
 			t.Fatalf("%s: expected `%s` variable, got `%s`", note, ev.Var, gv.Var)
 		}
-		if !ev.VarType.Equals(gv.VarType) {
-			t.Fatalf("%s: expected %s variable type, got %s", note, ev.VarType, gv.VarType)
+		if !ev.Type.Equals(gv.Type) {
+			t.Fatalf("%s: expected %s variable type, got %s", note, ev.Type, gv.Type)
+		}
+	case ast.NVarSet:
+		ev := exp.(ast.VarSetNode)
+		gv := got.(ast.VarSetNode)
+		if ev.Var != gv.Var {
+			t.Fatalf("%s: expected `%s` variable, got `%s`", note, ev.Var, gv.Var)
 		}
 		compare(t, note+": variable value", ev.Value, gv.Value)
-	case nodes.NdFuncDef:
-		ef := exp.(*nodes.FuncDefNode)
-		gf := exp.(*nodes.FuncDefNode)
+	case ast.NVarSetTyped:
+		ev := exp.(ast.VarSetTypedNode)
+		gv := got.(ast.VarSetTypedNode)
+		if ev.Var != gv.Var {
+			t.Fatalf("%s: expected `%s` variable, got `%s`", note, ev.Var, gv.Var)
+		}
+		if !ev.Type.Equals(gv.Type) {
+			t.Fatalf("%s: expected %s variable type, got %s", note, ev.Type, gv.Type)
+		}
+		compare(t, note+": variable value", ev.Value, gv.Value)
+	case ast.NFuncDef:
+		ef := exp.(ast.FuncDefNode)
+		gf := exp.(ast.FuncDefNode)
 		if ef.Name != gf.Name {
 			t.Fatalf("%s: expected `%s` function, got `%s`", note, ef.Name, gf.Name)
-		}
-		if len(ef.Args) != len(gf.Args) {
-			t.Fatalf("%s: expected %d arguments, got %d", note, len(ef.Args), len(gf.Args))
-		}
-		for i, ea := range ef.Args {
-			ga := gf.Args[i]
-			if ea.Name != ga.Name {
-				t.Fatalf("%s: argument %d: expected `%s` argument, got `%s`", note, i, ea.Name, ga.Name)
-			}
-			if !ea.Type.Equals(ga.Type) {
-				t.Fatalf("%s: argument %d: expected %s type, got %s", note, i, ea.Type, ga.Type)
-			}
-		}
-		if ef.Ret.Prim() != gf.Ret.Prim() {
-			t.Fatalf("%s: expected %s return type, got %s", note, ef.Ret, gf.Ret)
 		}
 		if len(ef.Body) != len(gf.Body) {
 			t.Fatalf("%s: expected %d body nodes, got %d", note, len(ef.Body), len(gf.Body))
@@ -212,49 +220,26 @@ func compare(t *testing.T, note string, exp, got nodes.Node) {
 			gn := gf.Body[i]
 			compare(t, fmt.Sprintf("%s: body node %d", note, i), en, gn)
 		}
-	case nodes.NdFuncExtern:
-		ee := exp.(*nodes.FuncExternNode)
-		ge := exp.(*nodes.FuncExternNode)
+	case ast.NFuncExtern:
+		ee := exp.(ast.FuncExternNode)
+		ge := exp.(ast.FuncExternNode)
+		if ee.Alias != ge.Alias {
+			t.Fatalf("%s: expected `%s` extern alias, got `%s`", note, ee.Alias, ge.Alias)
+		}
 		if ee.Name != ge.Name {
-			t.Fatalf("%s: expected `%s` extern, got `%s`", note, ee.Name, ge.Name)
+			t.Fatalf("%s: expected `%s` intern name, got `%s`", note, ee.Name, ge.Name)
 		}
-		if ee.Intern != ge.Intern {
-			t.Fatalf("%s: expected `%s` intern, got `%s`", note, ee.Intern, ge.Intern)
-		}
-		if len(ee.Args) != len(ge.Args) {
-			t.Fatalf("%s: expected %d arguments, got %d", note, len(ee.Args), len(ge.Args))
-		}
-		for i, ea := range ee.Args {
-			ga := ge.Args[i]
-			if ea.Name != ga.Name {
-				t.Fatalf("%s: argument %d: expected `%s` name, got `%s`", note, i, ea.Name, ga.Name)
-			}
-			if !ea.Type.Equals(ga.Type) {
-				t.Fatalf("%s: argument %d: expected %s type, got %s", note, i, ea.Type, ga.Type)
-			}
-		}
-		if ee.Ret.Prim() != ge.Ret.Prim() {
-			t.Fatalf("%s: expected %s return type, got %s", note, ee.Ret, ge.Ret)
-		}
-	case nodes.NdStruct:
-		es := exp.(*nodes.StructNode)
-		gs := got.(*nodes.StructNode)
+	case ast.NStructDef:
+		es := exp.(ast.StructDefNode)
+		gs := got.(ast.StructDefNode)
 		if es.Name != gs.Name {
 			t.Fatalf("%s: expected `%s` structure name, got `%s`", note, es.Name, gs.Name)
 		}
-		if es.Type.Prim() != gs.Type.Prim() {
-			t.Fatalf("%s: expected %v type primitive, got %v", note, es.Type.Prim(), gs.Type.Prim())
+		if len(es.Fields) != len(gs.Fields) {
+			t.Fatalf("%s: type: expected %d fields, got %d", note, len(es.Fields), len(gs.Fields))
 		}
-		est := es.Type.(types.StructType)
-		gst := gs.Type.(types.StructType)
-		if est.Name != gst.Name {
-			t.Fatalf("%s: type: expected `%s` name, got %s", note, est.Name, gst.Name)
-		}
-		if len(est.Fields) != len(gst.Fields) {
-			t.Fatalf("%s: type: expected %d fields, got %d", note, len(est.Fields), len(gst.Fields))
-		}
-		for i, ef := range est.Fields {
-			gf := gst.Fields[i]
+		for i, ef := range es.Fields {
+			gf := gs.Fields[i]
 			if ef.Name != gf.Name {
 				t.Fatalf("%s: field `%s`: expected `%s` name", note, gf.Name, ef.Name)
 			}
@@ -262,22 +247,22 @@ func compare(t *testing.T, note string, exp, got nodes.Node) {
 				t.Fatalf("%s: field `%s`: expected %s type, got %s", note, gf.Name, ef.Type, gf.Type)
 			}
 		}
-	case nodes.NdArray:
-		ea := exp.(*nodes.ArrayNode)
-		ga := got.(*nodes.ArrayNode)
+	case ast.NArray:
+		ea := exp.(ast.ArrayNode)
+		ga := got.(ast.ArrayNode)
 		if !ea.Type.Equals(ga.Type) {
 			t.Fatalf("%s: expected array of %s, got %s", note, ea.Type, ga.Type)
 		}
-		if len(ea.Elements) != len(ga.Elements) {
-			t.Fatalf("%s: expected %d array elements, got %d", note, len(ea.Elements), len(ga.Elements))
+		if len(ea.Elems) != len(ga.Elems) {
+			t.Fatalf("%s: expected %d array elements, got %d", note, len(ea.Elems), len(ga.Elems))
 		}
-		for i, ee := range ea.Elements {
-			ge := ga.Elements[i]
+		for i, ee := range ea.Elems {
+			ge := ga.Elems[i]
 			compare(t, fmt.Sprintf("%s: element %d", note, i), ee, ge)
 		}
-	case nodes.NdNewStruct:
-		es := exp.(*nodes.NewStructNode)
-		gs := exp.(*nodes.NewStructNode)
+	case ast.NStruct:
+		es := exp.(ast.StructNode)
+		gs := exp.(ast.StructNode)
 		if !es.Type.Equals(gs.Type) {
 			t.Fatalf("%s: expected %s, got %s", note, es.Type, gs.Type)
 		}
@@ -297,26 +282,26 @@ func randRange(min, max int) int {
 	return min + rand.Intn(max-min)
 }
 
-func arrOf(element types.Type, elements ...any) *nodes.ArrayNode {
-	enodes := []nodes.Node{}
+func arrOf(element types.Type, elements ...any) ast.ArrayNode {
+	enodes := []ast.MetaNode{}
 	for _, e := range elements {
 		switch e := e.(type) {
 		case bool:
-			enodes = append(enodes, &nodes.BooleanNode{Bool: e})
+			enodes = append(enodes, ast.MetaNode{Node: ast.BoolNode{Value: e}})
 		case rune:
-			enodes = append(enodes, &nodes.CharNode{Char: byte(e)})
+			enodes = append(enodes, ast.MetaNode{Node: ast.CharNode{Value: byte(e)}})
 		case int:
-			enodes = append(enodes, &nodes.IntegerNode{Int: int32(e)})
+			enodes = append(enodes, ast.MetaNode{Node: ast.IntNode{Value: int32(e)}})
 		case float64:
-			enodes = append(enodes, &nodes.FloatNode{Float: float32(e)})
+			enodes = append(enodes, ast.MetaNode{Node: ast.FloatNode{Value: float32(e)}})
 		case string:
-			enodes = append(enodes, &nodes.StringNode{Str: e})
+			enodes = append(enodes, ast.MetaNode{Node: ast.StringNode{Value: e}})
 		default:
 			panic(fmt.Sprintf("unhandled value of type %s", reflect.ValueOf(e).Type().Name()))
 		}
 	}
-	return &nodes.ArrayNode{
-		Type:     element,
-		Elements: enodes,
+	return ast.ArrayNode{
+		Type:  types.ArrayType{Element: element},
+		Elems: enodes,
 	}
 }

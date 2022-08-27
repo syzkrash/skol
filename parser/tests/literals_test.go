@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
@@ -14,16 +14,16 @@ func TestLiteralBool(t *testing.T) {
 	p, src := makeParser("LiteralBool")
 
 	src.Reset("*")
-	n := expectValue(t, p, nodes.NdBoolean)
-	bn := n.(*nodes.BooleanNode)
-	if bn.Bool != true {
+	n := expectValue(t, p, ast.NBool).Node
+	bn := n.(ast.BoolNode)
+	if bn.Value != true {
 		t.Fatalf("expected true, got false")
 	}
 
 	src.Reset("/")
-	n = expectValue(t, p, nodes.NdBoolean)
-	bn = n.(*nodes.BooleanNode)
-	if bn.Bool != false {
+	n = expectValue(t, p, ast.NBool).Node
+	bn = n.(ast.BoolNode)
+	if bn.Value != false {
 		t.Fatalf("expected false, got true")
 	}
 	t.Log("OK")
@@ -49,17 +49,17 @@ func TestLiteralChar(t *testing.T) {
 	for in, out := range cases {
 		t.Logf("%s -> %c", in, out)
 		src.Reset(in)
-		n := expectValue(t, p, nodes.NdChar)
-		ch := n.(*nodes.CharNode)
-		if ch.Char != out {
-			t.Fatalf("expected '%c', got '%c'", out, ch.Char)
+		mn := expectValue(t, p, ast.NChar)
+		ch := mn.Node.(ast.CharNode)
+		if ch.Value != out {
+			t.Fatalf("expected '%c', got '%c'", out, ch.Value)
 		}
 		t.Log("OK")
 	}
 }
 
-func TestLiteralInteger(t *testing.T) {
-	p, src := makeParser("LiteralInteger")
+func TestLiteralInt(t *testing.T) {
+	p, src := makeParser("LiteralInt")
 
 	cases := map[string]int32{
 		"-1":         -1,
@@ -85,10 +85,10 @@ func TestLiteralInteger(t *testing.T) {
 	for in, out := range cases {
 		t.Logf("%s -> %d", in, out)
 		src.Reset(in)
-		n := expectValue(t, p, nodes.NdInteger)
-		i := n.(*nodes.IntegerNode)
-		if i.Int != out {
-			t.Fatalf("expected %d, got %d", out, i.Int)
+		mn := expectValue(t, p, ast.NInt)
+		i := mn.Node.(ast.IntNode)
+		if i.Value != out {
+			t.Fatalf("expected %d, got %d", out, i.Value)
 		}
 		t.Log("OK")
 	}
@@ -114,10 +114,10 @@ func TestLiteralFloat(t *testing.T) {
 	for in, out := range cases {
 		t.Logf("%s -> %f", in, out)
 		src.Reset(in)
-		n := expectValue(t, p, nodes.NdFloat)
-		f := n.(*nodes.FloatNode)
-		if f.Float != out {
-			t.Fatalf("expected %f, got %f", out, f.Float)
+		mn := expectValue(t, p, ast.NFloat)
+		f := mn.Node.(ast.FloatNode)
+		if f.Value != out {
+			t.Fatalf("expected %f, got %f", out, f.Value)
 		}
 		t.Log("OK")
 	}
@@ -145,10 +145,10 @@ func TestLiteralString(t *testing.T) {
 	for in, out := range cases {
 		t.Logf("%s -> %s", in, out)
 		src.Reset(in)
-		n := expectValue(t, p, nodes.NdString)
-		s := n.(*nodes.StringNode)
-		if s.Str != out {
-			t.Fatalf("expected \"%s\", got \"%s\"", out, s.Str)
+		mn := expectValue(t, p, ast.NString)
+		s := mn.Node.(ast.StringNode)
+		if s.Value != out {
+			t.Fatalf("expected \"%s\", got \"%s\"", out, s.Value)
 		}
 		t.Log("OK")
 	}
@@ -157,7 +157,7 @@ func TestLiteralString(t *testing.T) {
 func TestLiteralArray(t *testing.T) {
 	p, src := makeParser("LiteralArray")
 
-	cases := map[string]*nodes.ArrayNode{
+	cases := map[string]ast.ArrayNode{
 		"[bool]()":                 arrOf(types.Bool),
 		"[char]()":                 arrOf(types.Char),
 		"[int]()":                  arrOf(types.Int),
@@ -176,18 +176,18 @@ func TestLiteralArray(t *testing.T) {
 	}
 
 	for in, out := range cases {
-		t.Logf("%s -> %s (%d elems)", in, out.Type, len(out.Elements))
+		t.Logf("%s -> %s (%d elems)", in, out.Type, len(out.Elems))
 		src.Reset(in)
-		n := expectValue(t, p, nodes.NdArray)
-		a := n.(*nodes.ArrayNode)
+		mn := expectValue(t, p, ast.NArray)
+		a := mn.Node.(ast.ArrayNode)
 		if !out.Type.Equals(a.Type) {
 			t.Fatalf("expected %s, got %s", out.Type, a.Type)
 		}
-		if len(out.Elements) != len(a.Elements) {
-			t.Fatalf("expected %d elements, got %d", len(out.Elements), len(a.Elements))
+		if len(out.Elems) != len(a.Elems) {
+			t.Fatalf("expected %d elements, got %d", len(out.Elems), len(a.Elems))
 		}
-		for i, ee := range out.Elements {
-			compareLiteral(t, "element", ee, a.Elements[i])
+		for i, ee := range out.Elems {
+			compareLiteral(t, "element", ee, a.Elems[i])
 		}
 		t.Log("OK")
 	}

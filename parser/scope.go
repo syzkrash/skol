@@ -1,8 +1,8 @@
 package parser
 
 import (
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/parser/defaults"
-	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
@@ -10,8 +10,8 @@ import (
 type Scope struct {
 	Parent *Scope
 	Funcs  map[string]*values.Function
-	Vars   map[string]*nodes.VarDefNode
-	Consts map[string]*values.Value
+	Vars   map[string]ast.Node
+	Consts map[string]ast.Node
 	Types  map[string]types.Type
 }
 
@@ -19,8 +19,8 @@ func NewScope(parent *Scope) *Scope {
 	return &Scope{
 		Parent: parent,
 		Funcs:  defaults.Functions,
-		Vars:   make(map[string]*nodes.VarDefNode),
-		Consts: make(map[string]*values.Value),
+		Vars:   make(map[string]ast.Node),
+		Consts: make(map[string]ast.Node),
 		Types:  make(map[string]types.Type),
 	}
 }
@@ -33,7 +33,7 @@ func (s *Scope) FindFunc(name string) (*values.Function, bool) {
 	return f, ok
 }
 
-func (s *Scope) FindVar(name string) (*nodes.VarDefNode, bool) {
+func (s *Scope) FindVar(name string) (ast.Node, bool) {
 	v, ok := s.Vars[name]
 	if s.Parent != nil && !ok && name[0] != '_' {
 		return s.Parent.FindVar(name)
@@ -41,7 +41,7 @@ func (s *Scope) FindVar(name string) (*nodes.VarDefNode, bool) {
 	return v, ok
 }
 
-func (s *Scope) SetVar(n string, v *nodes.VarDefNode) {
+func (s *Scope) SetVar(n string, v ast.Node) {
 	var target *Scope
 	current := s
 	for {
@@ -58,7 +58,7 @@ func (s *Scope) SetVar(n string, v *nodes.VarDefNode) {
 	}
 }
 
-func (s *Scope) FindConst(n string) (*values.Value, bool) {
+func (s *Scope) FindConst(n string) (ast.Node, bool) {
 	v, ok := s.Consts[n]
 	if s.Parent != nil && !ok {
 		return s.Parent.FindConst(n)
@@ -66,7 +66,7 @@ func (s *Scope) FindConst(n string) (*values.Value, bool) {
 	return v, ok
 }
 
-func (s *Scope) SetConst(n string, v *values.Value) bool {
+func (s *Scope) SetConst(n string, v ast.Node) bool {
 	if _, exists := s.FindConst(n); exists {
 		return false
 	}

@@ -4,9 +4,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/lexer"
-	"github.com/syzkrash/skol/parser/nodes"
-	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
@@ -23,11 +22,13 @@ import (
 //	@VectorTwo 1.2 3.4 // nodes.NewStructNode
 //	pos#x      // nodes.SelectorNode
 //
-func (p *Parser) Value() (n nodes.Node, err error) {
+func (p *Parser) Value() (mn ast.MetaNode, err error) {
 	tok, err := p.lexer.Next()
 	if err != nil {
-		return nil, err
+		return
 	}
+
+	mn.Where = tok.Where
 
 	switch tok.Kind {
 	case lexer.TkConstant:
@@ -38,9 +39,8 @@ func (p *Parser) Value() (n nodes.Node, err error) {
 				err = p.otherError(tok, "invalid floating-point constant", err)
 			}
 
-			n = &nodes.FloatNode{
-				Float: float32(f),
-				Pos:   tok.Where,
+			mn.Node = ast.FloatNode{
+				Value: float32(f),
 			}
 		} else {
 			var i int64
@@ -49,22 +49,17 @@ func (p *Parser) Value() (n nodes.Node, err error) {
 				err = p.otherError(tok, "invalid integer constant", err)
 			}
 
-			n = &nodes.IntegerNode{
-				Int: int32(i),
-				Pos: tok.Where,
+			mn.Node = ast.IntNode{
+				Value: int32(i),
 			}
 		}
 	case lexer.TkString:
-		n = &nodes.StringNode{
-			Str: tok.Raw,
-			Pos: tok.Where,
+		mn.Node = ast.StringNode{
+			Value: tok.Raw,
 		}
 	case lexer.TkChar:
-		rdr := strings.NewReader(tok.Raw)
-		r, _, _ := rdr.ReadRune()
-		n = &nodes.CharNode{
-			Char: byte(r),
-			Pos:  tok.Where,
+		mn.Node = ast.CharNode{
+			Value: tok.Raw[0],
 		}
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
@@ -74,25 +69,23 @@ func (p *Parser) Value() (n nodes.Node, err error) {
 				err = p.selfError(tok, "unknown function: "+fn)
 				return
 			}
-			n, err = p.funcCall(fn, f, tok.Where)
+			mn.Node, err = p.funcCall(fn, f, tok.Where)
 		} else if _, ok := p.Scope.FindVar(tok.Raw); ok {
-			return p.selector(tok)
+			mn.Node, err = p.selector(tok)
 		} else if v, ok := p.Scope.FindConst(tok.Raw); ok {
-			n = p.ToNode(v, tok.Where)
+			mn.Node = v
 		} else {
 			err = p.selfError(tok, "unknown variable: "+tok.Raw)
 		}
 	case lexer.TkPunct:
 		switch tok.Raw[0] {
 		case '*':
-			n = &nodes.BooleanNode{
-				Bool: true,
-				Pos:  tok.Where,
+			mn.Node = ast.BoolNode{
+				Value: true,
 			}
 		case '/':
-			n = &nodes.BooleanNode{
-				Bool: false,
-				Pos:  tok.Where,
+			mn.Node = ast.BoolNode{
+				Value: false,
 			}
 		case '@':
 			tok, err = p.lexer.Next()
@@ -109,18 +102,17 @@ func (p *Parser) Value() (n nodes.Node, err error) {
 				return
 			}
 			s := t.(types.StructType)
-			args := make([]nodes.Node, len(s.Fields))
+			args := make([]ast.MetaNode, len(s.Fields))
 			for i := range s.Fields {
-				n, err = p.Value()
+				mn, err = p.Value()
 				if err != nil {
 					return
 				}
-				args[i] = n
+				args[i] = mn
 			}
-			n = &nodes.NewStructNode{
-				Type: t,
+			mn.Node = ast.StructNode{
+				Type: s,
 				Args: args,
-				Pos:  tok.Where,
 			}
 		case '[':
 			begin := tok
@@ -153,8 +145,8 @@ func (p *Parser) Value() (n nodes.Node, err error) {
 				err = p.selfError(tok, "expected '('")
 				return
 			}
-			elems := []nodes.Node{}
-			var elem nodes.Node
+			elems := []ast.MetaNode{}
+			var elem ast.MetaNode
 			for {
 				tok, err = p.lexer.Next()
 				if err != nil {
@@ -170,7 +162,7 @@ func (p *Parser) Value() (n nodes.Node, err error) {
 					return
 				}
 				if elemtype.Prim() == types.PUndefined {
-					elemtype, err = p.TypeOf(elem)
+					elemtype, err = p.TypeOf(elem.Node)
 					if err != nil {
 						return
 					}
@@ -181,10 +173,9 @@ func (p *Parser) Value() (n nodes.Node, err error) {
 				err = p.selfError(begin, "array literal must have a type or at least one element")
 				return
 			}
-			n = &nodes.ArrayNode{
-				Type:     elemtype,
-				Elements: elems,
-				Pos:      begin.Where,
+			mn.Node = ast.ArrayNode{
+				Type:  types.ArrayType{Element: elemtype},
+				Elems: elems,
 			}
 		default:
 			err = p.selfError(tok, "unexpected punctuator")
@@ -194,20 +185,4 @@ func (p *Parser) Value() (n nodes.Node, err error) {
 	}
 
 	return
-}
-
-func (p *Parser) ToNode(v *values.Value, pos lexer.Position) nodes.Node {
-	switch v.Type.Prim() {
-	case types.PBool:
-		return &nodes.BooleanNode{v.Data.(bool), pos}
-	case types.PChar:
-		return &nodes.CharNode{v.Data.(byte), pos}
-	case types.PFloat:
-		return &nodes.FloatNode{v.Data.(float32), pos}
-	case types.PInt:
-		return &nodes.IntegerNode{v.Data.(int32), pos}
-	case types.PString:
-		return &nodes.StringNode{v.Data.(string), pos}
-	}
-	panic(v.Type.String())
 }

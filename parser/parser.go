@@ -5,9 +5,9 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/debug"
 	"github.com/syzkrash/skol/lexer"
-	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 	"github.com/syzkrash/skol/sim"
@@ -38,8 +38,8 @@ func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
 //	add! sqr! 2 sqr! 2     // add(sqr(2), sqr(2))
 //	add! a b               // add(a, b)
 //	add! mul! a a mul! bb  // add(mul(a, a), mul(b, b))
-func (p *Parser) funcCall(fn string, f *values.Function, pos lexer.Position) (n nodes.Node, err error) {
-	args := make([]nodes.Node, len(f.Args))
+func (p *Parser) funcCall(fn string, f *values.Function, pos lexer.Position) (n ast.Node, err error) {
+	args := make([]ast.MetaNode, len(f.Args))
 	for i := 0; i < len(args); i++ {
 		v, err := p.Value()
 		if err != nil {
@@ -47,19 +47,17 @@ func (p *Parser) funcCall(fn string, f *values.Function, pos lexer.Position) (n 
 		}
 		args[i] = v
 	}
-	n = &nodes.FuncCallNode{
+	n = ast.FuncCallNode{
 		Func: fn,
 		Args: args,
-		Pos:  pos,
 	}
 	return
 }
 
-func (p *Parser) selector(start *lexer.Token) (n nodes.Node, err error) {
-	n = &nodes.SelectorNode{
+func (p *Parser) selector(start *lexer.Token) (n ast.Node, err error) {
+	n = ast.SelectorNode{
 		Parent: nil,
 		Child:  start.Raw,
-		Pos:    start.Where,
 	}
 	var tok *lexer.Token
 	for {
@@ -99,20 +97,17 @@ func (p *Parser) selector(start *lexer.Token) (n nodes.Node, err error) {
 			}
 			// append to the chain of selectors
 			if pt.Prim() == types.PArray {
-				n = &nodes.IndexNode{
-					Parent: n.(nodes.Selector),
-					Idx: &nodes.SelectorNode{
+				n = ast.IndexSelectorNode{
+					Parent: n.(ast.Selector),
+					Idx: ast.SelectorNode{
 						Parent: nil,
 						Child:  tok.Raw,
-						Pos:    tok.Where,
 					},
-					Pos: n.Where(),
 				}
 			} else {
-				n = &nodes.SelectorNode{
-					Parent: n.(nodes.Selector),
+				n = ast.SelectorNode{
+					Parent: n.(ast.Selector),
 					Child:  tok.Raw,
-					Pos:    n.Where(),
 				}
 			}
 		// constant: index into an array
@@ -126,13 +121,9 @@ func (p *Parser) selector(start *lexer.Token) (n nodes.Node, err error) {
 				return
 			}
 			// append to the chain
-			n = &nodes.IndexNode{
-				Parent: n.(nodes.Selector),
-				Idx: &nodes.IntegerNode{
-					Int: int32(idx),
-					Pos: n.Where(),
-				},
-				Pos: n.Where(),
+			n = ast.IndexConstNode{
+				Parent: n.(ast.Selector),
+				Idx:    int(idx),
 			}
 		// punct: can be a typecast
 		//	typecasts use the @ punctuator
@@ -151,10 +142,9 @@ func (p *Parser) selector(start *lexer.Token) (n nodes.Node, err error) {
 				return
 			}
 			// append to the chain
-			n = &nodes.TypecastNode{
-				Parent: n.(nodes.Selector),
-				Type:   t,
-				Pos:    n.Where(),
+			n = ast.TypecastNode{
+				Parent: n.(ast.Selector),
+				Cast:   t,
 			}
 		// any other token is not allowed
 		default:
@@ -164,64 +154,73 @@ func (p *Parser) selector(start *lexer.Token) (n nodes.Node, err error) {
 	}
 }
 
-func (p *Parser) ret() (n nodes.Node, err error) {
+func (p *Parser) ret() (n ast.Node, err error) {
 	v, err := p.Value()
 	if err != nil {
 		return
 	}
-	n = &nodes.ReturnNode{
+	n = ast.ReturnNode{
 		Value: v,
-		Pos:   v.Where(),
 	}
 	return
 }
 
-func (p *Parser) block() (ns []nodes.Node, err error) {
-	var n nodes.Node
-	var tok *lexer.Token
+func (p *Parser) block() (block ast.Block, err error) {
+	var (
+		n ast.MetaNode
+
+		tok *lexer.Token
+	)
+
 	tok, err = p.lexer.Next()
 	if err != nil {
 		return
 	}
-	if tok.Kind != lexer.TkPunct {
-		err = p.selfError(tok, "expected Punctuator, got "+tok.Kind.String())
+
+	if tok.Kind != lexer.TkPunct || tok.Raw[0] != '(' {
+		err = p.selfError(tok, "expected '(' to start block")
 		return
 	}
-	if tok.Raw != "(" {
-		err = p.selfError(tok, "expected '(', got '"+tok.Raw+"'")
-		return
-	}
+
 	for {
 		tok, err = p.lexer.Next()
 		if err != nil {
+			return
+		}
+
+		if tok.Kind == lexer.TkPunct && tok.Raw[0] == ')' {
 			break
 		}
-		if tok.Kind == lexer.TkPunct && tok.Raw == ")" {
-			break
-		}
+
 		n, err = p.internalNext(tok)
 		if err != nil {
-			break
+			return
 		}
-		ns = append(ns, n)
+
+		block = append(block, n)
 	}
+
 	return
 }
 
-func (p *Parser) internalNext(tok *lexer.Token) (n nodes.Node, err error) {
+func (p *Parser) internalNext(tok *lexer.Token) (mn ast.MetaNode, err error) {
+	var (
+		n ast.Node
+	)
+
 	switch tok.Kind {
 	case lexer.TkPunct:
 		if tok.Raw == "$" {
-			return p.funcOrExtern()
+			n, err = p.funcOrExtern()
 		}
 		if tok.Raw == "%" {
-			return p.varDef()
+			n, err = p.varDef()
 		}
 		if tok.Raw == "?" {
-			return p.condition()
+			n, err = p.condition()
 		}
 		if tok.Raw == "*" {
-			return p.loop()
+			n, err = p.loop()
 		}
 		if tok.Raw == "#" {
 			err = p.constant()
@@ -231,10 +230,10 @@ func (p *Parser) internalNext(tok *lexer.Token) (n nodes.Node, err error) {
 			return p.Next()
 		}
 		if tok.Raw == "@" {
-			return p.structn()
+			n, err = p.structn()
 		}
 		if p.Scope.Parent != nil && tok.Raw[0] == '>' {
-			return p.ret()
+			n, err = p.ret()
 		}
 		err = p.selfError(tok, "unexpected top-level punctuator: "+tok.Raw)
 	case lexer.TkIdent:
@@ -253,19 +252,22 @@ func (p *Parser) internalNext(tok *lexer.Token) (n nodes.Node, err error) {
 		err = p.selfError(tok, "unexpected top-level token: "+tok.Raw)
 	}
 
+	mn.Node = n
+	mn.Where = tok.Where
+
 	return
 }
 
-func (p *Parser) Next() (n nodes.Node, err error) {
+func (p *Parser) Next() (n ast.MetaNode, err error) {
 	tok, err := p.lexer.Next()
 	if err != nil {
-		return nil, err
+		return ast.MetaNode{}, err
 	}
 	n, err = p.internalNext(tok)
 	if err != nil {
 		debug.Log(debug.AttrParser, "Error %s", err)
 	} else {
-		debug.Log(debug.AttrParser, "%s node at %s", n.Kind(), n.Where())
+		debug.Log(debug.AttrParser, "%s node at %s", n.Node.Kind(), n.Where)
 	}
 	return
 }

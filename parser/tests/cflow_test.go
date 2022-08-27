@@ -3,7 +3,7 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/syzkrash/skol/parser/nodes"
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
@@ -27,192 +27,204 @@ func TestIf(t *testing.T) {
 		Ret: types.Bool,
 	}
 
-	p.Scope.Vars["a"] = &nodes.VarDefNode{
-		VarType: types.Bool,
-		Var:     "a",
-		Value:   &nodes.BooleanNode{Bool: false},
-	}
-	p.Scope.Vars["b"] = &nodes.VarDefNode{
-		VarType: types.Bool,
-		Var:     "b",
-		Value:   &nodes.BooleanNode{Bool: false},
-	}
-	p.Scope.Vars["c"] = &nodes.VarDefNode{
-		VarType: types.Bool,
-		Var:     "c",
-		Value:   &nodes.BooleanNode{Bool: false},
-	}
-	p.Scope.Vars["d"] = &nodes.VarDefNode{
-		VarType: types.Bool,
-		Var:     "d",
-		Value:   &nodes.BooleanNode{Bool: false},
-	}
-	p.Scope.Vars["e"] = &nodes.VarDefNode{
-		VarType: types.Bool,
-		Var:     "e",
-		Value:   &nodes.BooleanNode{Bool: false},
-	}
-	p.Scope.Vars["it"] = &nodes.VarDefNode{
-		VarType: types.Int,
-		Var:     "it",
-		Value:   &nodes.IntegerNode{Int: 123},
-	}
+	p.Scope.Vars["a"] = ast.BoolNode{Value: false}
+	p.Scope.Vars["b"] = ast.BoolNode{Value: false}
+	p.Scope.Vars["c"] = ast.BoolNode{Value: false}
+	p.Scope.Vars["d"] = ast.BoolNode{Value: false}
+	p.Scope.Vars["e"] = ast.BoolNode{Value: false}
+	p.Scope.Vars["it"] = ast.IntNode{Value: 123}
 
-	cases := map[string]*nodes.IfNode{
+	cases := map[string]ast.IfNode{
 		"?*()": {
-			Condition:   &nodes.BooleanNode{Bool: true},
-			IfBlock:     []nodes.Node{},
-			ElseIfNodes: []*nodes.IfSubNode{},
-			ElseBlock:   []nodes.Node{},
+			Main: ast.Branch{
+				Cond:  ast.MetaNode{Node: ast.BoolNode{Value: true}},
+				Block: ast.Block{},
+			},
+			Other: []ast.Branch{},
+			Else:  ast.Block{},
 		},
 		"?/()": {
-			Condition:   &nodes.BooleanNode{Bool: false},
-			IfBlock:     []nodes.Node{},
-			ElseIfNodes: []*nodes.IfSubNode{},
-			ElseBlock:   []nodes.Node{},
+			Main: ast.Branch{
+				Cond:  ast.MetaNode{Node: ast.BoolNode{Value: false}},
+				Block: ast.Block{},
+			},
+			Other: []ast.Branch{},
+			Else:  ast.Block{},
 		},
 		"?do!(print! \"Deez\")": {
-			Condition: &nodes.FuncCallNode{
-				Func: "do",
-				Args: []nodes.Node{},
-			},
-			IfBlock: []nodes.Node{
-				&nodes.FuncCallNode{
-					Func: "print",
-					Args: []nodes.Node{
-						&nodes.StringNode{Str: "Deez"},
+			Main: ast.Branch{
+				Cond: ast.MetaNode{Node: ast.FuncCallNode{
+					Func: "do",
+					Args: []ast.MetaNode{},
+				}},
+				Block: ast.Block{
+					ast.MetaNode{
+						Node: ast.FuncCallNode{
+							Func: "print",
+							Args: []ast.MetaNode{
+								{Node: ast.StringNode{Value: "Deez"}},
+							},
+						},
 					},
 				},
 			},
+			Other: []ast.Branch{},
+			Else:  ast.Block{},
 		},
 		"?ok! it(print! \"OK\"):(print! \"Not OK\")": {
-			Condition: &nodes.FuncCallNode{
-				Func: "ok",
-				Args: []nodes.Node{
-					&nodes.SelectorNode{
-						Parent: nil,
-						Child:  "it",
+			Main: ast.Branch{
+				Cond: ast.MetaNode{Node: ast.FuncCallNode{
+					Func: "ok",
+					Args: []ast.MetaNode{
+						{Node: ast.SelectorNode{
+							Parent: nil,
+							Child:  "it",
+						}},
+					},
+				}},
+				Block: ast.Block{
+					ast.MetaNode{
+						Node: ast.FuncCallNode{
+							Func: "print",
+							Args: []ast.MetaNode{
+								{Node: ast.StringNode{Value: "OK"}},
+							},
+						},
 					},
 				},
 			},
-			IfBlock: []nodes.Node{
-				&nodes.FuncCallNode{
-					Func: "print",
-					Args: []nodes.Node{
-						&nodes.StringNode{Str: "OK"},
-					},
-				},
-			},
-			ElseIfNodes: []*nodes.IfSubNode{},
-			ElseBlock: []nodes.Node{
-				&nodes.FuncCallNode{
-					Func: "print",
-					Args: []nodes.Node{
-						&nodes.StringNode{Str: "Not OK"},
+			Other: []ast.Branch{},
+			Else: ast.Block{
+				ast.MetaNode{
+					Node: ast.FuncCallNode{
+						Func: "print",
+						Args: []ast.MetaNode{
+							{Node: ast.StringNode{Value: "Not OK"}},
+						},
 					},
 				},
 			},
 		},
 		"?a(>a):?b(>b):(>c)": {
-			Condition: &nodes.SelectorNode{
-				Parent: nil,
-				Child:  "a",
-			},
-			IfBlock: []nodes.Node{
-				&nodes.ReturnNode{
-					Value: &nodes.SelectorNode{
-						Parent: nil,
-						Child:  "a",
+			Main: ast.Branch{
+				Cond: ast.MetaNode{Node: ast.SelectorNode{
+					Parent: nil,
+					Child:  "a",
+				}},
+				Block: ast.Block{
+					ast.MetaNode{
+						Node: ast.ReturnNode{
+							Value: ast.MetaNode{Node: ast.SelectorNode{
+								Parent: nil,
+								Child:  "a",
+							}},
+						},
 					},
 				},
 			},
-			ElseIfNodes: []*nodes.IfSubNode{
+			Other: []ast.Branch{
 				{
-					Condition: &nodes.SelectorNode{
+					Cond: ast.MetaNode{Node: ast.SelectorNode{
 						Parent: nil,
 						Child:  "b",
-					},
-					Block: []nodes.Node{
-						&nodes.ReturnNode{
-							Value: &nodes.SelectorNode{
-								Parent: nil,
-								Child:  "b",
+					}},
+					Block: ast.Block{
+						ast.MetaNode{
+							Node: ast.ReturnNode{
+								Value: ast.MetaNode{Node: ast.SelectorNode{
+									Parent: nil,
+									Child:  "b",
+								}},
 							},
 						},
 					},
 				},
 			},
-			ElseBlock: []nodes.Node{
-				&nodes.ReturnNode{
-					Value: &nodes.SelectorNode{
-						Parent: nil,
-						Child:  "c",
+			Else: ast.Block{
+				ast.MetaNode{
+					Node: ast.ReturnNode{
+						Value: ast.MetaNode{Node: ast.SelectorNode{
+							Parent: nil,
+							Child:  "c",
+						}},
 					},
 				},
 			},
 		},
 		"?a(>a):?b(>b):?c(>c):?d(>d):(>e)": {
-			Condition: &nodes.SelectorNode{
-				Parent: nil,
-				Child:  "a",
-			},
-			IfBlock: []nodes.Node{
-				&nodes.ReturnNode{
-					Value: &nodes.SelectorNode{
-						Parent: nil,
-						Child:  "a",
+			Main: ast.Branch{
+				Cond: ast.MetaNode{Node: ast.SelectorNode{
+					Parent: nil,
+					Child:  "a",
+				}},
+				Block: ast.Block{
+					ast.MetaNode{
+						Node: ast.ReturnNode{
+							Value: ast.MetaNode{Node: ast.SelectorNode{
+								Parent: nil,
+								Child:  "a",
+							}},
+						},
 					},
 				},
 			},
-			ElseIfNodes: []*nodes.IfSubNode{
+			Other: []ast.Branch{
 				{
-					Condition: &nodes.SelectorNode{
+					Cond: ast.MetaNode{Node: ast.SelectorNode{
 						Parent: nil,
 						Child:  "b",
-					},
-					Block: []nodes.Node{
-						&nodes.ReturnNode{
-							Value: &nodes.SelectorNode{
-								Parent: nil,
-								Child:  "b",
+					}},
+					Block: ast.Block{
+						ast.MetaNode{
+							Node: ast.ReturnNode{
+								Value: ast.MetaNode{Node: ast.SelectorNode{
+									Parent: nil,
+									Child:  "b",
+								}},
 							},
 						},
 					},
 				},
 				{
-					Condition: &nodes.SelectorNode{
+					Cond: ast.MetaNode{Node: ast.SelectorNode{
 						Parent: nil,
 						Child:  "c",
-					},
-					Block: []nodes.Node{
-						&nodes.ReturnNode{
-							Value: &nodes.SelectorNode{
-								Parent: nil,
-								Child:  "c",
+					}},
+					Block: ast.Block{
+						ast.MetaNode{
+							Node: ast.ReturnNode{
+								Value: ast.MetaNode{Node: ast.SelectorNode{
+									Parent: nil,
+									Child:  "c",
+								}},
 							},
 						},
 					},
 				},
 				{
-					Condition: &nodes.SelectorNode{
+					Cond: ast.MetaNode{Node: ast.SelectorNode{
 						Parent: nil,
 						Child:  "d",
-					},
-					Block: []nodes.Node{
-						&nodes.ReturnNode{
-							Value: &nodes.SelectorNode{
-								Parent: nil,
-								Child:  "d",
+					}},
+					Block: ast.Block{
+						ast.MetaNode{
+							Node: ast.ReturnNode{
+								Value: ast.MetaNode{Node: ast.SelectorNode{
+									Parent: nil,
+									Child:  "d",
+								}},
 							},
 						},
 					},
 				},
 			},
-			ElseBlock: []nodes.Node{
-				&nodes.ReturnNode{
-					Value: &nodes.SelectorNode{
-						Parent: nil,
-						Child:  "e",
+			Else: ast.Block{
+				ast.MetaNode{
+					Node: ast.ReturnNode{
+						Value: ast.MetaNode{Node: ast.SelectorNode{
+							Parent: nil,
+							Child:  "e",
+						}},
 					},
 				},
 			},
@@ -222,7 +234,7 @@ func TestIf(t *testing.T) {
 	for in, out := range cases {
 		t.Log(in)
 		src.Reset(in)
-		expect(t, p, out)
+		expect(t, p, ast.MetaNode{Node: out})
 		t.Log("OK")
 	}
 }
@@ -230,11 +242,7 @@ func TestIf(t *testing.T) {
 func TestWhile(t *testing.T) {
 	p, src := makeParser("While")
 
-	p.Scope.Vars["Quit"] = &nodes.VarDefNode{
-		VarType: types.Bool,
-		Var:     "Quit",
-		Value:   &nodes.BooleanNode{Bool: false},
-	}
+	p.Scope.Vars["Quit"] = ast.BoolNode{Value: false}
 
 	p.Scope.Funcs["Do"] = &values.Function{
 		Name: "Do",
@@ -247,46 +255,52 @@ func TestWhile(t *testing.T) {
 		Ret:  types.Int,
 	}
 
-	cases := map[string]*nodes.WhileNode{
+	cases := map[string]ast.WhileNode{
 		"**()": {
-			Condition: &nodes.BooleanNode{Bool: true},
-			Body:      []nodes.Node{},
+			Cond:  ast.MetaNode{Node: ast.BoolNode{Value: true}},
+			Block: ast.Block{},
 		},
 		"*/()": {
-			Condition: &nodes.BooleanNode{Bool: false},
-			Body:      []nodes.Node{},
+			Cond:  ast.MetaNode{Node: ast.BoolNode{Value: false}},
+			Block: ast.Block{},
 		},
 		"*Do!(Dont!)": {
-			Condition: &nodes.FuncCallNode{
+			Cond: ast.MetaNode{Node: ast.FuncCallNode{
 				Func: "Do",
-				Args: []nodes.Node{},
-			},
-			Body: []nodes.Node{
-				&nodes.FuncCallNode{
-					Func: "Dont",
-					Args: []nodes.Node{},
+				Args: []ast.MetaNode{},
+			}},
+			Block: ast.Block{
+				ast.MetaNode{
+					Node: ast.FuncCallNode{
+						Func: "Dont",
+						Args: []ast.MetaNode{},
+					},
 				},
 			},
 		},
 		"*not! Quit (Do! >Dont!)": {
-			Condition: &nodes.FuncCallNode{
+			Cond: ast.MetaNode{Node: ast.FuncCallNode{
 				Func: "not",
-				Args: []nodes.Node{
-					&nodes.SelectorNode{
+				Args: []ast.MetaNode{
+					{Node: ast.SelectorNode{
 						Parent: nil,
 						Child:  "Quit",
+					}},
+				},
+			}},
+			Block: ast.Block{
+				ast.MetaNode{
+					Node: ast.FuncCallNode{
+						Func: "Do",
+						Args: []ast.MetaNode{},
 					},
 				},
-			},
-			Body: []nodes.Node{
-				&nodes.FuncCallNode{
-					Func: "Do",
-					Args: []nodes.Node{},
-				},
-				&nodes.ReturnNode{
-					Value: &nodes.FuncCallNode{
-						Func: "Dont",
-						Args: []nodes.Node{},
+				ast.MetaNode{
+					Node: ast.ReturnNode{
+						Value: ast.MetaNode{Node: ast.FuncCallNode{
+							Func: "Dont",
+							Args: []ast.MetaNode{},
+						}},
 					},
 				},
 			},
@@ -296,7 +310,7 @@ func TestWhile(t *testing.T) {
 	for in, out := range cases {
 		t.Log(in)
 		src.Reset(in)
-		expect(t, p, out)
+		expect(t, p, ast.MetaNode{Node: out})
 		t.Log("OK")
 	}
 }

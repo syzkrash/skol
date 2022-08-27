@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/lexer"
-	"github.com/syzkrash/skol/parser/nodes"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
@@ -84,30 +84,30 @@ func (p *Parser) EnsureResultType(inner types.Type) types.Type {
 	return rt
 }
 
-func (p *Parser) TypeOf(n nodes.Node) (t types.Type, err error) {
+func (p *Parser) TypeOf(n ast.Node) (t types.Type, err error) {
 	switch n.Kind() {
-	case nodes.NdBoolean:
+	case ast.NBool:
 		t = types.Bool
-	case nodes.NdInteger:
+	case ast.NInt:
 		t = types.Int
-	case nodes.NdFloat:
+	case ast.NFloat:
 		t = types.Float
-	case nodes.NdChar:
+	case ast.NChar:
 		t = types.Char
-	case nodes.NdString:
+	case ast.NString:
 		t = types.String
-	case nodes.NdNewStruct:
-		t = n.(*nodes.NewStructNode).Type
-	case nodes.NdFuncCall:
-		fn := n.(*nodes.FuncCallNode).Func
+	case ast.NStruct:
+		t = n.(ast.StructNode).Type
+	case ast.NFuncCall:
+		fn := n.(ast.FuncCallNode).Func
 		f, ok := p.Scope.FindFunc(fn)
 		if !ok {
 			err = fmt.Errorf("unknown function: %s", fn)
 			return
 		}
 		t = f.Ret
-	case nodes.NdSelector:
-		s := n.(*nodes.SelectorNode)
+	case ast.NSelector:
+		s := n.(ast.SelectorNode)
 		path := s.Path()
 
 		// first, ensure the path is correct
@@ -131,7 +131,10 @@ func (p *Parser) TypeOf(n nodes.Node) (t types.Type, err error) {
 
 		// set the type to the variable's type (if it is found) and return if it is
 		// the only element of the path
-		t = v.VarType
+		t, err = p.TypeOf(v)
+		if err != nil {
+			return
+		}
 		if len(path) == 1 {
 			return
 		}
@@ -179,19 +182,34 @@ func (p *Parser) TypeOf(n nodes.Node) (t types.Type, err error) {
 			}
 			// finally, if neither are specified, process array index
 			if t.Prim() != types.PArray {
-				err = fmt.Errorf("can only index arrays (you are getting index %d of %s)", e.Idx, t.String())
+				err = fmt.Errorf("can only index arrays")
 				return
 			}
 			// return a result type for the array's element type (because s a f e t y)
 			a := t.(types.ArrayType)
 			t = p.EnsureResultType(a.Element)
 		}
-	case nodes.NdTypecast:
-		return n.(*nodes.TypecastNode).Type, nil
-	case nodes.NdArray:
-		return types.ArrayType{Element: n.(*nodes.ArrayNode).Type}, nil
-	case nodes.NdIndex:
-		i := n.(*nodes.IndexNode)
+	case ast.NTypecast:
+		return n.(ast.TypecastNode).Cast, nil
+	case ast.NArray:
+		return n.(ast.ArrayNode).Type, nil
+	case ast.NIndexSelector:
+		i := n.(ast.IndexSelectorNode)
+		ptype, err := p.TypeOf(i.Parent)
+		if err != nil {
+			return nil, err
+		}
+		if ptype.Prim() != types.PArray {
+			return nil, fmt.Errorf("cannot index %s value", ptype.String())
+		}
+		atype := ptype.(types.ArrayType)
+		rtype := types.MakeStruct(atype.Element.String()+"Result",
+			"val", atype.Element,
+			"ok", types.Bool)
+		p.Scope.Types[rtype.(types.StructType).Name] = rtype
+		return rtype, nil
+	case ast.NIndexConst:
+		i := n.(ast.IndexConstNode)
 		ptype, err := p.TypeOf(i.Parent)
 		if err != nil {
 			return nil, err
@@ -207,6 +225,32 @@ func (p *Parser) TypeOf(n nodes.Node) (t types.Type, err error) {
 		return rtype, nil
 	default:
 		err = fmt.Errorf("%s node is not a value", n.Kind())
+	}
+	return
+}
+
+func (p *Parser) NodeOf(t types.Type) (n ast.Node, ok bool) {
+	ok = true
+	if types.Bool.Equals(t) {
+		n = ast.BoolNode{}
+	} else if types.Char.Equals(t) {
+		n = ast.CharNode{}
+	} else if types.Int.Equals(t) {
+		n = ast.IntNode{}
+	} else if types.Float.Equals(t) {
+		n = ast.FloatNode{}
+	} else if types.String.Equals(t) {
+		n = ast.StringNode{}
+	} else if t.Prim() == types.PArray {
+		n = ast.ArrayNode{
+			Type: t.(types.ArrayType),
+		}
+	} else if t.Prim() == types.PStruct {
+		n = ast.StructNode{
+			Type: t.(types.StructType),
+		}
+	} else {
+		ok = false
 	}
 	return
 }
