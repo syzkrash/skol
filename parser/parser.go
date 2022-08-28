@@ -210,32 +210,28 @@ func (p *Parser) internalNext(tok *lexer.Token) (mn ast.MetaNode, err error) {
 
 	switch tok.Kind {
 	case lexer.TkPunct:
-		if tok.Raw == "$" {
+		switch tok.Raw[0] {
+		case '$':
 			n, err = p.funcOrExtern()
-		}
-		if tok.Raw == "%" {
+		case '%':
 			n, err = p.varDef()
-		}
-		if tok.Raw == "?" {
+		case '?':
 			n, err = p.condition()
-		}
-		if tok.Raw == "*" {
+		case '*':
 			n, err = p.loop()
-		}
-		if tok.Raw == "#" {
+		case '@':
+			n, err = p.structn()
+		case '>':
+			n, err = p.ret()
+		case '#':
 			err = p.constant()
 			if err != nil {
 				return
 			}
 			return p.Next()
+		default:
+			err = p.selfError(tok, "unexpected top-level punctuator: "+tok.Raw)
 		}
-		if tok.Raw == "@" {
-			n, err = p.structn()
-		}
-		if p.Scope.Parent != nil && tok.Raw[0] == '>' {
-			n, err = p.ret()
-		}
-		err = p.selfError(tok, "unexpected top-level punctuator: "+tok.Raw)
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
 			fnm := tok.Raw[:len(tok.Raw)-1]
