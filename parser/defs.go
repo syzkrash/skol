@@ -136,6 +136,9 @@ func (p *Parser) funcOrExtern() (n ast.Node, err error) {
 	)
 
 	tok, err = p.lexer.Next()
+	if err != nil {
+		return
+	}
 	if tok.Kind != lexer.TkIdent {
 		err = p.selfError(tok, "expected identifier for function name")
 		return
@@ -144,6 +147,9 @@ func (p *Parser) funcOrExtern() (n ast.Node, err error) {
 	name = tok.Raw
 
 	tok, err = p.lexer.Next()
+	if err != nil {
+		return
+	}
 	if tok.Kind == lexer.TkPunct && tok.Raw[0] == '/' {
 		ret, err = p.parseType()
 		if err != nil {
@@ -193,6 +199,7 @@ func (p *Parser) funcOrExtern() (n ast.Node, err error) {
 
 		if tok.Kind != lexer.TkPunct || tok.Raw[0] != '/' {
 			err = p.selfError(tok, "expected '/' for function argument type")
+			return
 		}
 
 		argType, err = p.parseType()
@@ -222,7 +229,8 @@ func (p *Parser) structn() (n ast.Node, err error) {
 	}
 
 	if tok.Kind != lexer.TkIdent {
-		err = p.selfError(tok, "expected structure name")
+		err = p.selfError(tok, "expeted structure name")
+		return
 	}
 	name = tok.Raw
 
@@ -233,6 +241,7 @@ func (p *Parser) structn() (n ast.Node, err error) {
 
 	if tok.Kind != lexer.TkPunct || tok.Raw[0] != '(' {
 		err = p.selfError(tok, "expected '(' for structure field definitions")
+		return
 	}
 
 	for {
@@ -246,6 +255,7 @@ func (p *Parser) structn() (n ast.Node, err error) {
 		}
 		if tok.Kind != lexer.TkIdent {
 			err = p.selfError(tok, "expected structure field name")
+			return
 		}
 		fieldName = tok.Raw
 
@@ -256,6 +266,7 @@ func (p *Parser) structn() (n ast.Node, err error) {
 
 		if tok.Kind != lexer.TkPunct || tok.Raw[0] != '/' {
 			err = p.selfError(tok, "expected '/' for structure field type")
+			return
 		}
 
 		fieldType, err = p.parseType()

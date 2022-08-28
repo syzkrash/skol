@@ -112,7 +112,7 @@ func (p *Parser) TypeOf(n ast.Node) (t types.Type, err error) {
 
 		// first, ensure the path is correct
 		if len(path) < 1 {
-			err = fmt.Errorf("selector has path length of 0; this should never happen!")
+			err = fmt.Errorf("selector has path length of 0; this should never happen")
 			return
 		}
 
@@ -127,6 +127,7 @@ func (p *Parser) TypeOf(n ast.Node) (t types.Type, err error) {
 		v, ok := p.Scope.FindVar(root.Name)
 		if !ok {
 			err = fmt.Errorf("unknown variable: %s", root.Name)
+			return
 		}
 
 		// set the type to the variable's type (if it is found) and return if it is
