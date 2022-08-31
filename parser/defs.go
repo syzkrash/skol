@@ -3,6 +3,7 @@ package parser
 import (
 	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/lexer"
+	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
@@ -173,10 +174,26 @@ func (p *Parser) funcOrExtern() (n ast.Node, err error) {
 		}
 		if tok.Kind == lexer.TkPunct && tok.Raw[0] == '(' {
 			p.lexer.Rollback(tok)
+			p.Scope = &Scope{
+				Parent: p.Scope,
+				Funcs:  make(map[string]*values.Function),
+				Vars:   make(map[string]ast.Node),
+				Consts: make(map[string]ast.Node),
+				Types:  make(map[string]types.Type),
+			}
+			for _, a := range args {
+				var falseVal, ok = p.NodeOf(a.Type)
+				if !ok {
+					err = p.selfError(tok, "bad type for function argument! "+a.Type.String())
+					return
+				}
+				p.Scope.Vars[a.Name] = falseVal
+			}
 			body, err = p.block()
 			if err != nil {
 				return
 			}
+			p.Scope = p.Scope.Parent
 			n = ast.FuncDefNode{
 				Name:  name,
 				Proto: args,
