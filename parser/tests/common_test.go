@@ -19,7 +19,7 @@ func makeParser(test string) (*parser.Parser, *strings.Reader) {
 }
 
 func expect(t *testing.T, p *parser.Parser, exp ast.MetaNode) {
-	got, err := p.Next()
+	got, err := p.TopLevel()
 	if err != nil {
 		if pe, ok := err.(common.Printable); ok {
 			pe.Print()

@@ -279,37 +279,14 @@ func (t *Typechecker) checkNodeInFunc(mn ast.MetaNode, ret types.Type) (err erro
 	return nil
 }
 
-func (t *Typechecker) Next() (mn ast.MetaNode, err error) {
-	mn, err = t.Parser.Next()
-	if err != nil {
-		return
-	}
-	n := mn.Node
-	err = t.checkNode(mn)
-	if err == nil && n.Kind() == ast.NFuncCall {
-		fcn := n.(ast.FuncCallNode)
-		// we can check for the skol function since it'd be typechecked by now
-		if fcn.Func == "skol" {
-			verVal, err := t.Parser.Sim.Expr(fcn.Args[1])
-			if err != nil {
-				return mn, err
+func (t *Typechecker) Check(tree ast.AST) (err error) {
+	for _, f := range tree.Funcs {
+		for _, mn := range f.Body {
+			if err = t.checkNodeInFunc(mn, f.Ret); err != nil {
+				return
 			}
-			engVal, err := t.Parser.Sim.Expr(fcn.Args[0])
-			if err != nil {
-				return mn, err
-			}
-			if verVal.Data.(float32) > common.VersionF {
-				return mn, common.Error(mn,
-					"this script requires skol %.1f or above",
-					verVal.Data.(float32))
-			}
-			if engVal.Data.(string) != t.Parser.Engine {
-				return mn, common.Error(mn,
-					"this script required the %s engine",
-					engVal.Data.(string))
-			}
-			return t.Next()
 		}
 	}
+
 	return
 }

@@ -1,4 +1,4 @@
-skol! "sim" 0.4
+// skol! "sim" 0.4
 
 #TkInvalid: -1
 #TkLBrace:   1
@@ -25,7 +25,7 @@ skol! "sim" 0.4
 )
 
 %Source: "{\"name\":\"John\",\"age\":24}"
-%Pos: 0
+%Pos/int
 
 $IsEOF/bool(
   >eq! Pos str_len! Source
@@ -196,4 +196,4 @@ $Main(
   to_str! NextValue!
 )
 
-Main!
+// Main!

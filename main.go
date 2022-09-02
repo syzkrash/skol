@@ -1,52 +1,193 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
-	"errors"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/syzkrash/skol/codegen"
 	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/debug"
-	"github.com/syzkrash/skol/python"
+	"github.com/syzkrash/skol/parser"
 )
 
-type Engine uint8
+func main() {
+	if len(os.Args) == 1 {
+		usage()
+		return
+	}
 
-const (
-	EnUndefined Engine = iota
-	EnPy
-	EnAST
-	EnSim
-)
+	flags := flag.NewFlagSet("skol", flag.ExitOnError)
+	flags.StringVar(&input, "input", "", "")
+	flags.Func("debug", "", debugFlag)
+	flags.BoolVar(&asJson, "json", false, "")
+	flags.BoolVar(&prettyJson, "pretty-json", false, "")
 
-var engines = [...]string{
-	"Undefined",
-	"Python",
-	"AST Dump",
-	"Simulation",
+	flags.Parse(os.Args[2:])
+
+	fmt.Fprintf(os.Stderr, "Skol v%s\n", common.Version)
+
+	act := os.Args[1]
+
+	switch act {
+	case "ast":
+		dumpAst()
+	case "build":
+		compile()
+	case "repl":
+		repl()
+	case "":
+		usage()
+	default:
+		fmt.Fprintf(os.Stderr, "I don't know what '%s' means!\n", act)
+	}
 }
 
-var theEngine = EnUndefined
+func usage() {
+	fmt.Fprintf(os.Stderr, "Usage: %s <action> [arguments...]\n", os.Args[0])
+	fmt.Println("Where action can be one of the following:")
+	fmt.Println("  build  - Compile/run a file using a given engine")
+	fmt.Println("  repl   - Start the skol Read And Evaluate Loop (REPL)")
+	fmt.Println("  ast    - Print the Abstract Syntax Tree (AST) of a file")
+	fmt.Println("Where arguments can be any of the following:")
+	fmt.Println("  -input <filename>  - File to use as input")
+	fmt.Println("  -engine <engine>   - Engine to compile/run with")
+	fmt.Println("  -debug <kinds>     - Enable specified kinds of debug messages")
+	fmt.Println("  -json              - For applicable actions, output as")
+}
 
-func engineFlag(arg string) error {
-	switch arg {
-	case "py", "python":
-		theEngine = EnPy
-	case "ast":
-		theEngine = EnAST
-	case "sim":
-		theEngine = EnSim
-	default:
-		return fmt.Errorf("unknown engine: %s", arg)
+var (
+	input      string
+	asJson     bool
+	prettyJson bool
+)
+
+func dumpAst() {
+	if input == "" {
+		fmt.Fprintln(os.Stderr, "Specify an input file.")
+		return
 	}
-	return nil
+
+	f, err := os.Open(input)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error opening input file - %s\n", err)
+		return
+	}
+	defer f.Close()
+	data, err := io.ReadAll(f)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading input file - %s\n", err)
+		return
+	}
+
+	src := bytes.NewReader(data)
+	p := parser.NewParser(input, src, "ast")
+
+	tree, err := p.Parse()
+	if err != nil {
+		if perr, ok := err.(common.Printable); ok {
+			perr.Print()
+		} else {
+			fmt.Fprintf(os.Stderr, "Error parsing file - %s\n", err)
+		}
+		return
+	}
+
+	if asJson {
+		var data []byte
+		var err error
+		if prettyJson {
+			data, err = json.MarshalIndent(tree, "", "  ")
+		} else {
+			data, err = json.Marshal(tree)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error converting to JSON - %s\n", err)
+			return
+		}
+		os.Stdout.Write(data)
+		return
+	}
+
+	fmt.Println("AST summary:")
+	fmt.Printf("  %d global variables with explicit values\n", len(tree.Vars))
+	fmt.Printf("  %d global variables with default values\n", len(tree.Typedefs))
+	fmt.Printf("  %d global functions\n", len(tree.Funcs))
+	fmt.Printf("  %d external functions\n", len(tree.Exerns))
+	fmt.Printf("  %d structures\n", len(tree.Structs))
+
+	fmt.Println()
+
+	fmt.Println("Global variables with explicit values:")
+	for _, v := range tree.Vars {
+		fmt.Printf("  Variable %s: Node: %s\n", v.Name, v.Value.Kind())
+	}
+	if len(tree.Vars) == 0 {
+		fmt.Println("  (none)")
+	}
+
+	fmt.Println()
+
+	fmt.Println("Global variables with default values:")
+	for _, v := range tree.Typedefs {
+		fmt.Printf("  Variable %s: Type: %s\n", v.Name, v.Type)
+	}
+	if len(tree.Typedefs) == 0 {
+		fmt.Println("  (none)")
+	}
+
+	fmt.Println()
+
+	fmt.Println("Global functions:")
+	for _, f := range tree.Funcs {
+		fmt.Printf("  Function %s -> %s\n", f.Name, f.Ret)
+		fmt.Printf("    %d arguments:\n", len(f.Args))
+		for _, a := range f.Args {
+			fmt.Printf("      Argument %s: %s\n", a.Name, a.Type)
+		}
+		fmt.Printf("    %d nodes in body\n", len(f.Body))
+	}
+	if len(tree.Funcs) == 0 {
+		fmt.Println("  (none)")
+	}
+
+	fmt.Println()
+
+	fmt.Println("External functions:")
+	for _, f := range tree.Exerns {
+		fmt.Printf("  Function %s -> %s\n", f.Name, f.Ret)
+		fmt.Printf("    %d arguments:\n", len(f.Args))
+		for _, a := range f.Args {
+			fmt.Printf("      Argument %s: %s\n", a.Name, a.Type)
+		}
+	}
+	if len(tree.Exerns) == 0 {
+		fmt.Println("  (none)")
+	}
+
+	fmt.Println()
+
+	fmt.Println("Structures:")
+	for _, s := range tree.Structs {
+		fmt.Printf("  Structure %s:\n", s.Name)
+		for _, f := range s.Fields {
+			fmt.Printf("    Field %s: %s\n", f.Name, f.Type)
+		}
+	}
+	if len(tree.Structs) == 0 {
+		fmt.Println("  (none)")
+	}
+}
+
+func compile() {
+	panic("unimplemented")
+}
+
+func repl() {
+	panic("unimplemented")
 }
 
 func debugFlag(arg string) error {
@@ -64,128 +205,4 @@ func debugFlag(arg string) error {
 		}
 	}
 	return nil
-}
-
-var input string
-
-func main() {
-	flag.StringVar(&input, "input", "", "File to compile/transpile/interpret. (Leave blank for REPL)")
-	flag.Func("engine", "Which interpreter/compiler to use.", engineFlag)
-	flag.Func("debug", "Which debug logs to show.", debugFlag)
-	flag.Parse()
-
-	fmt.Fprintf(os.Stderr, "Skol v%s\n", common.Version)
-
-	if theEngine == EnUndefined {
-		fmt.Fprintln(os.Stderr, "Specify an engine to use.")
-		return
-	}
-
-	if input == "" {
-		repl()
-	} else {
-		compile()
-	}
-}
-
-func compile() {
-	inFile, err := os.Open(input)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-	defer inFile.Close()
-	code, err := io.ReadAll(inFile)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-
-	gen := gen(input, bytes.NewReader(code))
-
-	if gen.CanGenerate() {
-		outFile, err := os.Create(input + gen.Ext())
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return
-		}
-		defer outFile.Close()
-
-		fmt.Fprintln(os.Stderr, "Compiling using engine:", engines[theEngine])
-		compStart := time.Now()
-
-		for {
-			err = gen.Generate(outFile)
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "Error -", err)
-				return
-			}
-		}
-
-		fmt.Fprintln(os.Stderr, "Compiled in", time.Since(compStart))
-	}
-
-	if gen.CanRun() {
-		fmt.Fprintln(os.Stderr, "Running...")
-		fmt.Fprintln(os.Stderr, "----------")
-		if err = gen.Run(input + gen.Ext()); err != nil {
-			if perr, ok := err.(common.Printable); ok {
-				perr.Print()
-			} else {
-				fmt.Fprintln(os.Stderr, err)
-			}
-			return
-		}
-	}
-}
-
-func gen(fn string, src io.RuneScanner) codegen.Generator {
-	switch theEngine {
-	case EnPy:
-		return python.NewPython(fn, src)
-	case EnAST:
-		return codegen.NewAST(fn, src)
-	case EnSim:
-		return codegen.NewSimEngine(fn, src)
-	}
-	return nil
-}
-
-func repl() {
-	stdin := bufio.NewReader(os.Stdin)
-	src := strings.NewReader("")
-	gen := gen("REPL", src)
-
-	if !gen.CanGenerate() {
-		fmt.Fprintln(os.Stderr, "The given engine does not generate code.")
-		return
-	}
-
-	fmt.Fprintln(os.Stderr, "Type a line of Skol code and hit Enter.")
-	fmt.Fprintln(os.Stderr, "Code generated for the given engine will be printed.")
-	fmt.Fprintln(os.Stderr, "Press ^C at any time to exit.")
-
-	for {
-		fmt.Fprint(os.Stderr, ">> ")
-		line, err := stdin.ReadString('\n')
-		if errors.Is(err, io.EOF) {
-			fmt.Fprint(os.Stderr, "\n")
-			return
-		}
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return
-		}
-		src.Reset(line + "\n")
-		if err = gen.Generate(os.Stdout); err != nil {
-			if perr, ok := err.(common.Printable); ok {
-				perr.Print()
-			} else {
-				fmt.Fprintln(os.Stderr, "Error -", err)
-			}
-		}
-	}
 }

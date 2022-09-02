@@ -26,11 +26,14 @@ func (*ASTGenerator) CanGenerate() bool {
 }
 
 func (g *ASTGenerator) Generate(output io.StringWriter) error {
-	n, err := g.checker.Next()
-	if err != nil {
-		return err
-	}
-	return g.internalGenerate(output.(io.Writer), n)
+	/*
+		n, err := g.checker.Next()
+		if err != nil {
+			return err
+		}
+		return g.internalGenerate(output.(io.Writer), n)
+	*/
+	return nil
 }
 
 func (g *ASTGenerator) internalGenerate(w io.Writer, mn ast.MetaNode) error {

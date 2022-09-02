@@ -62,6 +62,8 @@ func (p *Parser) varDef() (n ast.Node, err error) {
 		if err != nil {
 			return
 		}
+	} else if typed {
+		p.lexer.Rollback(tok)
 	}
 
 	if !typed && !valued {
@@ -74,17 +76,20 @@ func (p *Parser) varDef() (n ast.Node, err error) {
 			Var:  name,
 			Type: vtype,
 		}
+		p.Scope.SetVar(name, nil)
 	} else if !typed && valued {
 		n = ast.VarSetNode{
 			Var:   name,
 			Value: value,
 		}
+		p.Scope.SetVar(name, value.Node)
 	} else {
 		n = ast.VarSetTypedNode{
 			Var:   name,
 			Type:  vtype,
 			Value: value,
 		}
+		p.Scope.SetVar(name, value.Node)
 	}
 	return
 }
@@ -170,6 +175,18 @@ func (p *Parser) funcOrExtern() (n ast.Node, err error) {
 				Ret:   ret,
 				Name:  name,
 			}
+			fargs := make([]values.FuncArg, len(args))
+			for i, a := range args {
+				fargs[i] = values.FuncArg{
+					Name: a.Name,
+					Type: a.Type,
+				}
+			}
+			p.Scope.Funcs[name] = &values.Function{
+				Name: name,
+				Args: fargs,
+				Ret:  ret,
+			}
 			return
 		}
 		if tok.Kind == lexer.TkPunct && tok.Raw[0] == '(' {
@@ -199,6 +216,18 @@ func (p *Parser) funcOrExtern() (n ast.Node, err error) {
 				Proto: args,
 				Ret:   ret,
 				Body:  body,
+			}
+			fargs := make([]values.FuncArg, len(args))
+			for i, a := range args {
+				fargs[i] = values.FuncArg{
+					Name: a.Name,
+					Type: a.Type,
+				}
+			}
+			p.Scope.Funcs[name] = &values.Function{
+				Name: name,
+				Args: fargs,
+				Ret:  ret,
 			}
 			return
 		}

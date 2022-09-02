@@ -29,12 +29,15 @@ func (p *pythonState) CanGenerate() bool {
 }
 
 func (p *pythonState) Generate(output io.StringWriter) error {
-	p.out = output
-	n, err := p.parser.Next()
-	if err != nil {
-		return err
-	}
-	return p.statement(n.Node)
+	/*
+		p.out = output
+		n, err := p.parser.Next()
+		if err != nil {
+			return err
+		}
+		return p.statement(n.Node)
+	*/
+	return nil
 }
 
 func (*pythonState) Ext() string {
