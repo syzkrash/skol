@@ -1,4 +1,4 @@
-# The Skol Programming Language
+# About
 
 skol (for **S**yz**k**rash **O**rdinary **L**anguage) is a minimal, explicit
 and otherwise ordinary programming language.
@@ -24,5 +24,6 @@ Main!
 
 ## Learn Skol
 
-Check the [Introduction to Skol](intro) if you know nothing, or the [Skol Syntax](syntax)
-for a full reference.
+Check the [Introduction](intro) if you know nothing, or the [Syntax](syntax)
+for a full reference. If you wish to know more about skol's inner workings,
+check the [Architecture](arch).

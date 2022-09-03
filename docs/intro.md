@@ -1,4 +1,4 @@
-# An introduction to skol
+# Introduction
 
 ## Note
 

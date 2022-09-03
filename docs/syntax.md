@@ -1,6 +1,4 @@
-# skol Syntax
-
-This is a reference guide for the syntax of the skol language.
+# Syntax
 
 ## Comments
 
