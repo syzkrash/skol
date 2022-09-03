@@ -321,32 +321,32 @@ func (p *Parser) Parse() (tree ast.AST, err error) {
 			nvs := n.Node.(ast.VarSetNode)
 			tree.Vars[nvs.Var] = ast.Var{
 				Name:  nvs.Var,
-				Value: nvs.Value.Node,
-				Where: n.Where,
+				Value: nvs.Value,
+				Node:  n,
 			}
 			delete(tree.Typedefs, nvs.Var)
 		case ast.NVarDef:
 			nvd := n.Node.(ast.VarDefNode)
 			tree.Typedefs[nvd.Var] = ast.Typedef{
-				Name:  nvd.Var,
-				Type:  nvd.Type,
-				Where: n.Where,
+				Name: nvd.Var,
+				Type: nvd.Type,
+				Node: n,
 			}
 		case ast.NVarSetTyped:
 			nvst := n.Node.(ast.VarSetTypedNode)
 			tree.Vars[nvst.Var] = ast.Var{
 				Name:  nvst.Var,
-				Value: nvst.Value.Node,
-				Where: n.Where,
+				Value: nvst.Value,
+				Node:  n,
 			}
 		case ast.NFuncDef:
 			nfd := n.Node.(ast.FuncDefNode)
 			tree.Funcs[nfd.Name] = ast.Func{
-				Name:  nfd.Name,
-				Args:  nfd.Proto,
-				Ret:   nfd.Ret,
-				Body:  nfd.Body,
-				Where: n.Where,
+				Name: nfd.Name,
+				Args: nfd.Proto,
+				Ret:  nfd.Ret,
+				Body: nfd.Body,
+				Node: n,
 			}
 			delete(tree.Exerns, nfd.Name)
 		case ast.NFuncExtern:
@@ -356,14 +356,14 @@ func (p *Parser) Parse() (tree ast.AST, err error) {
 				Alias: nfe.Alias,
 				Ret:   nfe.Ret,
 				Args:  nfe.Proto,
-				Where: n.Where,
+				Node:  n,
 			}
 		case ast.NStructDef:
 			nsd := n.Node.(ast.StructDefNode)
 			tree.Structs[nsd.Name] = ast.Structure{
 				Name:   nsd.Name,
 				Fields: nsd.Fields,
-				Where:  n.Where,
+				Node:   n,
 			}
 		default:
 			err = p.selfError(tok, fmt.Sprintf("%s node unallowed at top level", n.Node.Kind()))

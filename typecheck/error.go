@@ -23,7 +23,7 @@ func (e *TypeError) Print() {
 	fmt.Println("   ", e.msg)
 	fmt.Println("\x1b[1mCaused by:\x1b[0m")
 	fmt.Println("   ", e.Cause.Node.Kind(), "at", e.Cause.Where)
-	if e.Want.Prim() != types.PNothing {
+	if e.Want != nil && e.Want.Prim() != types.PNothing {
 		fmt.Println("\x1b[1mWanted type:\x1b[0m")
 		fmt.Println("   ", e.Want.String())
 		if e.Want.Prim() == types.PStruct {
@@ -32,7 +32,7 @@ func (e *TypeError) Print() {
 			}
 		}
 	}
-	if e.Got.Prim() != types.PNothing {
+	if e.Got != nil && e.Got.Prim() != types.PNothing {
 		fmt.Println("\x1b[1mFound type:\x1b[0m")
 		fmt.Println("   ", e.Got.String())
 		if e.Got.Prim() == types.PStruct {

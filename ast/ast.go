@@ -1,28 +1,27 @@
 package ast
 
 import (
-	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
 type Var struct {
 	Name  string
-	Value Node
-	Where lexer.Position
+	Value MetaNode
+	Node  MetaNode
 }
 
 type Typedef struct {
-	Name  string
-	Type  types.Type
-	Where lexer.Position
+	Name string
+	Type types.Type
+	Node MetaNode
 }
 
 type Func struct {
-	Name  string
-	Args  []FuncProtoArg
-	Ret   types.Type
-	Body  Block
-	Where lexer.Position
+	Name string
+	Args []FuncProtoArg
+	Ret  types.Type
+	Body Block
+	Node MetaNode
 }
 
 type Extern struct {
@@ -30,13 +29,13 @@ type Extern struct {
 	Alias string
 	Ret   types.Type
 	Args  []FuncProtoArg
-	Where lexer.Position
+	Node  MetaNode
 }
 
 type Structure struct {
 	Name   string
 	Fields []StructProtoField
-	Where  lexer.Position
+	Node   MetaNode
 }
 
 type AST struct {

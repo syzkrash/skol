@@ -2,26 +2,13 @@ package typecheck
 
 import (
 	"fmt"
-	"io"
 
+	"github.com/qeaml/all/slices"
 	"github.com/syzkrash/skol/ast"
-	"github.com/syzkrash/skol/common"
-	"github.com/syzkrash/skol/parser"
-	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
-type Typechecker struct {
-	Parser *parser.Parser
-}
-
-func NewTypechecker(src io.RuneScanner, fn, eng string) *Typechecker {
-	return &Typechecker{
-		Parser: parser.NewParser(fn, src, eng),
-	}
-}
-
-func typeError(mn ast.MetaNode, want, got types.Type, format string, a ...any) error {
+func typeError(mn ast.MetaNode, want, got types.Type, format string, a ...any) *TypeError {
 	return &TypeError{
 		msg:   fmt.Sprintf(format, a...),
 		Got:   got,
@@ -30,263 +17,299 @@ func typeError(mn ast.MetaNode, want, got types.Type, format string, a ...any) e
 	}
 }
 
-func (t *Typechecker) checkSelector(mn ast.MetaNode, s ast.Selector) (err error) {
-	path := s.Path()
-	root, _ := t.Parser.Scope.FindVar(path[0].Name)
-	typeNow, err := t.Parser.TypeOf(root)
+type Checker struct {
+	scope *scope
+}
+
+func NewChecker() *Checker {
+	return &Checker{
+		scope: &scope{
+			parent: nil,
+			vars:   make(map[string]types.Type),
+			funcs:  make(map[string]funcproto),
+		},
+	}
+}
+
+func (c *Checker) Check(tree ast.AST) (errs []*TypeError) {
+	for _, v := range tree.Typedefs {
+		c.scope.vars[v.Name] = v.Type
+	}
+	for _, v := range tree.Vars {
+		t, err := c.typeOf(v.Value)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			c.scope.vars[v.Name] = t
+		}
+	}
+	// first loop to declare functions
+	for _, f := range tree.Funcs {
+		a := make([]types.Type, len(f.Args))
+		for i, aa := range f.Args {
+			a[i] = aa.Type
+		}
+		c.scope.funcs[f.Name] = basicFuncproto(a, f.Ret)
+	}
+	// second loop to typecheck function bodies with function type information
+	for _, f := range tree.Funcs {
+		args := make(map[string]types.Type)
+		for _, a := range f.Args {
+			args[a.Name] = a.Type
+		}
+		errs = append(errs, c.checkFunc(args, f.Ret, f.Body)...)
+	}
+
+	errs = slices.Filter(errs, func(e *TypeError) bool {
+		return e != nil
+	})
+	return
+}
+
+func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) (errs []*TypeError) {
+	n := mn.Node
+
+	switch n.Kind() {
+	// literals
+	case ast.NStruct:
+		nstruct := n.(ast.StructNode)
+		for i, a := range nstruct.Args {
+			at, err := c.typeOf(a)
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+			ft := nstruct.Type.Fields[i].Type
+			if !ft.Equals(at) {
+				errs = append(errs, typeError(a, ft, at,
+					"incorrect struct argument type"))
+			}
+		}
+	case ast.NArray:
+		narray := n.(ast.ArrayNode)
+		for _, e := range narray.Elems {
+			et, err := c.typeOf(e)
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+			if !narray.Type.Equals(et) {
+				errs = append(errs, typeError(e, narray.Type, et,
+					"incorrect array element type"))
+			}
+		}
+
+	// control flow
+	case ast.NIf:
+		nif := n.(ast.IfNode)
+		errs = append(errs, c.checkBranch(nif.Main, ret)...)
+		for _, b := range nif.Other {
+			errs = append(errs, c.checkBranch(b, ret)...)
+		}
+		errs = append(errs, c.checkBlock(nif.Else, ret)...)
+	case ast.NWhile:
+		nwhile := n.(ast.WhileNode)
+		if err := c.checkCond(nwhile.Cond); err != nil {
+			errs = append(errs, err)
+		}
+		errs = append(errs, c.checkBlock(nwhile.Block, ret)...)
+	case ast.NReturn:
+		nreturn := n.(ast.ReturnNode)
+		rt, err := c.typeOf(nreturn.Value)
+		if err != nil {
+			errs = append(errs, err)
+			return
+		}
+		if !ret.Equals(rt) {
+			errs = append(errs, typeError(nreturn.Value, ret, rt,
+				"incorrect type for return value"))
+		}
+
+	// definitions
+	case ast.NVarSet:
+		nvarset := n.(ast.VarSetNode)
+		nvt, err := c.typeOf(nvarset.Value)
+		if err != nil {
+			errs = append(errs, err)
+			return
+		}
+		if ovt, ok := c.scope.getVar(nvarset.Var); ok {
+			if !ovt.Equals(nvt) {
+				errs = append(errs, typeError(mn, ovt, nvt,
+					"incorrect type for variable value"))
+			}
+		} else {
+			c.scope.setVar(nvarset.Var, nvt)
+		}
+	case ast.NVarDef:
+		nvardef := n.(ast.VarDefNode)
+		c.scope.setVar(nvardef.Var, nvardef.Type)
+	case ast.NVarSetTyped:
+		nvarsettyped := n.(ast.VarSetTypedNode)
+		nvt, err := c.typeOf(nvarsettyped.Value)
+		if err != nil {
+			errs = append(errs, err)
+			return
+		}
+		ovt, ok := c.scope.getVar(nvarsettyped.Var)
+		if ok {
+			if !ovt.Equals(nvarsettyped.Type) {
+				errs = append(errs, typeError(nvarsettyped.Value, ovt, nvarsettyped.Type,
+					"cannot change type of variable"))
+			}
+			if !ovt.Equals(nvt) {
+				errs = append(errs, typeError(nvarsettyped.Value, ovt, nvt,
+					"incorrect type for variable value"))
+			}
+			if !ovt.Equals(nvarsettyped.Type) {
+				errs = append(errs, typeError(nvarsettyped.Value, ovt, nvt,
+					"incorrect type for variable value"))
+			}
+		}
+	case ast.NFuncDef:
+		nfuncdef := n.(ast.FuncDefNode)
+		args := make(map[string]types.Type)
+		argl := make([]types.Type, len(nfuncdef.Proto))
+		for i, a := range nfuncdef.Proto {
+			args[a.Name] = a.Type
+			argl[i] = a.Type
+		}
+		errs = append(errs, c.checkFunc(args, nfuncdef.Ret, nfuncdef.Body)...)
+		c.scope.funcs[nfuncdef.Name] = basicFuncproto(argl, nfuncdef.Ret)
+	case ast.NFuncExtern:
+		nfuncextern := n.(ast.FuncExternNode)
+		args := make([]types.Type, len(nfuncextern.Proto))
+		for i, a := range nfuncextern.Proto {
+			args[i] = a.Type
+		}
+		c.scope.funcs[nfuncextern.Alias] = basicFuncproto(args, nfuncextern.Ret)
+
+	// others
+	case ast.NFuncCall:
+		nfunccall := n.(ast.FuncCallNode)
+		f, ok := c.scope.getFunc(nfunccall.Func)
+		if !ok {
+			errs = append(errs, typeError(mn, nil, nil,
+				"unknown function"))
+			return
+		}
+		args := make([]types.Type, len(nfunccall.Args))
+		for i, a := range nfunccall.Args {
+			t, err := c.typeOf(a)
+			if err != nil {
+				errs = append(errs, err)
+				return
+			}
+			args[i] = t
+		}
+		if _, err := f(mn, args); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return
+}
+
+func (c *Checker) checkFunc(args map[string]types.Type, ret types.Type, body ast.Block) (errs []*TypeError) {
+	c.scope = c.scope.sub()
+	for n, t := range args {
+		c.scope.vars[n] = t
+	}
+	errs = c.checkBlock(body, ret)
+	c.scope = c.scope.parent
+	return
+}
+
+func (c *Checker) checkBranch(b ast.Branch, ret types.Type) (errs []*TypeError) {
+	if err := c.checkCond(b.Cond); err != nil {
+		errs = append(errs, err)
+	}
+	errs = append(errs, c.checkBlock(b.Block, ret)...)
+	return
+}
+
+func (c *Checker) checkCond(mn ast.MetaNode) (err *TypeError) {
+	ct, err := c.typeOf(mn)
 	if err != nil {
 		return
 	}
-	for _, e := range path[1:] {
-		// again, the selector resolve algorithm
-		// see /parser/types.go, line 137
-		if e.Cast != nil {
-			if !typeNow.Equals(e.Cast) {
-				return typeError(mn, typeNow, e.Cast,
-					"cast to incompatible type")
-			}
-			typeNow = e.Cast
-			continue
-		}
-		if e.Name != "" {
-			if typeNow.Prim() != types.PStruct {
-				return typeError(mn, typeNow, nil,
-					"can only access fields on structures (acessing '%s' on %s)",
-					e.Name, typeNow)
-			}
-			st := typeNow.(types.StructType)
-			ok := false
-			for _, f := range st.Fields {
-				if f.Name == e.Name {
-					ok = true
-					typeNow = f.Type
-				}
-			}
-			if !ok {
-				return typeError(mn, typeNow, nil,
-					"unknown field: '%s'", e.Name)
-			}
-			continue
-		}
-		if typeNow.Prim() != types.PArray {
-			return typeError(mn, typeNow, nil,
-				"can only index arrays")
-		}
-		at := typeNow.(types.ArrayType)
-		typeNow = t.Parser.EnsureResultType(at.Element)
+	if !types.Bool.Equals(ct) {
+		err = typeError(mn, types.Bool, ct,
+			"incorrect type for condition")
 	}
 	return
 }
 
-func (t *Typechecker) checkNode(mn ast.MetaNode) (err error) {
-	n := mn.Node
-	switch n.Kind() {
-	case ast.NFuncCall:
-		fcn := n.(ast.FuncCallNode)
-		fdef, _ := t.Parser.Scope.FindFunc(fcn.Func)
-		paramTypes := []types.Type{}
-		for i, param := range fdef.Args {
-			atype, err := t.Parser.TypeOf(fcn.Args[i].Node)
-			if err != nil {
-				return err
-			}
-			paramTypes = append(paramTypes, param.Type)
-			if !param.Type.Equals(atype) {
-				return typeError(fcn.Args[i], param.Type, atype,
-					"wrong argument type in function call")
-			}
-		}
-
-		if fcn.Func == "eq" {
-			if !paramTypes[1].Equals(paramTypes[0]) {
-				return typeError(fcn.Args[1], paramTypes[0], paramTypes[1],
-					"eq! arguments must be the same type")
-			}
-		}
-
-	case ast.NFuncDef:
-		fdn := n.(ast.FuncDefNode)
-		if fdn.Ret.Equals(types.Any) {
-			return typeError(mn, types.Nothing, types.Nothing,
-				"functions cannot return Any")
-		}
-		t.Parser.Scope = &parser.Scope{
-			Parent: t.Parser.Scope,
-			Funcs:  map[string]*values.Function{},
-			Vars:   map[string]ast.Node{},
-			Consts: map[string]ast.Node{},
-			Types:  map[string]types.Type{},
-		}
-		for _, a := range fdn.Proto {
-			an, ok := t.Parser.NodeOf(a.Type)
-			if !ok {
-				err = common.Error(mn, "cannot typecheck value of type %s", a.Type)
-				return
-			}
-			t.Parser.Scope.SetVar(a.Name, an)
-		}
-		for _, bn := range fdn.Body {
-			err = t.checkNodeInFunc(bn, fdn.Ret)
-			if err != nil {
-				return
-			}
-		}
-		t.Parser.Scope = t.Parser.Scope.Parent
-
-	case ast.NIf:
-		cn := n.(ast.IfNode)
-		ctype, err := t.Parser.TypeOf(cn.Main.Cond.Node)
-		if err != nil {
-			return err
-		}
-		if !types.Bool.Equals(ctype) {
-			return typeError(cn.Main.Cond, types.Bool, ctype,
-				"conditional must be a boolean")
-		}
-		for _, bn := range cn.Main.Block {
-			if err = t.checkNode(bn); err != nil {
-				return err
-			}
-		}
-		for _, bn := range cn.Else {
-			if err = t.checkNode(bn); err != nil {
-				return err
-			}
-		}
-		for _, branch := range cn.Other {
-			for _, bn := range branch.Block {
-				if err = t.checkNode(bn); err != nil {
-					return err
-				}
-			}
-		}
-
-	case ast.NWhile:
-		cn := n.(ast.WhileNode)
-		ctype, err := t.Parser.TypeOf(cn.Cond.Node)
-		if err != nil {
-			return err
-		}
-		if !types.Bool.Equals(ctype) {
-			return typeError(cn.Cond, types.Bool, ctype,
-				"conditional must be a boolean")
-		}
-		for _, bn := range cn.Block {
-			if err = t.checkNode(bn); err != nil {
-				return err
-			}
-		}
-
-	case ast.NStruct:
-		nsn := n.(ast.StructNode)
-		for i, f := range nsn.Type.Fields {
-			atype, err := t.Parser.TypeOf(nsn.Args[i].Node)
-			if err != nil {
-				return err
-			}
-			if !f.Type.Equals(atype) {
-				return typeError(nsn.Args[i], f.Type, atype,
-					"wrong field type in structure literal")
-			}
-		}
-
-	case ast.NVarSet:
-		vdn := n.(ast.VarSetNode)
-		switch vdn.Value.Node.Kind() {
-		case ast.NArray:
-			an := vdn.Value.Node.(ast.ArrayNode)
-			for _, e := range an.Elems {
-				et, err := t.Parser.TypeOf(e.Node)
-				if err != nil {
-					return err
-				}
-				if !an.Type.Equals(et) {
-					return typeError(vdn.Value, an.Type, et,
-						"value of incompatible type in array")
-				}
-			}
-		}
-		if sel, ok := vdn.Value.Node.(ast.Selector); ok {
-			return t.checkSelector(vdn.Value, sel)
-		}
+func (c *Checker) checkBlock(b ast.Block, ret types.Type) (errs []*TypeError) {
+	for _, mn := range b {
+		errs = append(errs, c.checkNode(mn, ret)...)
 	}
-	return nil
+	return
 }
 
-func (t *Typechecker) checkNodeInFunc(mn ast.MetaNode, ret types.Type) (err error) {
+func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *TypeError) {
 	n := mn.Node
+
 	switch n.Kind() {
-	case ast.NReturn:
-		rn := n.(ast.ReturnNode)
-		vtype, err := t.Parser.TypeOf(rn.Value.Node)
-		if err != nil {
-			return err
-		}
-		if !ret.Equals(vtype) {
-			return typeError(rn.Value, ret, vtype,
-				"incorrect or inconsistent function return type")
-		}
-		return nil
+	// literals
+	case ast.NBool:
+		t = types.Bool
+	case ast.NChar:
+		t = types.Char
+	case ast.NInt:
+		t = types.Int
+	case ast.NFloat:
+		t = types.Float
+	case ast.NString:
+		t = types.String
+	case ast.NStruct:
+		t = n.(ast.StructNode).Type
+	case ast.NArray:
+		t = n.(ast.ArrayNode).Type
 
-	case ast.NIf:
-		cn := n.(ast.IfNode)
-		ctype, err := t.Parser.TypeOf(cn.Main.Cond.Node)
-		if err != nil {
-			return err
+	// others
+	case ast.NFuncCall:
+		nfunccall := n.(ast.FuncCallNode)
+		f, ok_ := c.scope.getFunc(nfunccall.Func)
+		if !ok_ {
+			err = typeError(mn, nil, nil,
+				"unknown function")
+			return
 		}
-		if !types.Bool.Equals(ctype) {
-			return typeError(cn.Main.Cond, types.Bool, ctype,
-				"conditional must be a boolean")
-		}
-		for _, bn := range cn.Main.Block {
-			if err = t.checkNodeInFunc(bn, ret); err != nil {
-				return err
+		args := make([]types.Type, len(nfunccall.Args))
+		for i, a := range nfunccall.Args {
+			at, err_ := c.typeOf(a)
+			if err_ != nil {
+				err = err_
+				return
 			}
+			args[i] = at
 		}
-		for _, bn := range cn.Else {
-			if err = t.checkNodeInFunc(bn, ret); err != nil {
-				return err
-			}
-		}
-		for _, branch := range cn.Other {
-			for _, bn := range branch.Block {
-				if err = t.checkNodeInFunc(bn, ret); err != nil {
-					return err
-				}
-			}
-		}
-
-	case ast.NWhile:
-		cn := n.(ast.WhileNode)
-		ctype, err := t.Parser.TypeOf(cn.Cond.Node)
-		if err != nil {
-			return err
-		}
-		if !types.Bool.Equals(ctype) {
-			return typeError(cn.Cond, types.Bool, ctype,
-				"conditional must be a boolean")
-		}
-		for _, bn := range cn.Block {
-			if err = t.checkNodeInFunc(bn, ret); err != nil {
-				return err
-			}
+		if ret, err_ := f(mn, args); err_ != nil {
+			err = err_
+		} else {
+			t = ret
 		}
 
 	default:
-		return t.checkNode(mn)
+		err = typeError(mn, nil, nil, "typeOf() unimplemented: %s", n.Kind())
 	}
-
-	return nil
+	return
 }
 
-func (t *Typechecker) Check(tree ast.AST) (err error) {
-	for _, f := range tree.Funcs {
-		for _, mn := range f.Body {
-			if err = t.checkNodeInFunc(mn, f.Ret); err != nil {
+func basicFuncproto(exp []types.Type, ret types.Type) funcproto {
+	return func(mn ast.MetaNode, got []types.Type) (r types.Type, err *TypeError) {
+		r = ret
+		if len(got) < len(exp) {
+			err = typeError(mn, nil, nil,
+				"not enough arguments")
+		}
+		for i, ea := range exp {
+			if !ea.Equals(got[i]) {
+				err = typeError(mn, ea, got[i],
+					"incorrect function argument type")
 				return
 			}
 		}
+		return
 	}
-
-	return
 }

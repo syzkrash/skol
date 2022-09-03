@@ -12,6 +12,7 @@ import (
 	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/debug"
 	"github.com/syzkrash/skol/parser"
+	"github.com/syzkrash/skol/typecheck"
 )
 
 func main() {
@@ -96,6 +97,15 @@ func dumpAst() {
 		return
 	}
 
+	errs := typecheck.NewChecker().Check(tree)
+	if len(errs) > 0 {
+		for _, e := range errs {
+			e.Print()
+		}
+		fmt.Fprintf(os.Stderr, "Found %d type error(s)\n", len(errs))
+		return
+	}
+
 	if asJson {
 		var data []byte
 		var err error
@@ -123,7 +133,7 @@ func dumpAst() {
 
 	fmt.Println("Global variables with explicit values:")
 	for _, v := range tree.Vars {
-		fmt.Printf("  Variable %s: Node: %s\n", v.Name, v.Value.Kind())
+		fmt.Printf("  Variable %s: Node: %s\n", v.Name, v.Value.Node.Kind())
 	}
 	if len(tree.Vars) == 0 {
 		fmt.Println("  (none)")
