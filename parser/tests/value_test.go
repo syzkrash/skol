@@ -241,7 +241,7 @@ func TestSelector(t *testing.T) {
 	for in, out := range cases {
 		t.Log(in)
 		src.Reset(in)
-		mn, err := p.Value()
+		mn, err := p.ParseValue()
 		if err != nil {
 			if pe, ok := err.(common.Printable); ok {
 				pe.Print()

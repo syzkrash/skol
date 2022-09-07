@@ -31,7 +31,7 @@ func expect(t *testing.T, p *parser.Parser, exp ast.MetaNode) {
 }
 
 func expectValue(t *testing.T, p *parser.Parser, k ast.NodeKind) ast.MetaNode {
-	mn, err := p.Value()
+	mn, err := p.ParseValue()
 	if err != nil {
 		if pe, ok := err.(common.Printable); ok {
 			pe.Print()

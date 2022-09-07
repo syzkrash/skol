@@ -10,7 +10,7 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
-// varDef parses a variable definition nodes.Node (nodes.VarDefNode)
+// parseVar parses a variable definition nodes.Node (nodes.VarDefNode)
 //
 // Example variable definition:
 //
@@ -19,7 +19,7 @@ import (
 //	%s: "hello"
 //	%	r	:	'E'
 //
-func (p *Parser) varDef() (n ast.Node, err error) {
+func (p *Parser) parseVar() (n ast.Node, err error) {
 	var (
 		name string
 
@@ -65,7 +65,7 @@ func (p *Parser) varDef() (n ast.Node, err error) {
 	}
 	if tok.Kind == lexer.TkPunct && tok.Raw[0] == ':' {
 		valued = true
-		value, err = p.Value()
+		value, err = p.ParseValue()
 		if err != nil {
 			return
 		}
@@ -102,7 +102,7 @@ final:
 	return
 }
 
-func (p *Parser) constant() (err error) {
+func (p *Parser) parseConst() (err error) {
 	nameToken, err := p.lexer.Next()
 	if err != nil {
 		return
@@ -125,7 +125,7 @@ func (p *Parser) constant() (err error) {
 		return
 	}
 
-	n, err := p.Value()
+	n, err := p.ParseValue()
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (p *Parser) constant() (err error) {
 	return nil
 }
 
-func (p *Parser) funcOrExtern() (n ast.Node, err error) {
+func (p *Parser) parseFunc() (n ast.Node, err error) {
 	var (
 		name string
 		ret  types.Type
@@ -214,7 +214,7 @@ func (p *Parser) funcOrExtern() (n ast.Node, err error) {
 				}
 				p.Scope.Vars[a.Name] = falseVal
 			}
-			body, err = p.block()
+			body, err = p.parseBlock()
 			if err != nil {
 				return
 			}
@@ -265,7 +265,7 @@ func (p *Parser) funcOrExtern() (n ast.Node, err error) {
 	}
 }
 
-func (p *Parser) structn() (n ast.Node, err error) {
+func (p *Parser) parseStruct() (n ast.Node, err error) {
 	var (
 		name      string
 		fieldName string

@@ -9,7 +9,7 @@ import (
 	"github.com/syzkrash/skol/lexer"
 )
 
-func (p *Parser) condition() (n ast.Node, err error) {
+func (p *Parser) parseIf() (n ast.Node, err error) {
 	var (
 		cond  ast.MetaNode
 		block ast.Block
@@ -19,13 +19,13 @@ func (p *Parser) condition() (n ast.Node, err error) {
 		tok *lexer.Token
 	)
 
-	cond, err = p.Value()
+	cond, err = p.ParseValue()
 	if err != nil {
 		return
 	}
 	debug.Log(debug.AttrScope, "Entering new scope")
 	p.Scope = NewScope(p.Scope)
-	block, err = p.block()
+	block, err = p.parseBlock()
 	if err != nil {
 		return
 	}
@@ -51,11 +51,11 @@ func (p *Parser) condition() (n ast.Node, err error) {
 			return
 		}
 		if tok.Kind == lexer.TkPunct && tok.Raw == "?" {
-			cond, err = p.Value()
+			cond, err = p.ParseValue()
 			if err != nil {
 				return
 			}
-			block, err = p.block()
+			block, err = p.parseBlock()
 			if err != nil {
 				return nil, err
 			}
@@ -65,7 +65,7 @@ func (p *Parser) condition() (n ast.Node, err error) {
 			})
 		} else {
 			p.lexer.Rollback(tok)
-			out.Else, err = p.block()
+			out.Else, err = p.parseBlock()
 			if err != nil {
 				return
 			}
@@ -79,15 +79,15 @@ func (p *Parser) condition() (n ast.Node, err error) {
 	return
 }
 
-func (p *Parser) loop() (n ast.Node, err error) {
-	cond, err := p.Value()
+func (p *Parser) parseWhile() (n ast.Node, err error) {
+	cond, err := p.ParseValue()
 	if err != nil {
 		return
 	}
 
 	debug.Log(debug.AttrScope, "Entering new scope")
 	p.Scope = NewScope(p.Scope)
-	block, err := p.block()
+	block, err := p.parseBlock()
 	if err != nil {
 		return
 	}

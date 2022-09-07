@@ -9,7 +9,7 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
-// Value parses a nodes.Node that has a Value
+// ParseValue parses a nodes.Node that has a ParseValue
 //
 // Example values:
 //
@@ -22,7 +22,7 @@ import (
 //	@VectorTwo 1.2 3.4 // nodes.NewStructNode
 //	pos#x      // nodes.SelectorNode
 //
-func (p *Parser) Value() (mn ast.MetaNode, err error) {
+func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 	tok, err := p.lexer.Next()
 	if err != nil {
 		return
@@ -69,9 +69,9 @@ func (p *Parser) Value() (mn ast.MetaNode, err error) {
 				err = p.selfError(tok, "unknown function: "+fn)
 				return
 			}
-			mn.Node, err = p.funcCall(fn, f, tok.Where)
+			mn.Node, err = p.parseCall(fn, f, tok.Where)
 		} else if _, ok := p.Scope.FindVar(tok.Raw); ok {
-			mn.Node, err = p.selector(tok)
+			mn.Node, err = p.parseSelector(tok)
 		} else if v, ok := p.Scope.FindConst(tok.Raw); ok {
 			mn.Node = v
 		} else {
@@ -104,7 +104,7 @@ func (p *Parser) Value() (mn ast.MetaNode, err error) {
 			s := t.(types.StructType)
 			args := make([]ast.MetaNode, len(s.Fields))
 			for i := range s.Fields {
-				mn, err = p.Value()
+				mn, err = p.ParseValue()
 				if err != nil {
 					return
 				}
@@ -157,7 +157,7 @@ func (p *Parser) Value() (mn ast.MetaNode, err error) {
 				} else {
 					p.lexer.Rollback(tok)
 				}
-				elem, err = p.Value()
+				elem, err = p.ParseValue()
 				if err != nil {
 					return
 				}

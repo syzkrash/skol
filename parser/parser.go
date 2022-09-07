@@ -30,7 +30,7 @@ func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
 	}
 }
 
-// funcCall parses a function call, reading values until enough values for this
+// parseCall parses a function call, reading values until enough values for this
 // function are found
 //
 // Example function calls:
@@ -39,10 +39,10 @@ func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
 //	add! sqr! 2 sqr! 2     // add(sqr(2), sqr(2))
 //	add! a b               // add(a, b)
 //	add! mul! a a mul! bb  // add(mul(a, a), mul(b, b))
-func (p *Parser) funcCall(fn string, f *values.Function, pos lexer.Position) (n ast.Node, err error) {
+func (p *Parser) parseCall(fn string, f *values.Function, pos lexer.Position) (n ast.Node, err error) {
 	args := make([]ast.MetaNode, len(f.Args))
 	for i := 0; i < len(args); i++ {
-		v, err := p.Value()
+		v, err := p.ParseValue()
 		if err != nil {
 			return nil, err
 		}
@@ -55,7 +55,7 @@ func (p *Parser) funcCall(fn string, f *values.Function, pos lexer.Position) (n 
 	return
 }
 
-func (p *Parser) selector(start *lexer.Token) (n ast.Node, err error) {
+func (p *Parser) parseSelector(start *lexer.Token) (n ast.Node, err error) {
 	n = ast.SelectorNode{
 		Parent: nil,
 		Child:  start.Raw,
@@ -155,8 +155,8 @@ func (p *Parser) selector(start *lexer.Token) (n ast.Node, err error) {
 	}
 }
 
-func (p *Parser) ret() (n ast.Node, err error) {
-	v, err := p.Value()
+func (p *Parser) parseReturn() (n ast.Node, err error) {
+	v, err := p.ParseValue()
 	if err != nil {
 		return
 	}
@@ -166,7 +166,7 @@ func (p *Parser) ret() (n ast.Node, err error) {
 	return
 }
 
-func (p *Parser) block() (block ast.Block, err error) {
+func (p *Parser) parseBlock() (block ast.Block, err error) {
 	var (
 		n    ast.MetaNode
 		skip bool
@@ -193,7 +193,7 @@ func (p *Parser) block() (block ast.Block, err error) {
 			break
 		}
 
-		n, skip, err = p.internalNext(tok)
+		n, skip, err = p.next(tok)
 		if err != nil {
 			return
 		}
@@ -207,7 +207,7 @@ func (p *Parser) block() (block ast.Block, err error) {
 	return
 }
 
-func (p *Parser) internalNext(tok *lexer.Token) (mn ast.MetaNode, skip bool, err error) {
+func (p *Parser) next(tok *lexer.Token) (mn ast.MetaNode, skip bool, err error) {
 	var (
 		n ast.Node
 	)
@@ -216,19 +216,19 @@ func (p *Parser) internalNext(tok *lexer.Token) (mn ast.MetaNode, skip bool, err
 	case lexer.TkPunct:
 		switch tok.Raw[0] {
 		case '$':
-			n, err = p.funcOrExtern()
+			n, err = p.parseFunc()
 		case '%':
-			n, err = p.varDef()
+			n, err = p.parseVar()
 		case '?':
-			n, err = p.condition()
+			n, err = p.parseIf()
 		case '*':
-			n, err = p.loop()
+			n, err = p.parseWhile()
 		case '@':
-			n, err = p.structn()
+			n, err = p.parseStruct()
 		case '>':
-			n, err = p.ret()
+			n, err = p.parseReturn()
 		case '#':
-			err = p.constant()
+			err = p.parseConst()
 			if err != nil {
 				return
 			}
@@ -244,7 +244,7 @@ func (p *Parser) internalNext(tok *lexer.Token) (mn ast.MetaNode, skip bool, err
 				err = p.selfError(tok, "unknown function: "+fnm)
 				return
 			}
-			n, err = p.funcCall(fnm, f, tok.Where)
+			n, err = p.parseCall(fnm, f, tok.Where)
 		} else {
 			err = p.selfError(tok, "unexpected top-level identifier: "+tok.Raw)
 		}
@@ -266,7 +266,7 @@ func (p *Parser) TopLevel() (mn ast.MetaNode, err error) {
 
 	var skip bool
 	for {
-		mn, skip, err = p.internalNext(tok)
+		mn, skip, err = p.next(tok)
 		if err != nil {
 			return
 		}
@@ -303,7 +303,7 @@ func (p *Parser) Parse() (tree ast.AST, err error) {
 			return
 		}
 
-		n, skip, err = p.internalNext(tok)
+		n, skip, err = p.next(tok)
 		if skip {
 			continue
 		}
