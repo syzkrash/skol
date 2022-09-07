@@ -20,6 +20,61 @@ Typechecker | Incomplete   | [`typecheck` package][typecheck] | Ensures that eve
    out of them.
 4. The typechecker ensures type correctness in the program.
 
+## Component Completeness Breakdown
+
+### CLI
+
+- [x] Is able to parse actions and arguments separately.
+- [ ] Is able to build a file using any engine.
+- [ ] Is able to start a REPL using any engine.
+- [ ] Has a way to access additional tools (e.g. linter).
+
+### Lexer
+
+- [x] Ignores comments.
+- [x] Reads punctuators.
+- [x] Reads identifiers.
+- [x] Reads integer literals.
+- [x] Reads float literals.
+- [x] Reads character literals.
+- [x] Reads string literals.
+
+### Parser
+
+- [x] Parses basic constructs:
+   * [x] Variable definition/assignment and both.
+   * [x] Function/extern definition.
+   * [x] Basic control flow.
+   * [x] Structured types.
+   * [x] Array types.
+- [x] Properly handles expected lexer errors (e.g. EOF).
+- [ ] Every component is harshly tested.
+- [ ] Prevents abiguities.
+
+### AST
+
+- [x] Is properly constructed by the parser.
+- [ ] Can correctly reflect the structure of a Skol program.
+   * [x] Global variables
+   * [x] Global functons/externs
+   * [x] Global types
+   * [ ] Multi-file compilation.
+   * [ ] Top-level code.
+
+### Typechecker
+
+- [x] Can check variables.
+- [x] Can check functions.
+- [x] Can check structure types.
+- [x] Can check array types.
+- [ ] Can determine value types.
+- [ ] Supports built-in functions.
+- [ ] Supports generic functions.
+
+### Simulator
+
+Likely will be removed in favor of a proper interpreter.
+
 [main]: https://github.com/syzkrash/skol/blob/nightly/main.go
 [lexer]: https://github.com/syzkrash/skol/tree/nightly/lexer
 [parser]: https://github.com/syzkrash/skol/tree/nightly/parser
