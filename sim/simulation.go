@@ -9,11 +9,15 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
+// Simulator performs basic interpretationa and evaluation on abstract AST
+// nodes. This structure contains the current simulation scope and call stack.
 type Simulator struct {
 	Scope *Scope
 	Calls []*Call
 }
 
+// Error creates a [*SimError] with the current call stack pointing at the
+// given node.
 func (s *Simulator) Error(msg string, n ast.MetaNode) error {
 	return &SimError{
 		msg:   msg,
@@ -22,10 +26,12 @@ func (s *Simulator) Error(msg string, n ast.MetaNode) error {
 	}
 }
 
+// Errorf is the same as [Simulator.Error], except with a format.
 func (s *Simulator) Errorf(n ast.MetaNode, format string, a ...any) error {
 	return s.Error(fmt.Sprintf(format, a...), n)
 }
 
+// NewSimulator creates and prepares a simulator instance.
 func NewSimulator() *Simulator {
 	return &Simulator{
 		Scope: &Scope{
@@ -37,14 +43,17 @@ func NewSimulator() *Simulator {
 	}
 }
 
+// pushCall appends the given call to the current call stack.
 func (s *Simulator) pushCall(name string, where lexer.Position) {
 	s.Calls = append(s.Calls, &Call{false, name, where})
 }
 
+// popCall pops the last call off the current call stack.
 func (s *Simulator) popCall() {
 	s.Calls = s.Calls[:len(s.Calls)-1]
 }
 
+// Stmt simulates the given abstact AST node.
 func (s *Simulator) Stmt(mn ast.MetaNode) error {
 	n := mn.Node
 	switch n.Kind() {
@@ -164,6 +173,7 @@ func (s *Simulator) Stmt(mn ast.MetaNode) error {
 	return s.Errorf(mn, "%s is not a statement", n)
 }
 
+// selector evaluates the value of a selector in the current scope.
 func (s *Simulator) selector(mn ast.MetaNode, sel ast.Selector) (*values.Value, error) {
 	p := sel.Path()
 	var v *values.Value
@@ -226,6 +236,7 @@ func (s *Simulator) selector(mn ast.MetaNode, sel ast.Selector) (*values.Value, 
 	return v, nil
 }
 
+// Expr evalues the given abstact AST node in the current scope.
 func (s *Simulator) Expr(mn ast.MetaNode) (*values.Value, error) {
 	n := mn.Node
 	switch n.Kind() {
@@ -303,6 +314,8 @@ func (s *Simulator) Expr(mn ast.MetaNode) (*values.Value, error) {
 	return nil, s.Errorf(mn, "%s node is not a value", n.Kind())
 }
 
+// Const evaluates a constant value from the given abstract AST node, limited
+// to only literals.
 func (s *Simulator) Const(mn ast.MetaNode) (*values.Value, error) {
 	n := mn.Node
 	switch n.Kind() {
@@ -313,6 +326,7 @@ func (s *Simulator) Const(mn ast.MetaNode) (*values.Value, error) {
 	}
 }
 
+// block simulates a block of statements in a new child scope.
 func (s *Simulator) block(b ast.Block) error {
 	s.Scope = &Scope{
 		parent: s.Scope,
@@ -328,6 +342,7 @@ func (s *Simulator) block(b ast.Block) error {
 	return nil
 }
 
+// stmtInFunc simulates a statement as if inside a function body.
 func (s *Simulator) stmtInFunc(mn ast.MetaNode) (*values.Value, error) {
 	n := mn.Node
 	switch n.Kind() {
@@ -383,6 +398,8 @@ func (s *Simulator) stmtInFunc(mn ast.MetaNode) (*values.Value, error) {
 	return nil, s.Errorf(mn, "%s is not a statement", n)
 }
 
+// blockInFunc simulates a block of statements as if inside a function body in
+// a new child scope.
 func (s *Simulator) blockInFunc(b ast.Block) (*values.Value, error) {
 	s.Scope = &Scope{
 		parent: s.Scope,

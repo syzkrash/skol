@@ -11,8 +11,13 @@ import (
 )
 
 type ArgMap map[string]*values.Value
+
+// NativeFunc represents a function that built into the simulator, as opposed
+// to being defined by the simulated code.
 type NativeFunc func(*Simulator, ArgMap) (*values.Value, error)
 
+// Funct represents a function accessible to the simulator. This also includes
+// information for native functions, hardcoded into the simulator.
 type Funct struct {
 	Args     []values.FuncArg
 	Ret      types.Type
@@ -21,9 +26,16 @@ type Funct struct {
 	Native   NativeFunc
 }
 
+// NativeDefault is a default native function to use until a proper impl is
+// available.
 func NativeDefault(*Simulator, ArgMap) (*values.Value, error) {
 	return nil, nil
 }
+
+/*
+Below are all the native implementations of the built-in Skol functions.
+These may be documented later as well to document some specific behaviors.
+*/
 
 func NativePrint(s *Simulator, args ArgMap) (*values.Value, error) {
 	fmt.Println(args["a"].String())

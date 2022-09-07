@@ -6,6 +6,7 @@ import (
 	"github.com/syzkrash/skol/lexer"
 )
 
+// Call represents 1 call in the call stack along with position information.
 type Call struct {
 	Root  bool
 	Func  string

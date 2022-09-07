@@ -6,6 +6,9 @@ import (
 	"github.com/syzkrash/skol/ast"
 )
 
+// SimError represents an error that occured while the simulator was tring to
+// interpret a node or determine the node value. Contains the node that caused
+// the error along with a call stack.
 type SimError struct {
 	msg   string
 	Cause ast.MetaNode

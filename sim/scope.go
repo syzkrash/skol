@@ -2,6 +2,9 @@ package sim
 
 import "github.com/syzkrash/skol/parser/values"
 
+// Scope contains the variables and function defined in the current lexical
+// scope and all of its parent scopes. This performs the same function as
+// [parser.Scope] and as such lacks documentation.
 type Scope struct {
 	parent *Scope
 	Vars   map[string]*values.Value
