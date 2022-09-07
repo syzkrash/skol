@@ -10,6 +10,8 @@ type Printable interface {
 	Print()
 }
 
+// MetaError represents an error that does not have any additional information.
+// Only the node that caused the error is available.
 type MetaError struct {
 	msg   string
 	Cause ast.MetaNode
