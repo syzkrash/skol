@@ -1,6 +1,9 @@
 package parser
 
 import (
+	"errors"
+	"io"
+
 	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/values"
@@ -52,6 +55,10 @@ func (p *Parser) varDef() (n ast.Node, err error) {
 			return
 		}
 		tok, err = p.lexer.Next()
+		if errors.Is(err, io.EOF) {
+			err = nil
+			goto final
+		}
 		if err != nil {
 			return
 		}
@@ -66,6 +73,7 @@ func (p *Parser) varDef() (n ast.Node, err error) {
 		p.lexer.Rollback(tok)
 	}
 
+final:
 	if !typed && !valued {
 		err = p.selfError(tok, "variable must have an explicit type, an explicit value or both")
 		return
