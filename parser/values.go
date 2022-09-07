@@ -9,19 +9,49 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
-// ParseValue parses a nodes.Node that has a ParseValue
+// ParseValue parses a value.
 //
-// Example values:
+// Boolean literal:
 //
-//	123        // nodes.IntegerNode
-//	45.67      // nodes.FloatNode
-//	"hello"    // nodes.StringNode
-//	'E'        // nodes.CharNode
-//	add! 1 2   // nodes.FuncCallNode
-//	age        // nodes.VarRefNode
-//	@VectorTwo 1.2 3.4 // nodes.NewStructNode
-//	pos#x      // nodes.SelectorNode
+//   - /
 //
+// Character literal:
+//
+//	'h'  'i'
+//
+// Numeric literal:
+//
+//	1234  12_34  0x1234 0x12_34
+//	12.34  123_456.789
+//
+// String literal:
+//
+//	"Hello world"  "hi\nthere"  "how\tare\tyou?"
+//
+// Structure literal:
+//
+//	@Vec2i(12 34)
+//	@Vec3f(1.23 4.56 7.68)
+//
+// Array literal:
+//
+//	[int](0 1 2 3 4 5 6 7 8 9)
+//	   [](0.1 2.3 4.5 6.7 8.9)
+//	[string]()
+//
+// Any selector:
+//
+//	Someone
+//	Someone#Age
+//	Someone#@Employee#Employer#Age
+//	People#0#@Employee#JobHistory#0#Owner#Name
+//
+// Function call:
+//
+//	DoSomething!
+//	DontDoAnything!
+//	Say! MyName
+//	add_i! 12 34
 func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 	tok, err := p.lexer.Next()
 	if err != nil {

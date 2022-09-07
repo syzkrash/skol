@@ -10,15 +10,19 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
-// parseVar parses a variable definition nodes.Node (nodes.VarDefNode)
+// parseVar parses a variable definition, assignment or both.
 //
-// Example variable definition:
+// Variable defintion:
 //
-//	%i: 123
-//	%f	:45.67
-//	%s: "hello"
-//	%	r	:	'E'
+//	%name/string
 //
+// Variable assignment:
+//
+//	%name: "Joe"
+//
+// Both:
+//
+//	%name/string: "Joe"
 func (p *Parser) parseVar() (n ast.Node, err error) {
 	var (
 		name string
@@ -102,6 +106,9 @@ final:
 	return
 }
 
+// parseConst parses a constant definition.
+//
+//	#name: "Joe"
 func (p *Parser) parseConst() (err error) {
 	nameToken, err := p.lexer.Next()
 	if err != nil {
@@ -136,6 +143,22 @@ func (p *Parser) parseConst() (err error) {
 	return nil
 }
 
+// parseFunc parses a function definition or an extern definition.
+//
+// Function definition:
+//
+//	$SayHello Name/string(print! concat! "Hello, " Name)
+//
+// Extern definition:
+//
+//	$Exit Status/int?
+//
+// Aliased extern definition:
+//
+//	$OSExit Status/int?"exit"
+//	 ^                  ^
+//	 |                  |
+//	alias/skol name     actual name
 func (p *Parser) parseFunc() (n ast.Node, err error) {
 	var (
 		name string
@@ -265,6 +288,9 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 	}
 }
 
+// parseStruct parses a structure type definition.
+//
+//	@Vec2i(x/int y/int)
 func (p *Parser) parseStruct() (n ast.Node, err error) {
 	var (
 		name      string

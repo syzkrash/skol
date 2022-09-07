@@ -9,6 +9,19 @@ import (
 	"github.com/syzkrash/skol/lexer"
 )
 
+// parseIf parses an if condition and all of it's branches.
+//
+// With just a condition:
+//
+//	?Condition!(Action!)
+//
+// With an else branch:
+//
+//	?Condition!(Action!):(OtherAction!)
+//
+// With 1 else-if branch and an else branch:
+//
+//	?Condition!(Action!):?OtherCondition!(OtherAction!):(AnotherAction!)
 func (p *Parser) parseIf() (n ast.Node, err error) {
 	var (
 		cond  ast.MetaNode
@@ -79,6 +92,9 @@ func (p *Parser) parseIf() (n ast.Node, err error) {
 	return
 }
 
+// parseWhile parses a while loop.
+//
+//	*Condition!(Action!)
 func (p *Parser) parseWhile() (n ast.Node, err error) {
 	cond, err := p.ParseValue()
 	if err != nil {

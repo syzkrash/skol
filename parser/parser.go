@@ -14,6 +14,8 @@ import (
 	"github.com/syzkrash/skol/sim"
 )
 
+// Parser consumes tokens from its internal lexer and constructs nodes out of
+// them.
 type Parser struct {
 	lexer  *lexer.Lexer
 	Engine string
@@ -21,6 +23,8 @@ type Parser struct {
 	Scope  *Scope
 }
 
+// NewParser creates a new parser for the given engine, creating a [Lexer] with
+// the given input stream.
 func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
 	return &Parser{
 		lexer:  lexer.NewLexer(src, fn),
@@ -30,15 +34,9 @@ func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
 	}
 }
 
-// parseCall parses a function call, reading values until enough values for this
-// function are found
+// parseCall parser a function call.
 //
-// Example function calls:
-//
-//	add! 1 2               // add(1, 2)
-//	add! sqr! 2 sqr! 2     // add(sqr(2), sqr(2))
-//	add! a b               // add(a, b)
-//	add! mul! a a mul! bb  // add(mul(a, a), mul(b, b))
+//	print! concat! "Hello " World
 func (p *Parser) parseCall(fn string, f *values.Function, pos lexer.Position) (n ast.Node, err error) {
 	args := make([]ast.MetaNode, len(f.Args))
 	for i := 0; i < len(args); i++ {
@@ -55,6 +53,26 @@ func (p *Parser) parseCall(fn string, f *values.Function, pos lexer.Position) (n
 	return
 }
 
+// parseSelector parses a series of selector elements and compiles them into
+// one selector.
+//
+// Basic selector:
+//
+//	Person
+//
+// Field selector:
+//
+//	Person#Name
+//	Person#Age
+//
+// Index selector and field selector:
+//
+//	People#0#Name
+//	People#PersonNo#Age
+//
+// Typecast:
+//
+//	Person#@Employee#Employer
 func (p *Parser) parseSelector(start *lexer.Token) (n ast.Node, err error) {
 	n = ast.SelectorNode{
 		Parent: nil,
@@ -155,6 +173,9 @@ func (p *Parser) parseSelector(start *lexer.Token) (n ast.Node, err error) {
 	}
 }
 
+// parseReturn parses a return.
+//
+//	>"Hello"
 func (p *Parser) parseReturn() (n ast.Node, err error) {
 	v, err := p.ParseValue()
 	if err != nil {
@@ -166,6 +187,11 @@ func (p *Parser) parseReturn() (n ast.Node, err error) {
 	return
 }
 
+// parseBlock parses a block of code.
+//
+//	(
+//		print! "Hello world!"
+//	)
 func (p *Parser) parseBlock() (block ast.Block, err error) {
 	var (
 		n    ast.MetaNode
@@ -207,6 +233,8 @@ func (p *Parser) parseBlock() (block ast.Block, err error) {
 	return
 }
 
+// next constructs whatever node is next. If skip is true, no node was produced
+// by the given code and next() needs to be called again to retrieve a node.
 func (p *Parser) next(tok *lexer.Token) (mn ast.MetaNode, skip bool, err error) {
 	var (
 		n ast.Node
@@ -258,6 +286,10 @@ func (p *Parser) next(tok *lexer.Token) (mn ast.MetaNode, skip bool, err error) 
 	return
 }
 
+// TopLevel parses a top-level statement. One of:
+//   - Function/Extern definition
+//   - Variable defintion and/or assignment
+//   - Structure type definition
 func (p *Parser) TopLevel() (mn ast.MetaNode, err error) {
 	tok, err := p.lexer.Next()
 	if err != nil {
@@ -278,6 +310,8 @@ func (p *Parser) TopLevel() (mn ast.MetaNode, err error) {
 	return
 }
 
+// Parse constructs nodes using the internal lexer's tokens and compiles them
+// into an [ast.AST].
 func (p *Parser) Parse() (tree ast.AST, err error) {
 	var (
 		tok  *lexer.Token

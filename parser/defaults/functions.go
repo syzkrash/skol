@@ -5,6 +5,7 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
+// Functions contains definitions of built-in functions for the parser.
 var Functions = map[string]*values.Function{
 	"print": {
 		Name: "print",

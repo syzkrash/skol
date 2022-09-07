@@ -9,6 +9,8 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
+// typeByName retrieves a type for the given name. If the name refers to a
+// built-in type, that type always takes priority over user-defined types.
 func (p *Parser) typeByName(name string) (t types.Type, ok bool) {
 	ok = true
 	switch strings.ToLower(name) {
@@ -30,6 +32,25 @@ func (p *Parser) typeByName(name string) (t types.Type, ok bool) {
 	return
 }
 
+// parseType parses a type name.
+//
+// Built-in type:
+//
+//	b bool boolean
+//	c ch char
+//	i i32 int int32 integer
+//	f f32 float float32
+//	s str string
+//	a any
+//
+// User-defined structure type (assuming its name is Vec2i):
+//
+//	Vec2i
+//
+// Array type:
+//
+//	[integer]
+//	[Vec2i]
 func (p *Parser) parseType() (t types.Type, err error) {
 	tk, err := p.lexer.Next()
 	if err != nil {
@@ -84,6 +105,8 @@ func (p *Parser) EnsureResultType(inner types.Type) types.Type {
 	return rt
 }
 
+// TypeOf determines the type of the value denoted by the given function in
+// the parser's current scope.
 func (p *Parser) TypeOf(n ast.Node) (t types.Type, err error) {
 	switch n.Kind() {
 	case ast.NBool:
@@ -230,6 +253,8 @@ func (p *Parser) TypeOf(n ast.Node) (t types.Type, err error) {
 	return
 }
 
+// NodeOf creates a node for the given type. This node is not correctly set up
+// and cannot be used like a regular, parsed node!
 func (p *Parser) NodeOf(t types.Type) (n ast.Node, ok bool) {
 	ok = true
 	if types.Bool.Equals(t) {

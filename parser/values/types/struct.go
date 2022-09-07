@@ -5,6 +5,7 @@ type Field struct {
 	Type Type
 }
 
+// StructType represents all structure types with the primtive [PStruct].
 type StructType struct {
 	Name   string
 	Fields []Field
@@ -18,6 +19,9 @@ func (StructType) Prim() Primitive {
 	return PStruct
 }
 
+// Equals ensures the other type is compatible with this type. This function
+// is especially important for structures. If structure B contains all the
+// fields that A does (A ⊂ B) then it is compatible.
 func (a StructType) Equals(b Type) bool {
 	if b.Prim() != PStruct {
 		return false
@@ -39,6 +43,7 @@ func (a StructType) Equals(b Type) bool {
 	return true
 }
 
+// MakeStruct creates a [StructType] from the given field name/type pairs.
 func MakeStruct(name string, fields ...any) Type {
 	if len(fields)%2 != 0 {
 		panic("MakeStruct requires an even amount of arguments")

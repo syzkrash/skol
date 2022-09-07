@@ -7,6 +7,7 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
+// Scope represents the current lexical scope and its parent scope if any.
 type Scope struct {
 	Parent *Scope
 	Funcs  map[string]*values.Function
@@ -15,6 +16,8 @@ type Scope struct {
 	Types  map[string]types.Type
 }
 
+// NewScope creates a new lexical scope, e.g. when entering a function. If
+// parent is nil the scope can be considered the global scope.
 func NewScope(parent *Scope) *Scope {
 	return &Scope{
 		Parent: parent,
@@ -25,6 +28,7 @@ func NewScope(parent *Scope) *Scope {
 	}
 }
 
+// FindFunc searches this and all parent scopes for the given function.
 func (s *Scope) FindFunc(name string) (*values.Function, bool) {
 	f, ok := s.Funcs[name]
 	if s.Parent != nil && !ok && name[0] != '_' {
@@ -33,6 +37,7 @@ func (s *Scope) FindFunc(name string) (*values.Function, bool) {
 	return f, ok
 }
 
+// FindVar searches this and all parent scopes for the given variable.
 func (s *Scope) FindVar(name string) (ast.Node, bool) {
 	v, ok := s.Vars[name]
 	if s.Parent != nil && !ok && name[0] != '_' {
@@ -41,6 +46,9 @@ func (s *Scope) FindVar(name string) (ast.Node, bool) {
 	return v, ok
 }
 
+// SetVar updates the given variable value in this scope or one of the parent
+// scopes. If this variable is found in a parent scope, it is updated in that
+// parent scope. If it isn't found, it is created in this scope.
 func (s *Scope) SetVar(n string, v ast.Node) {
 	var target *Scope
 	current := s
@@ -58,6 +66,7 @@ func (s *Scope) SetVar(n string, v ast.Node) {
 	}
 }
 
+// FindConst searches this and all parent scopes for the given constant.
 func (s *Scope) FindConst(n string) (ast.Node, bool) {
 	v, ok := s.Consts[n]
 	if s.Parent != nil && !ok {
@@ -66,6 +75,7 @@ func (s *Scope) FindConst(n string) (ast.Node, bool) {
 	return v, ok
 }
 
+// SetConst sets a constant value, ensuring it is not changed.
 func (s *Scope) SetConst(n string, v ast.Node) bool {
 	if _, exists := s.FindConst(n); exists {
 		return false
@@ -74,6 +84,7 @@ func (s *Scope) SetConst(n string, v ast.Node) bool {
 	return true
 }
 
+// FindType searches this and all parent scopes for the given structure type.
 func (s *Scope) FindType(n string) (types.Type, bool) {
 	t, ok := s.Types[n]
 	if s.Parent != nil && !ok {

@@ -6,6 +6,9 @@ import (
 	"github.com/syzkrash/skol/lexer"
 )
 
+// ParserError defines an error that occurred while the parser was trying to
+// construct a node. Contains extra information about the token causing the
+// error.
 type ParserError struct {
 	Where *lexer.Token
 	msg   string

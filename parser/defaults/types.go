@@ -15,6 +15,7 @@ var char_result = types.MakeStruct("char_result",
 	"ok", types.Bool,
 	"err", types.String)
 
+// Types contains definitions of built-in types for the parser.
 var Types = map[string]types.Type{
 	"file_descriptor":        file_descriptor,
 	"file_descriptor_result": file_descriptor_result,
