@@ -16,9 +16,10 @@ skol uses C-like comments:
 ```hs
 %name/string
 %name: "value"
+%name/string: "value"
 ```
 
-A variable definition can either use an explicit value or a type, *but not both.*
+A variable definition can either use an explicit value or a type, or both.
 The first line defines the type of the variable, initializing it to that type's
 zero value. The second line defines a variable named `name` with an explicit
 `String` value `"value"`. Note that defining the type of the variable is not
