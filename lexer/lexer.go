@@ -7,11 +7,13 @@ import (
 	"github.com/syzkrash/skol/debug"
 )
 
+// Lexer reads individual runes from a source stream and turns them into tokens.
 type Lexer struct {
 	src  *Source
 	prev *Token
 }
 
+// NewLexer creates and prepares a new lexer with the given source stream.
 func NewLexer(src io.RuneScanner, fn string) *Lexer {
 	return &Lexer{
 		src: NewSource(src, fn),
@@ -19,7 +21,6 @@ func NewLexer(src io.RuneScanner, fn string) *Lexer {
 }
 
 func (l *Lexer) selfError(ch rune, msg string) error {
-
 	return &LexerError{
 		msg:   msg,
 		cause: nil,
@@ -296,6 +297,8 @@ func (l *Lexer) internalNext() (tok *Token, err error) {
 	return
 }
 
+// Next will read and return the next token found in the stream or any error
+// that may have occurred in the process as a [*LexerError].
 func (l *Lexer) Next() (tok *Token, err error) {
 	if l.prev != nil {
 		tok = l.prev
@@ -315,6 +318,8 @@ func (l *Lexer) Next() (tok *Token, err error) {
 	return
 }
 
+// Rollback will save the given token as the token to return on the next call
+// to [Next]
 func (l *Lexer) Rollback(tok *Token) {
 	l.prev = tok
 }
