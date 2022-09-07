@@ -8,6 +8,8 @@ import (
 	"runtime"
 )
 
+// Log prints the given formatted debug message if the given attribute is
+// enabled in [GlobalAttr].
 func Log(attr Attribute, format string, args ...any) {
 	if GlobalAttr&attr != attr {
 		return

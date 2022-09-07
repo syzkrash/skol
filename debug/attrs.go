@@ -1,7 +1,9 @@
 package debug
 
+// Attribute defines a bitmask for debug message visibility.
 type Attribute uint8
 
+// Debug message attribute constnts.
 const (
 	AttrDummy Attribute = 1 << iota
 	AttrLexer
@@ -22,4 +24,5 @@ func (a Attribute) Name() string {
 	}
 }
 
+// GlobalAttr contains the currently enabled debug messages.
 var GlobalAttr = AttrDummy
