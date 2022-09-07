@@ -17,10 +17,12 @@ func typeError(mn ast.MetaNode, want, got types.Type, format string, a ...any) *
 	}
 }
 
+// Checker ensures type correctness of an AST.
 type Checker struct {
 	scope *scope
 }
 
+// NewChecker creates a blank Checker.
 func NewChecker() *Checker {
 	return &Checker{
 		scope: &scope{
@@ -31,6 +33,8 @@ func NewChecker() *Checker {
 	}
 }
 
+// Check thoroughly inspects the provided AST for any typing-related errors
+// that may have occured.
 func (c *Checker) Check(tree ast.AST) (errs []*TypeError) {
 	for _, v := range tree.Typedefs {
 		c.scope.vars[v.Name] = v.Type
@@ -209,6 +213,8 @@ func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) (errs []*TypeError)
 	return
 }
 
+// checkFunc ensures type correctness given the function arguments' types and
+// the return type.
 func (c *Checker) checkFunc(args map[string]types.Type, ret types.Type, body ast.Block) (errs []*TypeError) {
 	c.scope = c.scope.sub()
 	for n, t := range args {
@@ -246,6 +252,7 @@ func (c *Checker) checkBlock(b ast.Block, ret types.Type) (errs []*TypeError) {
 	return
 }
 
+// typeOf determines the type of any abstract AST node.
 func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *TypeError) {
 	n := mn.Node
 
@@ -296,6 +303,8 @@ func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *TypeError) {
 	return
 }
 
+// basicFuncproto generates a funcproto for a function that accepts a certain
+// combination of arguments and always returns the same type.
 func basicFuncproto(exp []types.Type, ret types.Type) funcproto {
 	return func(mn ast.MetaNode, got []types.Type) (r types.Type, err *TypeError) {
 		r = ret

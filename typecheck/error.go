@@ -7,6 +7,11 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
+// TypeError represents an error occurred while checking the type correctnes
+// of an abstract AST node. This provides additional information about the error
+// such as the exact node being checked, the found type, the wanted type and a
+// message. In case the error does not relate to a type mismatch, either of
+// the type fields may be nil.
 type TypeError struct {
 	Got   types.Type
 	Want  types.Type

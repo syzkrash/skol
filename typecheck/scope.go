@@ -5,8 +5,13 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
+// funcproto is responsible for validating that the types provided to a
+// function call are compatible with the provided types. It also provides
+// the return type for the given arguments. (for generic functions)
 type funcproto func(ast.MetaNode, []types.Type) (types.Type, *TypeError)
 
+// scope contains the types of variables and function prototypes. This is
+// effectively the same as [parser.Scope] and as such lacks documentation.
 type scope struct {
 	parent *scope
 	vars   map[string]types.Type
