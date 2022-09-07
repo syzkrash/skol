@@ -2,12 +2,15 @@ package ast
 
 import "github.com/syzkrash/skol/lexer"
 
+// Branch represents the condition and body of an if statement branch.
 type Branch struct {
 	Cond  MetaNode
 	Block Block
 	Pos   lexer.Position
 }
 
+// IfNode represents an if statement. Contains the main branch, any other
+// (else-if) branches and the else branch.
 type IfNode struct {
 	Main  Branch
 	Other []Branch

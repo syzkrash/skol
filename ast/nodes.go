@@ -2,8 +2,10 @@ package ast
 
 import "github.com/syzkrash/skol/lexer"
 
+// NodeKind is the unique identifying number of an abstract AST node.
 type NodeKind byte
 
+// Node kind constants.
 const (
 	NInvalid NodeKind = iota
 
@@ -42,6 +44,7 @@ const (
 	NMax
 )
 
+// for [NodeKid.String]
 var nodeKindNames = []string{
 	"Invalid",
 	"Bool",
@@ -67,6 +70,7 @@ var nodeKindNames = []string{
 	"FuncCall",
 }
 
+// Ensure checks if this is a valid NodeKind, returning NInvalid if it's not.
 func (k NodeKind) Ensure() NodeKind {
 	if k >= NMax {
 		return NInvalid
@@ -74,17 +78,21 @@ func (k NodeKind) Ensure() NodeKind {
 	return k
 }
 
+// String returns the name of this NodeKind if it is valid, "Invalid" otherwise.
 func (k NodeKind) String() string {
 	return nodeKindNames[k.Ensure()]
 }
 
+// Node represents an abstract AST node.
 type Node interface {
 	Kind() NodeKind
 }
 
+// MetaNode wraps an abstract node with position information.
 type MetaNode struct {
 	Node  Node
 	Where lexer.Position
 }
 
+// Block represents a list of MetaNodes, typically for multiple statements.
 type Block []MetaNode

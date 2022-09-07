@@ -2,6 +2,13 @@ package ast
 
 import "github.com/syzkrash/skol/parser/values/types"
 
+// SelectorElem represents an element of a [Selector] path. The exact value
+// for an element is determined by the rule of elimination:
+//   - If Cast != nil, this element is a typecast.
+//   - If Name != "", this element is a variable/field access.
+//   - If IdxS != nil, this element is an array index using a variable.
+//   - In all other cases, this element is an array index using a constant
+//     integer.
 type SelectorElem struct {
 	Cast types.Type
 	Name string
@@ -9,8 +16,10 @@ type SelectorElem struct {
 	IdxC int
 }
 
+// Selector represents any node that can be used as a selector element.
 type Selector interface {
 	Node
+	// Path gets the total selector path for this selector and all it's parents.
 	Path() []SelectorElem
 }
 

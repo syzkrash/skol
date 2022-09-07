@@ -4,6 +4,9 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
+// VarSetNode represents a variable assignment:
+//
+//	%MyVar: "New Value"
 type VarSetNode struct {
 	Var   string
 	Value MetaNode
@@ -15,6 +18,9 @@ func (VarSetNode) Kind() NodeKind {
 	return NVarSet
 }
 
+// VarDef represents a type definition for a variable:
+//
+//	%MyVar/string
 type VarDefNode struct {
 	Var  string
 	Type types.Type
@@ -26,6 +32,9 @@ func (VarDefNode) Kind() NodeKind {
 	return NVarDef
 }
 
+// VarSetTypedNode represents a variable assignment with a type definition:
+//
+//	%MyVar/string: "New Value"
 type VarSetTypedNode struct {
 	Var   string
 	Type  types.Type
