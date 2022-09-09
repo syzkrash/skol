@@ -10,6 +10,8 @@ Parser      | Incomplete   | [`parser` package][parser]       | Consumes tokens 
 AST         | Incomplete   | [`ast` package][ast]             | Represents the structure of a source code file.
 Simulator   | Incomplete   | [`sim` package][sim]             | Simulates code from AST nodes. (not an interpreter; used for constant evaluation)
 Typechecker | Incomplete   | [`typecheck` package][typecheck] | Ensures that everything in the AST has the correct typing. (ensures a int variable isn't set to a string, etc.)
+IR          | Incomplete   | N/A                              | Breaks a program down into simple instructions to allow for easier compilation to binary formats.
+Codegen     | Incomplete   | N/A                              | a) Transpiles Skol code into another language from the AST. b) Compiles into executables from IR.
 
 ## Usual flow for compilation
 
@@ -74,6 +76,18 @@ Typechecker | Incomplete   | [`typecheck` package][typecheck] | Ensures that eve
 ### Simulator
 
 Likely will be removed in favor of a proper interpreter.
+
+### IR
+
+- [ ] Can be constructed from any valid AST.
+- [ ] Can be cached as a file.
+
+### Codegen
+
+- [ ] Distingushes between AST-based codegen (for transpilers) and IR-based
+      codegen (for compilers).
+- [ ] Transpiles valid code from AST.
+- [ ] Compiles valid code from IR.
 
 [main]: https://github.com/syzkrash/skol/blob/nightly/main.go
 [lexer]: https://github.com/syzkrash/skol/tree/nightly/lexer
