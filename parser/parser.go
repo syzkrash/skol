@@ -11,7 +11,6 @@ import (
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
-	"github.com/syzkrash/skol/sim"
 )
 
 // Parser consumes tokens from its internal lexer and constructs nodes out of
@@ -19,7 +18,6 @@ import (
 type Parser struct {
 	lexer  *lexer.Lexer
 	Engine string
-	Sim    *sim.Simulator
 	Scope  *Scope
 }
 
@@ -29,7 +27,6 @@ func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
 	return &Parser{
 		lexer:  lexer.NewLexer(src, fn),
 		Engine: eng,
-		Sim:    sim.NewSimulator(),
 		Scope:  NewScope(nil),
 	}
 }
