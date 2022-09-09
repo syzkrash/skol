@@ -246,6 +246,8 @@ func (g *generator) writeValue(mn ast.MetaNode) error {
 		return g.writeInstance(n.(ast.StructNode))
 	case ast.NArray:
 		return g.writeArray(n.(ast.ArrayNode))
+	case ast.NFuncCall:
+		return g.writeCall(n.(ast.FuncCallNode), false)
 	default:
 		panic("writeValue() unexpected argument: " + n.Kind().String())
 	}
