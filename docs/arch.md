@@ -11,7 +11,7 @@ AST         | [Incomplete](#ast)         | [`ast` package][ast]             | Re
 Simulator   | [Incomplete](#simulator)   | [`sim` package][sim]             | Simulates code from AST nodes. (not an interpreter; used for constant evaluation)
 Typechecker | [Incomplete](#typechecker) | [`typecheck` package][typecheck] | Ensures that everything in the AST has the correct typing. (ensures a int variable isn't set to a string, etc.)
 IR          | [Incomplete](#ir)          | N/A                              | Breaks a program down into simple instructions to allow for easier compilation to binary formats.
-Codegen     | [Incomplete](#codegen)     | N/A                              | a) Transpiles Skol code into another language from the AST. b) Compiles into executables from IR.
+Codegen     | [Incomplete](#codegen)     | N/A                              | a) Transpiles Skol code into another language from the AST. <br/> b) Compiles into executables from IR.
 
 ## Usual flow for compilation
 
