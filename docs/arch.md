@@ -2,16 +2,16 @@
 
 ## Component Breakdown
 
-Component   | Completeness | Source Code                      | Purpose
-------------|--------------|----------------------------------|---------
-CLI         | Incomplete   | [`main.go`][main]                | Parses command line-flags and prepares files for compilation or analysis.
-Lexer       | Complete     | [`lexer` package][lexer]         | Breaks meaningless plain text into a sequence of meaningful tokens.
-Parser      | Incomplete   | [`parser` package][parser]       | Consumes tokens from the lexer and constructs an [AST][wiki_ast].
-AST         | Incomplete   | [`ast` package][ast]             | Represents the structure of a source code file.
-Simulator   | Incomplete   | [`sim` package][sim]             | Simulates code from AST nodes. (not an interpreter; used for constant evaluation)
-Typechecker | Incomplete   | [`typecheck` package][typecheck] | Ensures that everything in the AST has the correct typing. (ensures a int variable isn't set to a string, etc.)
-IR          | Incomplete   | N/A                              | Breaks a program down into simple instructions to allow for easier compilation to binary formats.
-Codegen     | Incomplete   | N/A                              | a) Transpiles Skol code into another language from the AST. b) Compiles into executables from IR.
+Component   | Completeness               | Source Code                      | Purpose
+------------|----------------------------|----------------------------------|---------
+CLI         | [Incomplete](#cli)         | [`main.go`][main]                | Parses command line-flags and prepares files for compilation or analysis.
+Lexer       | [Complete](#lexer)         | [`lexer` package][lexer]         | Breaks meaningless plain text into a sequence of meaningful tokens.
+Parser      | [Incomplete](#parser)      | [`parser` package][parser]       | Consumes tokens from the lexer and constructs an [AST][wiki_ast].
+AST         | [Incomplete](#ast)         | [`ast` package][ast]             | Represents the structure of a source code file.
+Simulator   | [Incomplete](#simulator)   | [`sim` package][sim]             | Simulates code from AST nodes. (not an interpreter; used for constant evaluation)
+Typechecker | [Incomplete](#typechecker) | [`typecheck` package][typecheck] | Ensures that everything in the AST has the correct typing. (ensures a int variable isn't set to a string, etc.)
+IR          | [Incomplete](#ir)          | N/A                              | Breaks a program down into simple instructions to allow for easier compilation to binary formats.
+Codegen     | [Incomplete](#codegen)     | N/A                              | a) Transpiles Skol code into another language from the AST. b) Compiles into executables from IR.
 
 ## Usual flow for compilation
 
