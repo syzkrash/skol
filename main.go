@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/syzkrash/skol/codegen"
+	"github.com/syzkrash/skol/codegen/py"
 	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/debug"
 	"github.com/syzkrash/skol/parser"
@@ -22,6 +24,7 @@ func main() {
 	}
 
 	flags := flag.NewFlagSet("skol", flag.ExitOnError)
+	flags.StringVar(&engine, "engine", "", "")
 	flags.StringVar(&input, "input", "", "")
 	flags.Func("debug", "", debugFlag)
 	flags.BoolVar(&asJson, "json", false, "")
@@ -192,8 +195,69 @@ func dumpAst() {
 	}
 }
 
+var (
+	engine string
+)
+
 func compile() {
-	panic("unimplemented")
+	if input == "" {
+		fmt.Fprintf(os.Stderr, "provide an input file\n")
+		return
+	}
+
+	srcf, err := os.Open(input)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not open input file: %s\n", err)
+		return
+	}
+	defer srcf.Close()
+
+	srcraw, err := io.ReadAll(srcf)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not read input file: %s\n", err)
+		return
+	}
+
+	var e codegen.Engine
+	switch engine {
+	case "py":
+		e = py.Engine
+	default:
+		fmt.Fprintf(os.Stderr, "unknown engine: %s\n", engine)
+		return
+	}
+
+	p := parser.NewParser(input, bytes.NewReader(srcraw), engine)
+	ast, err := p.Parse()
+	if err != nil {
+		err.(common.Printable).Print()
+		return
+	}
+
+	var out io.Writer
+	if e.Ephemeral {
+		out = &bytes.Buffer{}
+	} else {
+		outf, err := os.Create(input + e.Extension)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "could not create output file: %s\n", err)
+			return
+		}
+		defer outf.Close()
+		out = outf
+	}
+
+	e.Gen.Output(out)
+
+	if astgen, ok := e.Gen.(codegen.ASTGenerator); ok {
+		astgen.Input(ast)
+	}
+
+	err = e.Gen.Generate()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not generate output file: %s\n", err)
+		return
+	}
 }
 
 func repl() {
