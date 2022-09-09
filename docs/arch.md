@@ -6,11 +6,11 @@ Component   | Completeness               | Source Code                      | Pu
 ------------|----------------------------|----------------------------------|---------
 CLI         | [Incomplete](#cli)         | [`main.go`][main]                | Parses command line-flags and prepares files for compilation or analysis.
 Lexer       | [Complete](#lexer)         | [`lexer` package][lexer]         | Breaks meaningless plain text into a sequence of meaningful tokens.
-Parser      | [Incomplete](#parser)      | [`parser` package][parser]       | Consumes tokens from the lexer and constructs an [AST][wiki_ast].
+Parser      | [Incomplete](#parser)      | [`parser` package][parser]       | Consumes tokens from the lexer and constructs an [AST][astw].
 AST         | [Incomplete](#ast)         | [`ast` package][ast]             | Represents the structure of a source code file.
 Simulator   | [Incomplete](#simulator)   | [`sim` package][sim]             | Simulates code from AST nodes. (not an interpreter; used for constant evaluation)
 Typechecker | [Incomplete](#typechecker) | [`typecheck` package][typecheck] | Ensures that everything in the AST has the correct typing. (ensures a int variable isn't set to a string, etc.)
-IR          | [Incomplete](#ir)          | N/A                              | Breaks a program down into simple instructions to allow for easier compilation to binary formats.
+[IR][irw]   | [Incomplete](#ir)          | N/A                              | Breaks a program down into simple instructions to allow for easier compilation to binary formats.
 Codegen     | [Incomplete](#codegen)     | N/A                              | a) Transpiles Skol code into another language from the AST. <br/> b) Compiles into executables from IR.
 
 ## Usual flow for compilation
@@ -96,4 +96,5 @@ Likely will be removed in favor of a proper interpreter.
 [sim]: https://github.com/syzkrash/skol/tree/nightly/sim
 [typecheck]: https://github.com/syzkrash/skol/tree/nightly/typecheck
 
-[wiki_ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
+[astw]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
+[irw]: https://en.wikipedia.org/wiki/Intermediate_representation
