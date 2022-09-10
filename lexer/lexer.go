@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 
+	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/debug"
 )
 
@@ -20,23 +21,6 @@ func NewLexer(src io.RuneScanner, fn string) *Lexer {
 	}
 }
 
-func (l *Lexer) selfError(ch rune, msg string) error {
-	return &LexerError{
-		msg:   msg,
-		cause: nil,
-		Where: l.src.Position,
-		Char:  ch,
-	}
-}
-
-func (l *Lexer) otherError(cause error) error {
-	return &LexerError{
-		msg:   cause.Error(),
-		cause: cause,
-		Where: l.src.Position,
-	}
-}
-
 func (l *Lexer) nextIdent(c rune) (tok *Token, err error) {
 	pos := l.src.Position
 	ident := string(c)
@@ -47,6 +31,7 @@ func (l *Lexer) nextIdent(c rune) (tok *Token, err error) {
 			goto finish
 		}
 		if err != nil {
+			err = pe.New(pe.EBadInput).Cause(err)
 			return
 		}
 		if !isIdent(c) && !isDigit(c) {
@@ -76,6 +61,7 @@ func (l *Lexer) nextConstant(c rune) (tok *Token, err error) {
 			goto finish
 		}
 		if err != nil {
+			err = pe.New(pe.EBadInput).Cause(err)
 			return
 		}
 		if !isNumberTail(c) {
@@ -102,16 +88,20 @@ func (l *Lexer) nextString() (tok *Token, err error) {
 	for {
 		c, _, err = l.src.ReadRune()
 		if err != nil {
+			err = pe.New(pe.EBadInput).Cause(err)
 			return
 		}
 		if c == '\\' {
 			var e rune
 			e, _, err = l.src.ReadRune()
 			if err != nil {
+				err = pe.New(pe.EBadInput).Cause(err)
 				return
 			}
-			e, err = escapeSeq(e)
-			if err != nil {
+			var ok bool
+			e, ok = escapeSeq(e)
+			if !ok {
+				err = pe.New(pe.EInvalidEscape).Section("Caused by", "'\\%c' at %s", e, l.src.Position)
 				return
 			}
 			str += string(e)
@@ -136,16 +126,20 @@ func (l *Lexer) nextChar() (tok *Token, err error) {
 	var lit rune
 	c, _, err = l.src.ReadRune()
 	if err != nil {
+		err = pe.New(pe.EBadInput).Cause(err)
 		return
 	}
 	if c == '\\' {
 		var e rune
 		e, _, err = l.src.ReadRune()
 		if err != nil {
+			err = pe.New(pe.EBadInput).Cause(err)
 			return
 		}
-		lit, err = escapeSeq(e)
-		if err != nil {
+		var ok bool
+		lit, ok = escapeSeq(e)
+		if !ok {
+			err = pe.New(pe.EInvalidEscape).Section("Caused by", "'\\%c' at %s", e, l.src.Position)
 			return
 		}
 	} else {
@@ -153,10 +147,11 @@ func (l *Lexer) nextChar() (tok *Token, err error) {
 	}
 	c, _, err = l.src.ReadRune()
 	if err != nil {
+		err = pe.New(pe.EBadInput).Cause(err)
 		return
 	}
 	if c != '\'' {
-		err = errors.New("invalid character literal")
+		err = pe.New(pe.EInvalidCharLit).Section("Caused by", "'%c' at %s", c, l.src.Position)
 	}
 	tok = &Token{
 		Kind:  TkChar,
@@ -184,6 +179,7 @@ func (l *Lexer) ignoreLineComment() (err error) {
 	for c != '\n' {
 		c, _, err = l.src.ReadRune()
 		if err != nil {
+			err = pe.New(pe.EBadInput).Cause(err)
 			return
 		}
 	}
@@ -195,6 +191,7 @@ func (l *Lexer) ignoreBlockComment() (err error) {
 	for {
 		c, _, err = l.src.ReadRune()
 		if err != nil {
+			err = pe.New(pe.EBadInput).Cause(err)
 			return
 		}
 		if c != '*' {
@@ -202,6 +199,7 @@ func (l *Lexer) ignoreBlockComment() (err error) {
 		}
 		c, _, err = l.src.ReadRune()
 		if err != nil {
+			err = pe.New(pe.EBadInput).Cause(err)
 			return
 		}
 		if c == '/' {
@@ -220,6 +218,7 @@ func (l *Lexer) commentOrSlash() (comment bool, err error) {
 		return
 	}
 	if err != nil {
+		err = pe.New(pe.EBadInput).Cause(err)
 		return
 	}
 
@@ -241,6 +240,7 @@ func (l *Lexer) commentOrSlash() (comment bool, err error) {
 func (l *Lexer) internalNext() (tok *Token, err error) {
 	c, _, err := l.src.ReadRune()
 	if err != nil {
+		err = pe.New(pe.EBadInput).Cause(err)
 		return
 	}
 
@@ -249,6 +249,7 @@ func (l *Lexer) internalNext() (tok *Token, err error) {
 			for isSpace(c) {
 				c, _, err = l.src.ReadRune()
 				if err != nil {
+					err = pe.New(pe.EBadInput).Cause(err)
 					return
 				}
 			}
@@ -270,6 +271,7 @@ func (l *Lexer) internalNext() (tok *Token, err error) {
 			}
 			c, _, err = l.src.ReadRune()
 			if err != nil {
+				err = pe.New(pe.EBadInput).Cause(err)
 				return
 			}
 			continue
@@ -290,7 +292,7 @@ func (l *Lexer) internalNext() (tok *Token, err error) {
 		var ok bool
 		tok, ok = l.nextPunctuator(c)
 		if !ok {
-			err = l.selfError(c, "illegal token: "+string(c))
+			err = pe.New(pe.EIllegalChar).Section("Caused by", "'%c' at %s", c, l.src.Position)
 		}
 	}
 
@@ -306,10 +308,6 @@ func (l *Lexer) Next() (tok *Token, err error) {
 		return
 	}
 	tok, err = l.internalNext()
-	var lerr *LexerError
-	if err != nil && !errors.As(err, &lerr) {
-		err = l.otherError(err)
-	}
 	if err != nil {
 		debug.Log(debug.AttrLexer, "Error %s", err)
 	} else {

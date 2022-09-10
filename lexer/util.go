@@ -1,7 +1,5 @@
 package lexer
 
-import "fmt"
-
 func isSpace(c rune) bool {
 	return c == ' ' || c == '\t' || c == '\n' || c == '\r'
 }
@@ -25,7 +23,8 @@ func isNumberTail(c rune) bool {
 		c == '_' // digit separator
 }
 
-func escapeSeq(e rune) (c rune, err error) {
+func escapeSeq(e rune) (c rune, ok bool) {
+	ok = true
 	switch e {
 	case '"', '\'':
 		c = e
@@ -38,7 +37,7 @@ func escapeSeq(e rune) (c rune, err error) {
 	case '\\':
 		c = '\\'
 	default:
-		err = fmt.Errorf("unknown escape sequence: \\%c", e)
+		ok = false
 	}
 	return
 }
