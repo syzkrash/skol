@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/syzkrash/skol/ast"
+	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/values/types"
 )
@@ -66,7 +67,8 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 			var f float64
 			f, err = strconv.ParseFloat(tok.Raw, 32)
 			if err != nil {
-				err = p.otherError(tok, "invalid floating-point constant", err)
+				err = tokErr(pe.EBadFloatLit, tok)
+				return
 			}
 
 			mn.Node = ast.FloatNode{
@@ -76,7 +78,8 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 			var i int64
 			i, err = strconv.ParseInt(tok.Raw, 0, 32)
 			if err != nil {
-				err = p.otherError(tok, "invalid integer constant", err)
+				err = tokErr(pe.EBadIntLit, tok)
+				return
 			}
 
 			mn.Node = ast.IntNode{
@@ -96,7 +99,7 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 			fn := tok.Raw[:len(tok.Raw)-1]
 			f, ok := p.Scope.FindFunc(fn)
 			if !ok {
-				err = p.selfError(tok, "unknown function: "+fn)
+				err = tokErr(pe.EUnknownFunction, tok)
 				return
 			}
 			mn.Node, err = p.parseCall(fn, f, tok.Where)
@@ -105,7 +108,7 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 		} else if v, ok := p.Scope.FindConst(tok.Raw); ok {
 			mn.Node = v
 		} else {
-			err = p.selfError(tok, "unknown variable: "+tok.Raw)
+			err = tokErr(pe.EUnknownVariable, tok)
 		}
 	case lexer.TkPunct:
 		switch tok.Raw[0] {
@@ -123,12 +126,12 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 				return
 			}
 			if tok.Kind != lexer.TkIdent {
-				err = p.selfError(tok, "expected Identifier, got "+tok.Kind.String())
+				err = tokErr(pe.EExpectedName, tok)
 				return
 			}
 			t, ok := p.Scope.FindType(tok.Raw)
 			if !ok {
-				err = p.selfError(tok, "unknown type: "+tok.Raw)
+				err = tokErr(pe.EUnknownType, tok)
 				return
 			}
 			s := t.(types.StructType)
@@ -155,7 +158,7 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 				var ok bool
 				elemtype, ok = p.typeByName(tok.Raw)
 				if !ok {
-					err = p.selfError(tok, "unknown type: "+tok.Raw)
+					err = tokErr(pe.EUnknownType, tok)
 					return
 				}
 				tok, err = p.lexer.Next()
@@ -164,7 +167,7 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 				}
 			}
 			if tok.Kind != lexer.TkPunct || tok.Raw[0] != ']' {
-				err = p.selfError(tok, "expected type name or ']'")
+				err = tokErr(pe.EExpectedType, tok)
 				return
 			}
 			tok, err = p.lexer.Next()
@@ -172,7 +175,7 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 				return
 			}
 			if tok.Kind != lexer.TkPunct || tok.Raw[0] != '(' {
-				err = p.selfError(tok, "expected '('")
+				err = tokErr(pe.EExpectedLParen, tok)
 				return
 			}
 			elems := []ast.MetaNode{}
@@ -200,7 +203,7 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 				elems = append(elems, elem)
 			}
 			if elemtype.Prim() == types.PUndefined {
-				err = p.selfError(begin, "array literal must have a type or at least one element")
+				err = tokErr(pe.ENeedTypeOrValue, begin)
 				return
 			}
 			mn.Node = ast.ArrayNode{
@@ -208,10 +211,10 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 				Elems: elems,
 			}
 		default:
-			err = p.selfError(tok, "unexpected punctuator")
+			err = tokErr(pe.EUnexpectedToken, tok)
 		}
 	default:
-		err = p.selfError(tok, "expected value")
+		err = tokErr(pe.EExpectedValue, tok)
 	}
 
 	return

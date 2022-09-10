@@ -2,11 +2,11 @@ package parser
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"strconv"
 
 	"github.com/syzkrash/skol/ast"
+	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/debug"
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/values"
@@ -146,7 +146,7 @@ func (p *Parser) parseSelector(start *lexer.Token) (n ast.Node, err error) {
 		case lexer.TkPunct:
 			if tok.Raw[0] != '@' {
 				// error out if the punctuator is not @
-				err = p.selfError(tok, "expected identifer, constant or '@'")
+				err = tokErr(pe.EExpectedSelectorElem, tok)
 				return
 			}
 			// get the type for typecast
@@ -164,7 +164,7 @@ func (p *Parser) parseSelector(start *lexer.Token) (n ast.Node, err error) {
 			}
 		// any other token is not allowed
 		default:
-			err = p.selfError(tok, "expected identifer, constant or '@'")
+			err = tokErr(pe.EExpectedSelectorElem, tok)
 			return
 		}
 	}
@@ -202,7 +202,7 @@ func (p *Parser) parseBlock() (block ast.Block, err error) {
 	}
 
 	if tok.Kind != lexer.TkPunct || tok.Raw[0] != '(' {
-		err = p.selfError(tok, "expected '(' to start block")
+		err = tokErr(pe.EExpectedLParen, tok)
 		return
 	}
 
@@ -259,22 +259,22 @@ func (p *Parser) next(tok *lexer.Token) (mn ast.MetaNode, skip bool, err error) 
 			}
 			skip = true
 		default:
-			err = p.selfError(tok, "unexpected top-level punctuator: "+tok.Raw)
+			err = tokErr(pe.EUnexpectedToken, tok)
 		}
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
 			fnm := tok.Raw[:len(tok.Raw)-1]
 			f, ok := p.Scope.FindFunc(fnm)
 			if !ok {
-				err = p.selfError(tok, "unknown function: "+fnm)
+				err = tokErr(pe.EUnknownFunction, tok)
 				return
 			}
 			n, err = p.parseCall(fnm, f, tok.Where)
 		} else {
-			err = p.selfError(tok, "unexpected top-level identifier: "+tok.Raw)
+			err = tokErr(pe.EUnexpectedToken, tok)
 		}
 	default:
-		err = p.selfError(tok, "unexpected top-level token: "+tok.Raw)
+		err = tokErr(pe.EUnexpectedToken, tok)
 	}
 
 	mn.Node = n
@@ -397,10 +397,18 @@ func (p *Parser) Parse() (tree ast.AST, err error) {
 				Node:   n,
 			}
 		default:
-			err = p.selfError(tok, fmt.Sprintf("%s node unallowed at top level", n.Node.Kind()))
+			err = nodeErr(pe.EIllegalTopLevelNode, n)
 			return
 		}
 	}
 
 	return
+}
+
+func tokErr(c pe.ErrorCode, cause *lexer.Token) *pe.PrettyError {
+	return pe.New(c).Section("Caused by", "%s \"%s\" at %s", cause.Kind, cause.Raw, cause.Where)
+}
+
+func nodeErr(c pe.ErrorCode, cause ast.MetaNode) *pe.PrettyError {
+	return pe.New(c).Section("Caused by", "`%s` node at %s", cause.Node.Kind(), cause.Where)
 }

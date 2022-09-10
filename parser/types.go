@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/syzkrash/skol/ast"
+	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/values/types"
 )
@@ -65,12 +66,13 @@ func (p *Parser) parseType() (t types.Type, err error) {
 		}
 	}
 	if tk.Kind != lexer.TkIdent {
-		err = p.selfError(tk, "expected identifier")
+		err = tokErr(pe.EExpectedName, tk)
 		return
 	}
 	t, ok := p.typeByName(tk.Raw)
 	if !ok {
-		err = p.selfError(tk, "unknown type: "+tk.Raw)
+		err = tokErr(pe.EUnknownType, tk)
+		return
 	}
 	if isArray {
 		tk, err = p.lexer.Next()
@@ -78,7 +80,7 @@ func (p *Parser) parseType() (t types.Type, err error) {
 			return
 		}
 		if tk.Kind != lexer.TkPunct || tk.Raw[0] != ']' {
-			err = p.selfError(tk, "expected ']'")
+			err = tokErr(pe.EExpectedRBrack, tk)
 			return
 		}
 		t = types.ArrayType{Element: t}

@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/syzkrash/skol/ast"
+	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/lexer"
 	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
@@ -42,7 +43,7 @@ func (p *Parser) parseVar() (n ast.Node, err error) {
 	}
 
 	if tok.Kind != lexer.TkIdent {
-		err = p.selfError(tok, "expected variable name")
+		err = tokErr(pe.EExpectedName, tok)
 		return
 	}
 	name = tok.Raw
@@ -79,7 +80,7 @@ func (p *Parser) parseVar() (n ast.Node, err error) {
 
 final:
 	if !typed && !valued {
-		err = p.selfError(tok, "variable must have an explicit type, an explicit value or both")
+		err = tokErr(pe.ENeedTypeOrValue, tok)
 		return
 	}
 
@@ -115,7 +116,7 @@ func (p *Parser) parseConst() (err error) {
 		return
 	}
 	if nameToken.Kind != lexer.TkIdent {
-		err = p.selfError(nameToken, "expected an identifier")
+		err = tokErr(pe.EExpectedName, nameToken)
 		return
 	}
 
@@ -123,12 +124,8 @@ func (p *Parser) parseConst() (err error) {
 	if err != nil {
 		return err
 	}
-	if sept.Kind != lexer.TkPunct {
-		err = p.selfError(sept, "expected a punctuator")
-		return
-	}
-	if sept.Raw != ":" {
-		err = p.selfError(sept, "expected ':'")
+	if sept.Kind != lexer.TkPunct || sept.Raw != ":" {
+		err = tokErr(pe.EExpectedColon, sept)
 		return
 	}
 
@@ -138,7 +135,7 @@ func (p *Parser) parseConst() (err error) {
 	}
 
 	if !p.Scope.SetConst(nameToken.Raw, n.Node) {
-		return p.selfError(nameToken, "constant value cannot be redefined")
+		return tokErr(pe.EConstantRedefined, nameToken)
 	}
 	return nil
 }
@@ -177,7 +174,7 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 		return
 	}
 	if tok.Kind != lexer.TkIdent {
-		err = p.selfError(tok, "expected identifier for function name")
+		err = tokErr(pe.EExpectedName, tok)
 		return
 	}
 
@@ -232,7 +229,7 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 			for _, a := range args {
 				var falseVal, ok = p.NodeOf(a.Type)
 				if !ok {
-					err = p.selfError(tok, "bad type for function argument! "+a.Type.String())
+					err = tokErr(pe.EBadFuncArgType, tok)
 					return
 				}
 				p.Scope.Vars[a.Name] = falseVal
@@ -263,7 +260,7 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 			return
 		}
 		if tok.Kind != lexer.TkIdent {
-			err = p.selfError(tok, "expected function argument, body or '?' for extern")
+			err = tokErr(pe.ENeedBodyOrExtern, tok)
 			return
 		}
 
@@ -275,7 +272,7 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 		}
 
 		if tok.Kind != lexer.TkPunct || tok.Raw[0] != '/' {
-			err = p.selfError(tok, "expected '/' for function argument type")
+			err = tokErr(pe.EExpectedType, tok)
 			return
 		}
 
@@ -309,7 +306,7 @@ func (p *Parser) parseStruct() (n ast.Node, err error) {
 	}
 
 	if tok.Kind != lexer.TkIdent {
-		err = p.selfError(tok, "expeted structure name")
+		err = tokErr(pe.EExpectedName, tok)
 		return
 	}
 	name = tok.Raw
@@ -320,7 +317,7 @@ func (p *Parser) parseStruct() (n ast.Node, err error) {
 	}
 
 	if tok.Kind != lexer.TkPunct || tok.Raw[0] != '(' {
-		err = p.selfError(tok, "expected '(' for structure field definitions")
+		err = tokErr(pe.EExpectedLParen, tok)
 		return
 	}
 
@@ -334,7 +331,7 @@ func (p *Parser) parseStruct() (n ast.Node, err error) {
 			break
 		}
 		if tok.Kind != lexer.TkIdent {
-			err = p.selfError(tok, "expected structure field name")
+			err = tokErr(pe.EExpectedName, tok)
 			return
 		}
 		fieldName = tok.Raw
@@ -345,7 +342,7 @@ func (p *Parser) parseStruct() (n ast.Node, err error) {
 		}
 
 		if tok.Kind != lexer.TkPunct || tok.Raw[0] != '/' {
-			err = p.selfError(tok, "expected '/' for structure field type")
+			err = tokErr(pe.EExpectedType, tok)
 			return
 		}
 

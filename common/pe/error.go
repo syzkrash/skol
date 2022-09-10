@@ -51,6 +51,7 @@ const (
 
 	EExpectedLParen
 	EExpectedColon
+	EExpectedRBrack
 
 	EUnexpectedToken
 )
@@ -97,6 +98,7 @@ var emsgs = map[ErrorCode]string{
 	EExpectedSelectorElem: "Expected a selector element.",
 	EExpectedLParen:       "Expected '('.",
 	EExpectedColon:        "Expected ':'.",
+	EExpectedRBrack:       "Expected ']'.",
 	EUnexpectedToken:      "Unexpected token.",
 
 	ETypeMismatch:   "Type mismatch.",
