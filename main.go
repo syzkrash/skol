@@ -12,6 +12,7 @@ import (
 	"github.com/syzkrash/skol/codegen"
 	"github.com/syzkrash/skol/codegen/py"
 	"github.com/syzkrash/skol/common"
+	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/debug"
 	"github.com/syzkrash/skol/parser"
 	"github.com/syzkrash/skol/typecheck"
@@ -34,33 +35,45 @@ func main() {
 
 	fmt.Fprintf(os.Stderr, "Skol v%s\n", common.Version)
 
-	act := os.Args[1]
+	err := cli(os.Args[1])
+	if err != nil {
+		if printable, ok := err.(common.Printable); ok {
+			printable.Print()
+		} else {
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+		}
+	}
+}
 
+func cli(act string) error {
 	switch act {
 	case "ast":
-		dumpAst()
+		return dumpAst()
 	case "build":
-		compile()
+		return compile()
 	case "repl":
-		repl()
+		return repl()
 	case "":
 		usage()
+		return nil
 	default:
-		fmt.Fprintf(os.Stderr, "I don't know what '%s' means!\n", act)
+		e := pe.New(pe.EUnknownAction)
+		e.Section("Action", act)
+		return e
 	}
 }
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "Usage: %s <action> [arguments...]\n", os.Args[0])
-	fmt.Println("Where action can be one of the following:")
-	fmt.Println("  build  - Compile/run a file using a given engine")
-	fmt.Println("  repl   - Start the skol Read And Evaluate Loop (REPL)")
-	fmt.Println("  ast    - Print the Abstract Syntax Tree (AST) of a file")
-	fmt.Println("Where arguments can be any of the following:")
-	fmt.Println("  -input <filename>  - File to use as input")
-	fmt.Println("  -engine <engine>   - Engine to compile/run with")
-	fmt.Println("  -debug <kinds>     - Enable specified kinds of debug messages")
-	fmt.Println("  -json              - For applicable actions, output as")
+	fmt.Fprintln(os.Stderr, "Where action can be one of the following:")
+	fmt.Fprintln(os.Stderr, "  build  - Compile/run a file using a given engine")
+	fmt.Fprintln(os.Stderr, "  repl   - Start the skol Read And Evaluate Loop (REPL)")
+	fmt.Fprintln(os.Stderr, "  ast    - Print the Abstract Syntax Tree (AST) of a file")
+	fmt.Fprintln(os.Stderr, "Where arguments can be any of the following:")
+	fmt.Fprintln(os.Stderr, "  -input <filename>  - File to use as input")
+	fmt.Fprintln(os.Stderr, "  -engine <engine>   - Engine to compile/run with")
+	fmt.Fprintln(os.Stderr, "  -debug <kinds>     - Enable specified kinds of debug messages")
+	fmt.Fprintln(os.Stderr, "  -json              - For applicable actions, output as")
 }
 
 var (
@@ -69,22 +82,19 @@ var (
 	prettyJson bool
 )
 
-func dumpAst() {
+func dumpAst() error {
 	if input == "" {
-		fmt.Fprintln(os.Stderr, "Specify an input file.")
-		return
+		return pe.New(pe.ENoInput)
 	}
 
 	f, err := os.Open(input)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error opening input file - %s\n", err)
-		return
+		return pe.New(pe.EBadInput).Cause(err)
 	}
 	defer f.Close()
 	data, err := io.ReadAll(f)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading input file - %s\n", err)
-		return
+		return pe.New(pe.EBadInput).Cause(err)
 	}
 
 	src := bytes.NewReader(data)
@@ -92,12 +102,7 @@ func dumpAst() {
 
 	tree, err := p.Parse()
 	if err != nil {
-		if perr, ok := err.(common.Printable); ok {
-			perr.Print()
-		} else {
-			fmt.Fprintf(os.Stderr, "Error parsing file - %s\n", err)
-		}
-		return
+		return err
 	}
 
 	errs := typecheck.NewChecker().Check(tree)
@@ -106,7 +111,7 @@ func dumpAst() {
 			e.Print()
 		}
 		fmt.Fprintf(os.Stderr, "Found %d type error(s)\n", len(errs))
-		return
+		return nil
 	}
 
 	if asJson {
@@ -118,11 +123,10 @@ func dumpAst() {
 			data, err = json.Marshal(tree)
 		}
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error converting to JSON - %s\n", err)
-			return
+			return pe.New(pe.EBadAST).Cause(err)
 		}
 		os.Stdout.Write(data)
-		return
+		return nil
 	}
 
 	fmt.Println("AST summary:")
@@ -193,29 +197,28 @@ func dumpAst() {
 	if len(tree.Structs) == 0 {
 		fmt.Println("  (none)")
 	}
+
+	return nil
 }
 
 var (
 	engine string
 )
 
-func compile() {
+func compile() error {
 	if input == "" {
-		fmt.Fprintf(os.Stderr, "provide an input file\n")
-		return
+		return pe.New(pe.ENoInput)
 	}
 
 	srcf, err := os.Open(input)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not open input file: %s\n", err)
-		return
+		return pe.New(pe.EBadInput).Cause(err)
 	}
 	defer srcf.Close()
 
 	srcraw, err := io.ReadAll(srcf)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not read input file: %s\n", err)
-		return
+		return pe.New(pe.EBadInput).Cause(err)
 	}
 
 	var e codegen.Engine
@@ -223,15 +226,13 @@ func compile() {
 	case "py":
 		e = py.Engine
 	default:
-		fmt.Fprintf(os.Stderr, "unknown engine: %s\n", engine)
-		return
+		return pe.New(pe.EUnknownEngine).Section("Engine", engine)
 	}
 
 	p := parser.NewParser(input, bytes.NewReader(srcraw), engine)
 	ast, err := p.Parse()
 	if err != nil {
-		err.(common.Printable).Print()
-		return
+		return err
 	}
 
 	var out io.Writer
@@ -240,8 +241,7 @@ func compile() {
 	} else {
 		outf, err := os.Create(input + e.Extension)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "could not create output file: %s\n", err)
-			return
+			return pe.New(pe.EBadOutput).Cause(err)
 		}
 		defer outf.Close()
 		out = outf
@@ -255,13 +255,14 @@ func compile() {
 
 	err = e.Gen.Generate()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not generate output file: %s\n", err)
-		return
+		return pe.New(pe.EBadOutput).Cause(err)
 	}
+
+	return nil
 }
 
-func repl() {
-	panic("unimplemented")
+func repl() error {
+	return pe.New(pe.EUnimplemented)
 }
 
 func debugFlag(arg string) error {
