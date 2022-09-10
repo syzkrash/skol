@@ -62,6 +62,7 @@ const (
 	ETypeMismatch
 	EVarTypeChanged
 	ENeedMoreArgs
+	ETypeOfUnimplemented
 )
 
 var emsgs = map[ErrorCode]string{
@@ -101,9 +102,10 @@ var emsgs = map[ErrorCode]string{
 	EExpectedRBrack:       "Expected ']'.",
 	EUnexpectedToken:      "Unexpected token.",
 
-	ETypeMismatch:   "Type mismatch.",
-	EVarTypeChanged: "Variable type cannot change.",
-	ENeedMoreArgs:   "Need more arguments.",
+	ETypeMismatch:        "Type mismatch.",
+	EVarTypeChanged:      "Variable type cannot change.",
+	ENeedMoreArgs:        "Need more arguments.",
+	ETypeOfUnimplemented: "TypeOf() unimplemented for this node.",
 }
 
 type section struct {
