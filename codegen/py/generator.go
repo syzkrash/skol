@@ -42,6 +42,14 @@ func (g *generator) Generate() error {
 	for _, t := range g.in.Structs {
 		g.writeClass_(t)
 	}
+	for n, t := range g.in.Typedefs {
+		g.write("%s: %s\n", n, g.pyType(t.Type))
+	}
+	for n, v := range g.in.Vars {
+		g.write("%s = ", n)
+		g.writeValue(v.Value)
+		g.write("\n")
+	}
 	for _, f := range g.in.Funcs {
 		g.writeFunc_(f)
 	}
