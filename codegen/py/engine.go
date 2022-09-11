@@ -1,6 +1,8 @@
 package py
 
-import "github.com/syzkrash/skol/codegen"
+import (
+	"github.com/syzkrash/skol/codegen"
+)
 
 var Engine = codegen.Engine{
 	Name:       "Python",
@@ -8,6 +10,10 @@ var Engine = codegen.Engine{
 	Gen:        &generator{},
 	Ephemeral:  false,
 	Extension:  ".py",
-	Exec:       nil,
+	Exec:       executor{},
 	Executable: false,
 }
+
+type executor struct{}
+
+var _ codegen.FilenameExecutor = executor{}

@@ -73,7 +73,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  -input <filename>  - File to use as input")
 	fmt.Fprintln(os.Stderr, "  -engine <engine>   - Engine to compile/run with")
 	fmt.Fprintln(os.Stderr, "  -debug <kinds>     - Enable specified kinds of debug messages")
-	fmt.Fprintln(os.Stderr, "  -json              - For applicable actions, output as")
+	fmt.Fprintln(os.Stderr, "  -json              - For applicable actions, output as JSON")
 }
 
 var (
@@ -235,9 +235,11 @@ func compile() error {
 		return err
 	}
 
+	var ephBuf *bytes.Buffer
 	var out io.Writer
 	if e.Ephemeral {
-		out = &bytes.Buffer{}
+		ephBuf = &bytes.Buffer{}
+		out = ephBuf
 	} else {
 		outf, err := os.Create(input + e.Extension)
 		if err != nil {
@@ -256,6 +258,13 @@ func compile() error {
 	err = e.Gen.Generate()
 	if err != nil {
 		return pe.New(pe.EBadOutput).Cause(err)
+	}
+
+	switch e.Exec.(type) {
+	case codegen.EphemeralExecutor:
+		e.Exec.(codegen.EphemeralExecutor).Execute(ephBuf)
+	case codegen.FilenameExecutor:
+		e.Exec.(codegen.FilenameExecutor).Execute(input + e.Extension)
 	}
 
 	return nil
