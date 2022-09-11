@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/codegen"
@@ -259,6 +260,10 @@ func (g *generator) writeCall(n ast.FuncCallNode, stmt bool) error {
 	return g.write(")")
 }
 
+var escaper = strings.NewReplacer(
+	"\"", "\\\"",
+	"\n", "\\n")
+
 func (g *generator) writeValue(mn ast.MetaNode) error {
 	n := mn.Node
 	switch n.Kind() {
@@ -275,7 +280,7 @@ func (g *generator) writeValue(mn ast.MetaNode) error {
 	case ast.NFloat:
 		return g.write("%f", n.(ast.FloatNode).Value)
 	case ast.NString:
-		return g.write(`"%s"`, n.(ast.StringNode).Value)
+		return g.write(`"%s"`, escaper.Replace(n.(ast.StringNode).Value))
 	case ast.NStruct:
 		return g.writeInstance(n.(ast.StructNode))
 	case ast.NArray:
