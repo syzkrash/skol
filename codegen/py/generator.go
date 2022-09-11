@@ -1,6 +1,7 @@
 package py
 
 import (
+	_ "embed"
 	"fmt"
 	"io"
 
@@ -10,6 +11,14 @@ import (
 )
 
 const indent = "  "
+
+//go:embed preamble.py
+var preamble []byte
+
+var reservedFuncs = map[string]string{
+	"and": "and_",
+	"or":  "or_",
+}
 
 type generator struct {
 	out    io.Writer
@@ -22,6 +31,7 @@ var _ codegen.ASTGenerator = &generator{}
 
 func (g *generator) Output(w io.Writer) {
 	g.out = w
+	g.out.Write(preamble)
 }
 
 func (g *generator) Input(t ast.AST) {
@@ -216,7 +226,11 @@ func (g *generator) writeClass(n ast.StructDefNode) error {
 }
 
 func (g *generator) writeCall(n ast.FuncCallNode, stmt bool) error {
-	g.write("%s(", n.Func)
+	fn := n.Func
+	if altname, ok := reservedFuncs[n.Func]; ok {
+		fn = altname
+	}
+	g.write("%s(", fn)
 	for _, a := range n.Args {
 		g.writeValue(a)
 		g.write(",")
