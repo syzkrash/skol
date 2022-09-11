@@ -6,7 +6,7 @@ var Engine = codegen.Engine{
 	Name:       "Python",
 	Desc:       "Transpile Skol code to Python code.",
 	Gen:        &generator{},
-	Ephemeral:  true,
+	Ephemeral:  false,
 	Extension:  ".py",
 	Exec:       nil,
 	Executable: false,

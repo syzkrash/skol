@@ -249,6 +249,9 @@ func (g *generator) writeValue(mn ast.MetaNode) error {
 	case ast.NFuncCall:
 		return g.writeCall(n.(ast.FuncCallNode), false)
 	default:
+		if sel, ok := n.(ast.Selector); ok {
+			return g.writeSelector(sel)
+		}
 		panic("writeValue() unexpected argument: " + n.Kind().String())
 	}
 }
@@ -267,4 +270,26 @@ func (g *generator) writeArray(n ast.ArrayNode) error {
 		g.writeValue(v)
 	}
 	return g.write("]")
+}
+
+func (g *generator) writeSelector(sel ast.Selector) error {
+	p := sel.Path()
+	g.write("%s", p[0].Name)
+	if len(p) == 1 {
+		return nil
+	}
+	for _, e := range p[1:] {
+		if e.Name != "" {
+			g.write(".%s", e.Name)
+		} else if e.Cast != nil {
+			continue
+		} else if e.IdxS != nil {
+			g.write("[")
+			g.writeSelector(e.IdxS)
+			g.write("]")
+		} else {
+			g.write("[%d]", e.IdxC)
+		}
+	}
+	return nil
 }
