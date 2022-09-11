@@ -74,7 +74,7 @@ func (g *generator) pyType(st types.Type) string {
 }
 
 func (g *generator) writeArg(a ast.FuncProtoArg) error {
-	return g.write("%s: %s,", a.Name, a.Type)
+	return g.write("%s: %s,", a.Name, g.pyType(a.Type))
 }
 
 func (g *generator) writeBlock(b ast.Block) error {
@@ -143,7 +143,8 @@ func (g *generator) writeIf(n ast.IfNode) error {
 	g.write(":\n")
 	g.writeBlock(n.Main.Block)
 	for _, b := range n.Other {
-		g.write("else if ")
+		g.writeIndent()
+		g.write("elif ")
 		g.writeValue(b.Cond)
 		g.write(":\n")
 		g.writeBlock(b.Block)
@@ -151,6 +152,7 @@ func (g *generator) writeIf(n ast.IfNode) error {
 	if len(n.Else) == 0 {
 		return nil
 	}
+	g.writeIndent()
 	g.write("else:\n")
 	return g.writeBlock(n.Else)
 }
@@ -260,8 +262,9 @@ func (g *generator) writeInstance(n ast.StructNode) error {
 	g.write("%s(", n.Type.Name)
 	for _, f := range n.Args {
 		g.writeValue(f)
+		g.write(", ")
 	}
-	return nil
+	return g.write(")")
 }
 
 func (g *generator) writeArray(n ast.ArrayNode) error {
