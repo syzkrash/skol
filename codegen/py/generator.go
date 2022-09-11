@@ -39,6 +39,9 @@ func (g *generator) Input(t ast.AST) {
 }
 
 func (g *generator) Generate() error {
+	for _, t := range g.in.Structs {
+		g.writeClass_(t)
+	}
 	for _, f := range g.in.Funcs {
 		g.writeFunc_(f)
 	}
@@ -72,7 +75,7 @@ func (g *generator) pyType(st types.Type) string {
 	case types.Float.Equals(st):
 		t = "float"
 	case types.String.Equals(st):
-		t = "string"
+		t = "str"
 	case st.Prim() == types.PArray:
 		t = "list"
 	case st.Prim() == types.PStruct:
@@ -212,7 +215,7 @@ func (g *generator) writeClass(n ast.StructDefNode) error {
 	g.writeIndent()
 	g.write("def __init__(self, ")
 	for _, f := range n.Fields {
-		g.write("%s: %s, ", f.Name, f.Type)
+		g.write("%s: %s, ", f.Name, g.pyType(f.Type))
 	}
 	g.write("):\n")
 	g.indent++
@@ -223,6 +226,13 @@ func (g *generator) writeClass(n ast.StructDefNode) error {
 	g.indent--
 	g.indent--
 	return nil
+}
+
+func (g *generator) writeClass_(s ast.Structure) error {
+	return g.writeClass(ast.StructDefNode{
+		Name:   s.Name,
+		Fields: s.Fields,
+	})
 }
 
 func (g *generator) writeCall(n ast.FuncCallNode, stmt bool) error {
