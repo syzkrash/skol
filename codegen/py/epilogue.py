@@ -1,8 +1,13 @@
 #region epilogue
 
-try: Main()
-except: pass
-try: main()
-except: pass
+import traceback
+
+if __name__ == "__main__":
+  try: Main()
+  except NameError: pass
+  except Exception: traceback.print_exc()
+  try: main()
+  except NameError: pass
+  except Exception: traceback.print_exc()
 
 #endregion epilogue
