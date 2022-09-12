@@ -4,7 +4,7 @@
 
 Component   | Completeness               | Source Code                      | Purpose
 ------------|----------------------------|----------------------------------|---------
-CLI         | [Incomplete](#cli)         | [`main.go`][main]                | Parses command line-flags and prepares files for compilation or analysis.
+CLI         | [Incomplete](#cli)         | [`cli` paclage][cli]             | Parses command line-flags and prepares files for compilation or analysis.
 Lexer       | [Complete](#lexer)         | [`lexer` package][lexer]         | Breaks meaningless plain text into a sequence of meaningful tokens.
 Parser      | [Incomplete](#parser)      | [`parser` package][parser]       | Consumes tokens from the lexer and constructs an [AST][astw].
 AST         | [Incomplete](#ast)         | [`ast` package][ast]             | Represents the structure of a source code file.
@@ -26,7 +26,7 @@ Codegen     | [Incomplete](#codegen)     | [`codegen` package][codegen]     | a)
 ### CLI
 
 - [x] Is able to parse actions and arguments separately.
-- [ ] Is able to build a file using any engine.
+- [x] Is able to build a file using any engine.
 - [ ] Is able to start a REPL using any engine.
 - [ ] Has a way to access additional tools (e.g. linter).
 
@@ -83,7 +83,7 @@ Codegen     | [Incomplete](#codegen)     | [`codegen` package][codegen]     | a)
 - [ ] Transpiles valid code from AST.
 - [ ] Compiles valid code from IR.
 
-[main]: https://github.com/syzkrash/skol/blob/nightly/main.go
+[cli]: https://github.com/syzkrash/skol/tree/nightly/cli
 [lexer]: https://github.com/syzkrash/skol/tree/nightly/lexer
 [parser]: https://github.com/syzkrash/skol/tree/nightly/parser
 [ast]: https://github.com/syzkrash/skol/tree/nightly/ast
