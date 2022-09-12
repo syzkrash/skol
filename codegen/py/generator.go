@@ -16,6 +16,9 @@ const indent = "  "
 //go:embed preamble.py
 var preamble []byte
 
+//go:embed epilogue.py
+var epilogue []byte
+
 var reservedFuncs = map[string]string{
 	"and": "and_",
 	"or":  "or_",
@@ -54,7 +57,8 @@ func (g *generator) Generate() error {
 	for _, f := range g.in.Funcs {
 		g.writeFunc_(f)
 	}
-	return nil
+	_, err := g.out.Write(epilogue)
+	return err
 }
 
 func (g *generator) writeIndent() error {
