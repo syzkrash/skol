@@ -78,7 +78,7 @@ Codegen     | [Incomplete](#codegen)     | [`codegen` package][codegen]     | a)
 
 ### Codegen
 
-- [ ] Distingushes between AST-based codegen (for transpilers) and IR-based
+- [x] Distingushes between AST-based codegen (for transpilers) and IR-based
       codegen (for compilers).
 - [ ] Transpiles valid code from AST.
 - [ ] Compiles valid code from IR.
