@@ -3,6 +3,8 @@ package pe
 import (
 	"fmt"
 	"os"
+
+	"github.com/mattn/go-isatty"
 )
 
 type seq string
@@ -64,7 +66,7 @@ func (s seq) reverse() seq {
 }
 
 func pprintln(msg string, g ...seq) {
-	if isatty() {
+	if isatty.IsTerminal(os.Stderr.Fd()) {
 		for _, s := range g {
 			fmt.Fprint(os.Stderr, s)
 		}
