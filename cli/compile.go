@@ -10,6 +10,7 @@ import (
 	"github.com/syzkrash/skol/codegen/py"
 	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/parser"
+	"github.com/syzkrash/skol/typecheck"
 )
 
 var CompileCommand = Command{
@@ -68,6 +69,14 @@ func compile(args []string) error {
 	ast, err := p.Parse()
 	if err != nil {
 		return err
+	}
+
+	errs := typecheck.NewChecker().Check(ast)
+	if len(errs) > 0 {
+		for _, e := range errs[1:] {
+			e.Print()
+		}
+		return errs[0]
 	}
 
 	var ephBuf *bytes.Buffer
