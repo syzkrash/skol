@@ -30,7 +30,7 @@ func NewChecker() *Checker {
 		scope: &scope{
 			parent: nil,
 			vars:   make(map[string]types.Type),
-			funcs:  make(map[string]funcproto),
+			funcs:  defaultFuncs,
 		},
 	}
 }

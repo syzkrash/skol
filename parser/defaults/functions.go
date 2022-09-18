@@ -173,16 +173,16 @@ var Functions = map[string]*values.Function{
 	"open": {
 		Name: "open",
 		Args: []values.FuncArg{{"fn", types.String}},
-		Ret:  file_descriptor_result,
+		Ret:  FileDescriptorResult,
 	},
 	"fgetc": {
 		Name: "fgetc",
-		Args: []values.FuncArg{{"fd", file_descriptor}},
-		Ret:  char_result,
+		Args: []values.FuncArg{{"fd", FileDescriptor}},
+		Ret:  CharResult,
 	},
 	"close": {
 		Name: "close",
-		Args: []values.FuncArg{{"fd", file_descriptor}},
+		Args: []values.FuncArg{{"fd", FileDescriptor}},
 		Ret:  types.Nothing,
 	},
 }
