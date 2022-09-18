@@ -19,6 +19,15 @@ func (StructType) Prim() Primitive {
 	return PStruct
 }
 
+func (s StructType) FieldType(name string) (Type, bool) {
+	for _, f := range s.Fields {
+		if f.Name == name {
+			return f.Type, true
+		}
+	}
+	return nil, false
+}
+
 // Equals ensures the other type is compatible with this type. This function
 // is especially important for structures. If structure B contains all the
 // fields that A does (A ⊂ B) then it is compatible.

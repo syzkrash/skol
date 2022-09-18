@@ -16,6 +16,18 @@ type SelectorElem struct {
 	IdxC int
 }
 
+func (e SelectorElem) IsCast() bool {
+	return e.Cast != nil
+}
+
+func (e SelectorElem) IsName() bool {
+	return e.Name != ""
+}
+
+func (e SelectorElem) IsSelIdx() bool {
+	return e.IdxS != nil
+}
+
 // Selector represents any node that can be used as a selector element.
 type Selector interface {
 	Node

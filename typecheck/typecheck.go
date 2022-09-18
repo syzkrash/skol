@@ -271,7 +271,7 @@ func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *pe.PrettyError) {
 		nfunccall := n.(ast.FuncCallNode)
 		f, ok_ := c.scope.getFunc(nfunccall.Func)
 		if !ok_ {
-			err = typeMismatch(mn, nil, nil)
+			err = nodeErr(pe.EUnknownFunction, mn)
 			return
 		}
 		args := make([]types.Type, len(nfunccall.Args))
@@ -283,16 +283,68 @@ func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *pe.PrettyError) {
 			}
 			args[i] = at
 		}
-		if ret, err_ := f(mn, args); err_ != nil {
-			err = err_
-		} else {
-			t = ret
-		}
+		t, err = f(mn, args)
 
 	default:
-		err = nodeErr(pe.ETypeOfUnimplemented, mn)
+		if sel, ok := n.(ast.Selector); !ok {
+			err = nodeErr(pe.ETypeOfUnimplemented, mn)
+		} else {
+			p := sel.Path()
+			if len(p) < 1 {
+				err = nodeErr(pe.EEmptySelector, mn)
+				return
+			}
+			root := p[0]
+			if !root.IsName() {
+				err = nodeErr(pe.EBadSelectorRoot, mn)
+				return
+			}
+			rootType, ok := c.scope.getVar(root.Name)
+			if !ok {
+				err = nodeErr(pe.EUnknownVariable, mn)
+				return
+			}
+			t = rootType
+			if len(p) == 1 {
+				return
+			}
+			for _, e := range p[1:] {
+				switch {
+				case e.IsCast():
+					if !t.Equals(e.Cast) {
+						err = typeMismatch(mn, e.Cast, t)
+						return
+					}
+					t = e.Cast
+				case e.IsName():
+					if t.Prim() != types.PStruct {
+						err = nodeErr(pe.EBadSelectorParent, mn)
+						return
+					}
+					fieldType, ok := t.(types.StructType).FieldType(e.Name)
+					if !ok {
+						err = nodeErr(pe.EUnknownField, mn)
+						return
+					}
+					t = fieldType
+				default:
+					if t.Prim() != types.PArray {
+						err = nodeErr(pe.EBadIndexParent, mn)
+						return
+					}
+					t = c.result(t.(types.ArrayType).Element)
+				}
+			}
+		}
+
 	}
 	return
+}
+
+func (c Checker) result(wrapped types.Type) types.Type {
+	return types.MakeStruct(wrapped.String()+" Result",
+		"ok", types.Bool,
+		"val", wrapped)
 }
 
 // basicFuncproto generates a funcproto for a function that accepts a certain

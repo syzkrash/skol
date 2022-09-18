@@ -63,6 +63,7 @@ const (
 	EVarTypeChanged
 	ENeedMoreArgs
 	ETypeOfUnimplemented
+	EEmptySelector
 )
 
 var emsgs = map[ErrorCode]string{
@@ -106,6 +107,7 @@ var emsgs = map[ErrorCode]string{
 	EVarTypeChanged:      "Variable type cannot change.",
 	ENeedMoreArgs:        "Need more arguments.",
 	ETypeOfUnimplemented: "TypeOf() unimplemented for this node.",
+	EEmptySelector:       "Selector of length 0",
 }
 
 type section struct {
