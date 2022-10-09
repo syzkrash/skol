@@ -25,5 +25,5 @@ Main!
 ## Learn Skol
 
 Check the [Introduction](intro) if you know nothing, or the [Syntax](syntax)
-for a full reference. If you wish to know more about skol's inner workings,
-check the [Architecture](arch).
+and [Standard Library](std) for a full reference. If you wish to know more
+about skol's inner workings, check the [Architecture](arch).
