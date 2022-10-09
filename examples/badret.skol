@@ -1,5 +1,0 @@
-$MyNumber/int(
-  >0
-)
-
-print! MyNumber!

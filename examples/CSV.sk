@@ -1,0 +1,114 @@
+/*
+Simple CSV reader.
+Currently unfinished as array manipulation functions do not exist yet.
+Shows a more OOP-inspired approach to Skol programming.
+*/
+
+// Reader represents the current state of a CSV reader.
+@Reader(
+  RowSep/ch
+  ValSep/ch
+  Source/str
+  SourceLen/str
+  Off/int
+)
+
+// DefaultRowSep and ValSep are the default Reader separators, which can be
+// overriden via the NewCustomReader function.
+#DefaultRowSep: '\n'
+#DefaultValSep: ','
+
+// NewReader creates a CSV reader for the given input string with the default
+// separators.
+$NewReader/Reader Src/str(
+  >@Reader DefaultRowSep DefaultValSep Src str_len! Src 0
+)
+
+// NewCustomReader is the same as NewReader, except it allows you to change the
+// separators used. For example, you may want to change the value separator to
+// a tab character.
+$NewCustomReader/Reader Src/str LSep/ch VSep/ch(
+  >@Reader LSep VSep Src str_len! Src 0
+)
+
+// ReaderIncrOff is a shorthand to increment the offset of a reader.
+$ReaderIncrOff/Reader R/Reader(
+  >@Reader R#RowSep R#ValSep R#Source R#SourceLen add_i! R#Off 1
+)
+
+@ReadResult(
+  State/Reader
+  Ok/bool
+  Char/char
+)
+
+// ReaderGetChar tries to read a character from the reader's input. Since the
+// input is just a string, it will fail once the end of the string is reached.
+// This function is allowed to fail as future-proofing for e.g. file streams.
+$ReaderGetChar/ReadResult R/Reader(
+  ?gt_i! R#Off str_len! R#Source(
+    >@ReadResult R / ' '
+  ):(
+    >@ReadResult ReaderIncrOff! R * char_at! R#Source R#Off
+  )
+)
+
+@ValueResult(
+  State/Reader
+  Ok/bool
+  Value/str
+  LastInRow/bool
+)
+
+// ReaderGetValue reads characters from the reader's input until one of the
+// reader's separators is encountered. Currently, no quoting is done and as such
+// some files may not be read correctly. This has the same fail conditions as
+// ReaderGetChar.
+$ReaderGetValue/ValueResult R/Reader(
+  %state: R
+  %value/str
+  %result/ReadResult
+  **(
+    %result: ReaderGetChar! state
+    ?not! result#Ok(
+      >@ValueResult result#State / value /
+    ):?eq! result#Char R#ValSep(
+      >@ValueResult result#State * value /
+    ):?eq! result#Char R#RowSep(
+      >@ValueResult result#State * value *
+    ):(
+      %state: result#State
+      %value: char_append! value result#Char
+    )
+  )
+)
+
+@RowResult(
+  State/Reader
+  Ok/bool
+  Row/[str]
+  Len/int
+)
+
+// ReaderGetRow reads 1 row of data from the reader's input. This has the same
+// fail conditions as ReaderGetValue.
+$ReaderGetRow/RowResult R/Reader(
+  %state: R
+  %len: 0
+  %row/[str]
+  %result/ValueResult
+  **(
+    %result: ReaderGetValue! state
+    ?not! result#Ok(
+      >@RowResult result#State / row len
+    ):?result#LastInRow(
+      // append to row
+      %len: add_i! len 1
+      >@RowResult result#State * row len
+    ):(
+      // append to row
+      %state: result#State
+      %len: add_i! len 1
+    )
+  )
+)
