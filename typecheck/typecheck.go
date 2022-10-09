@@ -131,6 +131,7 @@ func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) (errs []*pe.PrettyE
 	// definitions
 	case ast.NVarSet:
 		nvarset := n.(ast.VarSetNode)
+		errs = append(errs, c.checkNode(nvarset.Value, ret)...)
 		nvt, err := c.typeOf(nvarset.Value)
 		if err != nil {
 			errs = append(errs, err)
@@ -148,6 +149,7 @@ func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) (errs []*pe.PrettyE
 		c.scope.setVar(nvardef.Var, nvardef.Type)
 	case ast.NVarSetTyped:
 		nvarsettyped := n.(ast.VarSetTypedNode)
+		errs = append(errs, c.checkNode(nvarsettyped.Value, ret)...)
 		nvt, err := c.typeOf(nvarsettyped.Value)
 		if err != nil {
 			errs = append(errs, err)
