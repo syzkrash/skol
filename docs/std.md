@@ -54,6 +54,12 @@ All of these functions are always present in all scopes in your Skol programs.
   value in the array are returned. If `arr` is a string, then a string will be
   returned.
 
+* `$at/T arr/[T] idx/int`
+
+  Returns the `idx`th element of `arr`. This is meant to be used in cases where
+  the regular array index syntax cannot be used. (e.g. indexing using a
+  structure field)
+
 * `$len/int a/[any]`
 
   Returns the length of an array or a string.

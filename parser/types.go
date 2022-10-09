@@ -125,7 +125,7 @@ func (p *Parser) TypeOf(n ast.Node) (t types.Type, err error) {
 		t = n.(ast.StructNode).Type
 	case ast.NFuncCall:
 		fn := n.(ast.FuncCallNode).Func
-		f, ok := p.Tree.Funcs[fn]
+		f, ok := p.getFunc(fn)
 		if !ok {
 			err = fmt.Errorf("unknown function: %s", fn)
 			return

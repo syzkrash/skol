@@ -21,19 +21,19 @@ Shows a more OOP-inspired approach to Skol programming.
 // NewReader creates a CSV reader for the given input string with the default
 // separators.
 $NewReader/Reader Src/str(
-  >@Reader DefaultRowSep DefaultValSep Src str_len! Src 0
+  >@Reader DefaultRowSep DefaultValSep Src len! Src 0
 )
 
 // NewCustomReader is the same as NewReader, except it allows you to change the
 // separators used. For example, you may want to change the value separator to
 // a tab character.
 $NewCustomReader/Reader Src/str LSep/ch VSep/ch(
-  >@Reader LSep VSep Src str_len! Src 0
+  >@Reader LSep VSep Src len! Src 0
 )
 
 // ReaderIncrOff is a shorthand to increment the offset of a reader.
 $ReaderIncrOff/Reader R/Reader(
-  >@Reader R#RowSep R#ValSep R#Source R#SourceLen add_i! R#Off 1
+  >@Reader R#RowSep R#ValSep R#Source R#SourceLen add! R#Off 1
 )
 
 @ReadResult(
@@ -46,10 +46,10 @@ $ReaderIncrOff/Reader R/Reader(
 // input is just a string, it will fail once the end of the string is reached.
 // This function is allowed to fail as future-proofing for e.g. file streams.
 $ReaderGetChar/ReadResult R/Reader(
-  ?gt_i! R#Off str_len! R#Source(
+  ?gt! R#Off len! R#Source(
     >@ReadResult R / ' '
   ):(
-    >@ReadResult ReaderIncrOff! R * char_at! R#Source R#Off
+    >@ReadResult ReaderIncrOff! R * at! R#Source R#Off
   )
 )
 
@@ -78,7 +78,7 @@ $ReaderGetValue/ValueResult R/Reader(
       >@ValueResult result#State * value *
     ):(
       %state: result#State
-      %value: char_append! value result#Char
+      %value: append! value result#Char
     )
   )
 )
@@ -103,12 +103,12 @@ $ReaderGetRow/RowResult R/Reader(
       >@RowResult result#State / row len
     ):?result#LastInRow(
       // append to row
-      %len: add_i! len 1
+      %len: add! len 1
       >@RowResult result#State * row len
     ):(
       // append to row
       %state: result#State
-      %len: add_i! len 1
+      %len: add! len 1
     )
   )
 )

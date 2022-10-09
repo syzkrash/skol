@@ -32,6 +32,14 @@ func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
 	}
 }
 
+func (p *Parser) getFunc(fn string) (f ast.Func, ok bool) {
+	if f, ok = p.Tree.Funcs[fn]; ok {
+		return
+	}
+	f, ok = defaultFunctions[fn]
+	return
+}
+
 // parseCall parser a function call.
 //
 //	print! concat! "Hello " World
@@ -265,7 +273,7 @@ func (p *Parser) next(tok *lexer.Token) (mn ast.MetaNode, skip bool, err error) 
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
 			fnm := tok.Raw[:len(tok.Raw)-1]
-			f, ok := p.Tree.Funcs[fnm]
+			f, ok := p.getFunc(fnm)
 			if !ok {
 				err = tokErr(pe.EUnknownFunction, tok)
 				return
