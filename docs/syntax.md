@@ -282,13 +282,3 @@ allowed. The type of the elements can be omitted to allow skol to deduce the
 element type. If the array doesn't have an explicit type declaration and doesn't
 contain any elements, skol cannot determine what type it's supposed to be and
 throws an error.
-
-## Conclusion
-
-If you wish to see skol in action, feel free to view the [JSON][json] and
-[calculator][calc] examples. You can also see the more recent, but simpler
-[document parser][doc] example.
-
-[json]: /examples/json.skol
-[calc]: /examples/calculator.skol
-[doc]:  /examples/Doc.skol
