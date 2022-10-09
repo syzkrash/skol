@@ -6,36 +6,35 @@ import (
 
 	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/common"
-	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
 func TestFuncCall(t *testing.T) {
 	p, src := makeParser("FuncCall")
 
-	p.Scope.Funcs["hi"] = &values.Function{
+	p.Tree.Funcs["hi"] = ast.Func{
 		Name: "hi",
-		Args: []values.FuncArg{},
+		Args: []types.Descriptor{},
 		Ret:  types.Nothing,
 	}
-	p.Scope.Funcs["hello"] = &values.Function{
+	p.Tree.Funcs["hello"] = ast.Func{
 		Name: "hello",
-		Args: []values.FuncArg{
+		Args: []types.Descriptor{
 			{Name: "who", Type: types.String},
 		},
 		Ret: types.String,
 	}
-	p.Scope.Funcs["join"] = &values.Function{
+	p.Tree.Funcs["join"] = ast.Func{
 		Name: "join",
-		Args: []values.FuncArg{
+		Args: []types.Descriptor{
 			{Name: "sep", Type: types.String},
 			{Name: "elem", Type: types.ArrayType{Element: types.String}},
 		},
 		Ret: types.String,
 	}
-	p.Scope.Funcs["world"] = &values.Function{
+	p.Tree.Funcs["world"] = ast.Func{
 		Name: "world",
-		Args: []values.FuncArg{},
+		Args: []types.Descriptor{},
 		Ret:  types.String,
 	}
 

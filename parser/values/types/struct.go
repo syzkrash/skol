@@ -1,14 +1,9 @@
 package types
 
-type Field struct {
-	Name string
-	Type Type
-}
-
 // StructType represents all structure types with the primtive [PStruct].
 type StructType struct {
 	Name   string
-	Fields []Field
+	Fields []Descriptor
 }
 
 func (s StructType) String() string {
@@ -57,9 +52,9 @@ func MakeStruct(name string, fields ...any) Type {
 	if len(fields)%2 != 0 {
 		panic("MakeStruct requires an even amount of arguments")
 	}
-	f := make([]Field, len(fields)/2)
+	f := make([]Descriptor, len(fields)/2)
 	for i := 0; i < len(fields); i += 2 {
-		f[i/2] = Field{
+		f[i/2] = Descriptor{
 			Name: fields[i].(string),
 			Type: fields[i+1].(Type),
 		}

@@ -7,7 +7,6 @@ import (
 	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/lexer"
-	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
@@ -160,7 +159,7 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 	var (
 		name string
 		ret  types.Type
-		args []ast.FuncProtoArg
+		args []types.Descriptor
 		body ast.Block
 
 		argName string
@@ -203,25 +202,12 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 				Ret:   ret,
 				Name:  name,
 			}
-			fargs := make([]values.FuncArg, len(args))
-			for i, a := range args {
-				fargs[i] = values.FuncArg{
-					Name: a.Name,
-					Type: a.Type,
-				}
-			}
-			p.Scope.Funcs[name] = &values.Function{
-				Name: name,
-				Args: fargs,
-				Ret:  ret,
-			}
 			return
 		}
 		if tok.Kind == lexer.TkPunct && tok.Raw[0] == '(' {
 			p.lexer.Rollback(tok)
 			p.Scope = &Scope{
 				Parent: p.Scope,
-				Funcs:  make(map[string]*values.Function),
 				Vars:   make(map[string]ast.Node),
 				Consts: make(map[string]ast.Node),
 				Types:  make(map[string]types.Type),
@@ -244,18 +230,6 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 				Proto: args,
 				Ret:   ret,
 				Body:  body,
-			}
-			fargs := make([]values.FuncArg, len(args))
-			for i, a := range args {
-				fargs[i] = values.FuncArg{
-					Name: a.Name,
-					Type: a.Type,
-				}
-			}
-			p.Scope.Funcs[name] = &values.Function{
-				Name: name,
-				Args: fargs,
-				Ret:  ret,
 			}
 			return
 		}
@@ -281,7 +255,7 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 			return
 		}
 
-		args = append(args, ast.FuncProtoArg{Name: argName, Type: argType})
+		args = append(args, types.Descriptor{Name: argName, Type: argType})
 	}
 }
 
@@ -293,9 +267,7 @@ func (p *Parser) parseStruct() (n ast.Node, err error) {
 		name      string
 		fieldName string
 		fieldType types.Type
-		fields    []ast.StructProtoField
-
-		typeFields []types.Field
+		fields    []types.Descriptor
 
 		tok *lexer.Token
 	)
@@ -351,16 +323,12 @@ func (p *Parser) parseStruct() (n ast.Node, err error) {
 			return
 		}
 
-		fields = append(fields, ast.StructProtoField{Name: fieldName, Type: fieldType})
-	}
-
-	for _, pf := range fields {
-		typeFields = append(typeFields, types.Field{Name: pf.Name, Type: pf.Type})
+		fields = append(fields, types.Descriptor{Name: fieldName, Type: fieldType})
 	}
 
 	p.Scope.Types[name] = types.StructType{
 		Name:   name,
-		Fields: typeFields,
+		Fields: fields,
 	}
 	n = ast.StructDefNode{
 		Name:   name,

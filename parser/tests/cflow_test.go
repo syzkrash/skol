@@ -4,27 +4,36 @@ import (
 	"testing"
 
 	"github.com/syzkrash/skol/ast"
-	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
 func TestIf(t *testing.T) {
 	p, src := makeParser("If")
 
-	p.Scope.Funcs["do"] = &values.Function{
+	p.Tree.Funcs["do"] = ast.Func{
 		Name: "do",
-		Args: []values.FuncArg{},
+		Args: []types.Descriptor{},
 		Ret:  types.Bool,
 	}
-	p.Scope.Funcs["ok"] = &values.Function{
+	p.Tree.Funcs["ok"] = ast.Func{
 		Name: "ok",
-		Args: []values.FuncArg{
+		Args: []types.Descriptor{
 			{
 				Name: "it",
 				Type: types.Int,
 			},
 		},
 		Ret: types.Bool,
+	}
+	p.Tree.Funcs["print"] = ast.Func{
+		Name: "print",
+		Args: []types.Descriptor{
+			{
+				Name: "what",
+				Type: types.String,
+			},
+		},
+		Ret: types.Nothing,
 	}
 
 	p.Scope.Vars["a"] = ast.BoolNode{Value: false}
@@ -244,15 +253,25 @@ func TestWhile(t *testing.T) {
 
 	p.Scope.Vars["Quit"] = ast.BoolNode{Value: false}
 
-	p.Scope.Funcs["Do"] = &values.Function{
+	p.Tree.Funcs["Do"] = ast.Func{
 		Name: "Do",
-		Args: []values.FuncArg{},
+		Args: []types.Descriptor{},
 		Ret:  types.Nothing,
 	}
-	p.Scope.Funcs["Dont"] = &values.Function{
+	p.Tree.Funcs["Dont"] = ast.Func{
 		Name: "Dont",
-		Args: []values.FuncArg{},
+		Args: []types.Descriptor{},
 		Ret:  types.Int,
+	}
+	p.Tree.Funcs["not"] = ast.Func{
+		Name: "not",
+		Args: []types.Descriptor{
+			{
+				Name: "what",
+				Type: types.Bool,
+			},
+		},
+		Ret: types.Bool,
 	}
 
 	cases := map[string]ast.WhileNode{

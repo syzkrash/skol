@@ -97,7 +97,7 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
 			fn := tok.Raw[:len(tok.Raw)-1]
-			f, ok := p.Scope.FindFunc(fn)
+			f, ok := p.Tree.Funcs[fn]
 			if !ok {
 				err = tokErr(pe.EUnknownFunction, tok)
 				return

@@ -9,7 +9,6 @@ import (
 	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/debug"
 	"github.com/syzkrash/skol/lexer"
-	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
@@ -17,6 +16,7 @@ import (
 // them.
 type Parser struct {
 	lexer  *lexer.Lexer
+	Tree   ast.AST
 	Engine string
 	Scope  *Scope
 }
@@ -26,6 +26,7 @@ type Parser struct {
 func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
 	return &Parser{
 		lexer:  lexer.NewLexer(src, fn),
+		Tree:   ast.NewAST(),
 		Engine: eng,
 		Scope:  NewScope(nil),
 	}
@@ -34,7 +35,7 @@ func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
 // parseCall parser a function call.
 //
 //	print! concat! "Hello " World
-func (p *Parser) parseCall(fn string, f *values.Function, pos lexer.Position) (n ast.Node, err error) {
+func (p *Parser) parseCall(fn string, f ast.Func, pos lexer.Position) (n ast.Node, err error) {
 	args := make([]ast.MetaNode, len(f.Args))
 	for i := 0; i < len(args); i++ {
 		v, err := p.ParseValue()
@@ -264,7 +265,7 @@ func (p *Parser) next(tok *lexer.Token) (mn ast.MetaNode, skip bool, err error) 
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
 			fnm := tok.Raw[:len(tok.Raw)-1]
-			f, ok := p.Scope.FindFunc(fnm)
+			f, ok := p.Tree.Funcs[fnm]
 			if !ok {
 				err = tokErr(pe.EUnknownFunction, tok)
 				return
@@ -316,7 +317,7 @@ func (p *Parser) Parse() (tree ast.AST, err error) {
 		skip bool
 	)
 
-	tree = ast.AST{
+	p.Tree = ast.AST{
 		Vars:     make(map[string]ast.Var),
 		Typedefs: make(map[string]ast.Typedef),
 		Funcs:    make(map[string]ast.Func),
@@ -350,39 +351,39 @@ func (p *Parser) Parse() (tree ast.AST, err error) {
 		switch n.Node.Kind() {
 		case ast.NVarSet:
 			nvs := n.Node.(ast.VarSetNode)
-			tree.Vars[nvs.Var] = ast.Var{
+			p.Tree.Vars[nvs.Var] = ast.Var{
 				Name:  nvs.Var,
 				Value: nvs.Value,
 				Node:  n,
 			}
-			delete(tree.Typedefs, nvs.Var)
+			delete(p.Tree.Typedefs, nvs.Var)
 		case ast.NVarDef:
 			nvd := n.Node.(ast.VarDefNode)
-			tree.Typedefs[nvd.Var] = ast.Typedef{
+			p.Tree.Typedefs[nvd.Var] = ast.Typedef{
 				Name: nvd.Var,
 				Type: nvd.Type,
 				Node: n,
 			}
 		case ast.NVarSetTyped:
 			nvst := n.Node.(ast.VarSetTypedNode)
-			tree.Vars[nvst.Var] = ast.Var{
+			p.Tree.Vars[nvst.Var] = ast.Var{
 				Name:  nvst.Var,
 				Value: nvst.Value,
 				Node:  n,
 			}
 		case ast.NFuncDef:
 			nfd := n.Node.(ast.FuncDefNode)
-			tree.Funcs[nfd.Name] = ast.Func{
+			p.Tree.Funcs[nfd.Name] = ast.Func{
 				Name: nfd.Name,
 				Args: nfd.Proto,
 				Ret:  nfd.Ret,
 				Body: nfd.Body,
 				Node: n,
 			}
-			delete(tree.Exerns, nfd.Name)
+			delete(p.Tree.Exerns, nfd.Name)
 		case ast.NFuncExtern:
 			nfe := n.Node.(ast.FuncExternNode)
-			tree.Exerns[nfe.Alias] = ast.Extern{
+			p.Tree.Exerns[nfe.Alias] = ast.Extern{
 				Name:  nfe.Name,
 				Alias: nfe.Alias,
 				Ret:   nfe.Ret,
@@ -391,7 +392,7 @@ func (p *Parser) Parse() (tree ast.AST, err error) {
 			}
 		case ast.NStructDef:
 			nsd := n.Node.(ast.StructDefNode)
-			tree.Structs[nsd.Name] = ast.Structure{
+			p.Tree.Structs[nsd.Name] = ast.Structure{
 				Name:   nsd.Name,
 				Fields: nsd.Fields,
 				Node:   n,
@@ -402,6 +403,7 @@ func (p *Parser) Parse() (tree ast.AST, err error) {
 		}
 	}
 
+	tree = p.Tree
 	return
 }
 

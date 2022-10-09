@@ -99,7 +99,7 @@ func (g *generator) pyType(st types.Type) string {
 	return t
 }
 
-func (g *generator) writeArg(a ast.FuncProtoArg) error {
+func (g *generator) writeArg(a types.Descriptor) error {
 	return g.write("%s: %s,", a.Name, g.pyType(a.Type))
 }
 

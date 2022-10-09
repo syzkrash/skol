@@ -47,14 +47,9 @@ func (VarSetTypedNode) Kind() NodeKind {
 	return NVarSetTyped
 }
 
-type FuncProtoArg struct {
-	Name string
-	Type types.Type
-}
-
 type FuncDefNode struct {
 	Name  string
-	Proto []FuncProtoArg
+	Proto []types.Descriptor
 	Ret   types.Type
 	Body  Block
 }
@@ -67,7 +62,7 @@ func (FuncDefNode) Kind() NodeKind {
 
 type FuncExternNode struct {
 	Alias string
-	Proto []FuncProtoArg
+	Proto []types.Descriptor
 	Ret   types.Type
 	Name  string
 }
@@ -78,14 +73,9 @@ func (FuncExternNode) Kind() NodeKind {
 	return NFuncExtern
 }
 
-type StructProtoField struct {
-	Name string
-	Type types.Type
-}
-
 type StructDefNode struct {
 	Name   string
-	Fields []StructProtoField
+	Fields []types.Descriptor
 }
 
 var _ Node = StructDefNode{}

@@ -2,15 +2,12 @@ package parser
 
 import (
 	"github.com/syzkrash/skol/ast"
-	"github.com/syzkrash/skol/parser/defaults"
-	"github.com/syzkrash/skol/parser/values"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
 // Scope represents the current lexical scope and its parent scope if any.
 type Scope struct {
 	Parent *Scope
-	Funcs  map[string]*values.Function
 	Vars   map[string]ast.Node
 	Consts map[string]ast.Node
 	Types  map[string]types.Type
@@ -21,20 +18,10 @@ type Scope struct {
 func NewScope(parent *Scope) *Scope {
 	return &Scope{
 		Parent: parent,
-		Funcs:  defaults.Functions,
 		Vars:   make(map[string]ast.Node),
 		Consts: make(map[string]ast.Node),
 		Types:  make(map[string]types.Type),
 	}
-}
-
-// FindFunc searches this and all parent scopes for the given function.
-func (s *Scope) FindFunc(name string) (*values.Function, bool) {
-	f, ok := s.Funcs[name]
-	if s.Parent != nil && !ok && name[0] != '_' {
-		return s.Parent.FindFunc(name)
-	}
-	return f, ok
 }
 
 // FindVar searches this and all parent scopes for the given variable.

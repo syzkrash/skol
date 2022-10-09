@@ -254,14 +254,14 @@ func TestStructDef(t *testing.T) {
 	cases := map[string]ast.StructDefNode{
 		"@V2I(x/i y/i)": {
 			Name: "V2I",
-			Fields: []ast.StructProtoField{
+			Fields: []types.Descriptor{
 				{Name: "x", Type: types.Int},
 				{Name: "y", Type: types.Int},
 			},
 		},
 		"@V3I(x/i y/i z/i)": {
 			Name: "V3I",
-			Fields: []ast.StructProtoField{
+			Fields: []types.Descriptor{
 				{Name: "x", Type: types.Int},
 				{Name: "y", Type: types.Int},
 				{Name: "z", Type: types.Int},
@@ -269,7 +269,7 @@ func TestStructDef(t *testing.T) {
 		},
 		"@Position(x/f y/f z/i)": {
 			Name: "Position",
-			Fields: []ast.StructProtoField{
+			Fields: []types.Descriptor{
 				{Name: "x", Type: types.Float},
 				{Name: "y", Type: types.Float},
 				{Name: "z", Type: types.Int},
