@@ -38,12 +38,6 @@ func cmpFuncproto(mn ast.MetaNode, t []types.Type) (rt types.Type, err *pe.Prett
 	return types.Bool, nil
 }
 
-func result(t types.Type) types.Type {
-	return types.MakeStruct(t.String()+"Result",
-		"ok", types.Bool,
-		"value", t)
-}
-
 var defaultFuncs = map[string]funcproto{
 	"add": mathFuncproto,
 	"sub": mathFuncproto,
@@ -190,8 +184,8 @@ var defaultFuncs = map[string]funcproto{
 
 	"str":        makeFuncproto(types.String, types.Any),
 	"bool":       makeFuncproto(types.Bool, types.Any),
-	"parse_bool": makeFuncproto(result(types.Bool), types.String),
-	"char":       makeFuncproto(result(types.Char), types.String),
-	"int":        makeFuncproto(result(types.Int), types.String),
-	"float":      makeFuncproto(result(types.Float), types.String),
+	"parse_bool": makeFuncproto(types.Result(types.Bool), types.String),
+	"char":       makeFuncproto(types.Result(types.Char), types.String),
+	"int":        makeFuncproto(types.Result(types.Int), types.String),
+	"float":      makeFuncproto(types.Result(types.Float), types.String),
 }

@@ -64,3 +64,8 @@ func MakeStruct(name string, fields ...any) Type {
 		Fields: f,
 	}
 }
+
+// Result makes a result type wrapping the given type
+func Result(t Type) Type {
+	return MakeStruct(t.String()+"Result", "ok", Bool, "value", t)
+}

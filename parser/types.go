@@ -88,25 +88,6 @@ func (p *Parser) parseType() (t types.Type, err error) {
 	return
 }
 
-// EnsureResultType makes sure that a given result type exists in the current
-// scope, creating one if it doesn't exist
-func (p *Parser) EnsureResultType(inner types.Type) types.Type {
-	// result type name
-	tn := inner.String() + "Result"
-
-	// check if it already exists and return it if it does
-	if rt, ok := p.Scope.FindType(tn); ok {
-		return rt
-	}
-
-	// otherwise, create a new one, add it to the current scope and return it
-	rt := types.MakeStruct(tn,
-		"ok", types.Bool,
-		"val", inner)
-	p.Scope.Types[tn] = rt
-	return rt
-}
-
 // TypeOf determines the type of the value denoted by the given function in
 // the parser's current scope.
 func (p *Parser) TypeOf(n ast.Node) (t types.Type, err error) {
@@ -213,7 +194,7 @@ func (p *Parser) TypeOf(n ast.Node) (t types.Type, err error) {
 			}
 			// return a result type for the array's element type (because s a f e t y)
 			a := t.(types.ArrayType)
-			t = p.EnsureResultType(a.Element)
+			t = types.Result(a.Element)
 		}
 	case ast.NTypecast:
 		return n.(ast.TypecastNode).Cast, nil

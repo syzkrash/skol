@@ -45,11 +45,11 @@ $ReaderIncrOff/Reader R/Reader(
 // input is just a string, it will fail once the end of the string is reached.
 // This function is allowed to fail as future-proofing for e.g. file streams.
 $ReaderGetChar/ReadResult R/Reader(
-  ?gt! R#Off len! R#Source(
+  %cr: R#Source#[R#Off]
+  ?not! cr#ok(
     >@ReadResult R / ' '
-  ):(
-    >@ReadResult ReaderIncrOff! R * R#Source#[R#Off]
   )
+  >@ReadResult ReaderIncrOff! R * cr#value
 )
 
 @ValueResult(

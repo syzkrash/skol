@@ -5,12 +5,6 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
-func result(t types.Type) types.Type {
-	return types.MakeStruct(t.String()+"Result",
-		"ok", types.Bool,
-		"value", t)
-}
-
 var defaultFunctions = map[string]ast.Func{
 	"add": {
 		Name: "add",
@@ -171,27 +165,27 @@ var defaultFunctions = map[string]ast.Func{
 		Args: []types.Descriptor{
 			{Name: "raw", Type: types.String},
 		},
-		Ret: result(types.Bool),
+		Ret: types.Result(types.Bool),
 	},
 	"char": {
 		Name: "char",
 		Args: []types.Descriptor{
 			{Name: "raw", Type: types.String},
 		},
-		Ret: result(types.Char),
+		Ret: types.Result(types.Char),
 	},
 	"int": {
 		Name: "int",
 		Args: []types.Descriptor{
 			{Name: "raw", Type: types.String},
 		},
-		Ret: result(types.Int),
+		Ret: types.Result(types.Int),
 	},
 	"float": {
 		Name: "float",
 		Args: []types.Descriptor{
 			{Name: "raw", Type: types.String},
 		},
-		Ret: result(types.Float),
+		Ret: types.Result(types.Float),
 	},
 }

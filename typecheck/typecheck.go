@@ -330,23 +330,21 @@ func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *pe.PrettyError) {
 					}
 					t = fieldType
 				default:
+					if types.String.Equals(t) {
+						t = types.Result(types.Char)
+						return
+					}
 					if t.Prim() != types.PArray {
 						err = nodeErr(pe.EBadIndexParent, mn)
 						return
 					}
-					t = c.result(t.(types.ArrayType).Element)
+					t = types.Result(t.(types.ArrayType).Element)
 				}
 			}
 		}
 
 	}
 	return
-}
-
-func (c Checker) result(wrapped types.Type) types.Type {
-	return types.MakeStruct(wrapped.String()+" Result",
-		"ok", types.Bool,
-		"val", wrapped)
 }
 
 // basicFuncproto generates a funcproto for a function that accepts a certain
