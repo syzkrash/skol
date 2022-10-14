@@ -142,13 +142,13 @@ func TestFuncDef(t *testing.T) {
 				},
 			},
 		},
-		"$f/float num/float(>add_f! num 1.0)": {
+		"$f/float num/float(>add! num 1.0)": {
 			Name: "f",
 			Body: ast.Block{
 				ast.MetaNode{
 					Node: ast.ReturnNode{
 						Value: ast.MetaNode{Node: ast.FuncCallNode{
-							Func: "add_f",
+							Func: "add",
 							Args: []ast.MetaNode{
 								{Node: ast.SelectorNode{
 									Parent: nil,
@@ -161,15 +161,15 @@ func TestFuncDef(t *testing.T) {
 				},
 			},
 		},
-		"$i/i a/i b/i(>add_i! sub_i! a b sub_i! b a)": {
+		"$i/i a/i b/i(>add! sub! a b sub! b a)": {
 			Name: "i",
 			Body: ast.Block{
 				ast.MetaNode{
 					Node: ast.ReturnNode{Value: ast.MetaNode{Node: ast.FuncCallNode{
-						Func: "add_i",
+						Func: "add",
 						Args: []ast.MetaNode{
 							{Node: ast.FuncCallNode{
-								Func: "sub_i",
+								Func: "sub",
 								Args: []ast.MetaNode{
 									{Node: ast.SelectorNode{
 										Parent: nil,
@@ -183,7 +183,7 @@ func TestFuncDef(t *testing.T) {
 							},
 							},
 							{Node: ast.FuncCallNode{
-								Func: "sub_i",
+								Func: "sub",
 								Args: []ast.MetaNode{
 									{Node: ast.SelectorNode{
 										Parent: nil,
