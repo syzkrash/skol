@@ -1,6 +1,5 @@
 /*
 Simple CSV reader.
-Currently unfinished as array manipulation functions do not exist yet.
 Shows a more OOP-inspired approach to Skol programming.
 */
 
@@ -49,7 +48,7 @@ $ReaderGetChar/ReadResult R/Reader(
   ?gt! R#Off len! R#Source(
     >@ReadResult R / ' '
   ):(
-    >@ReadResult ReaderIncrOff! R * at! R#Source R#Off
+    >@ReadResult ReaderIncrOff! R * R#Source#[R#Off]
   )
 )
 
@@ -101,14 +100,12 @@ $ReaderGetRow/RowResult R/Reader(
     %result: ReaderGetValue! state
     ?not! result#Ok(
       >@RowResult result#State / row len
-    ):?result#LastInRow(
-      // append to row
-      %len: add! len 1
-      >@RowResult result#State * row len
     ):(
-      // append to row
-      %state: result#State
+      %row: append! row result#Value
       %len: add! len 1
+      ?result#LastInRow(
+        >@RowResult result#State * row len
+      )
     )
   )
 )
