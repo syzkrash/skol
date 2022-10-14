@@ -211,14 +211,14 @@ func TestSelector(t *testing.T) {
 			{Name: "b"},
 			{Name: "c"},
 		},
-		"z#y": {
+		"z#[y]": {
 			{Name: "z"},
 			{IdxS: ast.SelectorNode{
 				Parent: nil,
 				Child:  "y",
 			}},
 		},
-		"z#y#x": {
+		"z#[y]#x": {
 			{Name: "z"},
 			{IdxS: ast.SelectorNode{
 				Parent: nil,

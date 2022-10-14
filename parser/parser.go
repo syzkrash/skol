@@ -71,10 +71,15 @@ func (p *Parser) parseCall(fn string, f ast.Func, pos lexer.Position) (n ast.Nod
 //	Person#Name
 //	Person#Age
 //
+// Index selector:
+//
+//	People#0
+//	People#[MyID]
+//
 // Index selector and field selector:
 //
 //	People#0#Name
-//	People#PersonNo#Age
+//	People#[PersonNo]#Age
 //
 // Typecast:
 //
@@ -114,26 +119,10 @@ func (p *Parser) parseSelector(start *lexer.Token) (n ast.Node, err error) {
 		switch tok.Kind {
 		// ident: select a field on a structure
 		case lexer.TkIdent:
-			// determine if the parent selector is an array
-			var pt types.Type
-			pt, err = p.TypeOf(n)
-			if err != nil {
-				return
-			}
 			// append to the chain of selectors
-			if pt.Prim() == types.PArray {
-				n = ast.IndexSelectorNode{
-					Parent: n.(ast.Selector),
-					Idx: ast.SelectorNode{
-						Parent: nil,
-						Child:  tok.Raw,
-					},
-				}
-			} else {
-				n = ast.SelectorNode{
-					Parent: n.(ast.Selector),
-					Child:  tok.Raw,
-				}
+			n = ast.SelectorNode{
+				Parent: n.(ast.Selector),
+				Child:  tok.Raw,
 			}
 		// constant: index into an array
 		//	indexes are always unsigned integers, but base prefixes are allowed
@@ -150,26 +139,57 @@ func (p *Parser) parseSelector(start *lexer.Token) (n ast.Node, err error) {
 				Parent: n.(ast.Selector),
 				Idx:    int(idx),
 			}
-		// punct: can be a typecast
-		//	typecasts use the @ punctuator
+		// punct: can be a typecast or an array index
+		//	typecasts use the @ punctuator and indexes use the [] punctuators
 		case lexer.TkPunct:
-			if tok.Raw[0] != '@' {
+			switch tok.Raw[0] {
+			case '@':
+				// get the type for typecast
+				// this also allows arrays to be typecast (makes sense if you think about
+				// it)
+				var t types.Type
+				t, err = p.parseType()
+				if err != nil {
+					return
+				}
+				// append to the chain
+				n = ast.TypecastNode{
+					Parent: n.(ast.Selector),
+					Cast:   t,
+				}
+			case '[':
+				// get the token starting the index
+				tok, err = p.lexer.Next()
+				if err != nil {
+					return
+				}
+
+				// parse the index itself
+				var idx ast.Node
+				idx, err = p.parseSelector(tok)
+				if err != nil {
+					return
+				}
+
+				// get the closing bracket
+				tok, err = p.lexer.Next()
+				if err != nil {
+					return
+				}
+				if tok.Kind != lexer.TkPunct || tok.Raw[0] != ']' {
+					err = tokErr(pe.EExpectedRBrack, tok)
+					return
+				}
+
+				// append to the chain
+				n = ast.IndexSelectorNode{
+					Parent: n.(ast.Selector),
+					Idx:    idx.(ast.Selector),
+				}
+			default:
 				// error out if the punctuator is not @
 				err = tokErr(pe.EExpectedSelectorElem, tok)
 				return
-			}
-			// get the type for typecast
-			// this also allows arrays to be typecast (makes sense if you think about
-			// it)
-			var t types.Type
-			t, err = p.parseType()
-			if err != nil {
-				return
-			}
-			// append to the chain
-			n = ast.TypecastNode{
-				Parent: n.(ast.Selector),
-				Cast:   t,
 			}
 		// any other token is not allowed
 		default:
