@@ -84,3 +84,9 @@ All of these functions are always present in all scopes in your Skol programs.
 
   Returns `*` if the given value is truthy. Except values equal to 0 and `/`
   itself, every value is truthy. (this includes empty arrays and strings!)
+
+## Input & Output
+
+* `$print msg/str`
+
+  Prints the given string to standard output with a newline at the end.

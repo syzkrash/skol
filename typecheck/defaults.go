@@ -188,4 +188,6 @@ var defaultFuncs = map[string]funcproto{
 	"char":       makeFuncproto(types.Result(types.Char), types.String),
 	"int":        makeFuncproto(types.Result(types.Int), types.String),
 	"float":      makeFuncproto(types.Result(types.Float), types.String),
+
+	"print": makeFuncproto(types.Nothing, types.String),
 }

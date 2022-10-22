@@ -188,4 +188,12 @@ var defaultFunctions = map[string]ast.Func{
 		},
 		Ret: types.Result(types.Float),
 	},
+
+	"print": {
+		Name: "print",
+		Args: []types.Descriptor{
+			{Name: "msg", Type: types.String},
+		},
+		Ret: types.Nothing,
+	},
 }
