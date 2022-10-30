@@ -97,12 +97,19 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
 			fn := tok.Raw[:len(tok.Raw)-1]
-			f, ok := p.getFunc(fn)
+			var argc int
+			f, ok := p.Tree.Funcs[fn]
 			if !ok {
-				err = tokErr(pe.EUnknownFunction, tok)
-				return
+				bf, ok := builtins[fn]
+				if !ok {
+					err = tokErr(pe.EUnknownFunction, tok)
+					return
+				}
+				argc = bf.ArgCount
+			} else {
+				argc = len(f.Args)
 			}
-			mn.Node, err = p.parseCall(fn, f, tok.Where)
+			mn.Node, err = p.parseCall(fn, argc, tok.Where)
 		} else if _, ok := p.Scope.FindVar(tok.Raw); ok {
 			mn.Node, err = p.parseSelector(tok)
 		} else if v, ok := p.Scope.FindConst(tok.Raw); ok {

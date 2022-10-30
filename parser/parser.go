@@ -32,19 +32,12 @@ func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
 	}
 }
 
-func (p *Parser) getFunc(fn string) (f ast.Func, ok bool) {
-	if f, ok = p.Tree.Funcs[fn]; ok {
-		return
-	}
-	f, ok = defaultFunctions[fn]
-	return
-}
-
-// parseCall parser a function call.
+// parseCall parses a function call. This function requires that an argument
+// count be known before the call can be parsed.
 //
 //	print! concat! "Hello " World
-func (p *Parser) parseCall(fn string, f ast.Func, pos lexer.Position) (n ast.Node, err error) {
-	args := make([]ast.MetaNode, len(f.Args))
+func (p *Parser) parseCall(fn string, argc int, pos lexer.Position) (n ast.Node, err error) {
+	args := make([]ast.MetaNode, argc)
 	for i := 0; i < len(args); i++ {
 		v, err := p.ParseValue()
 		if err != nil {
@@ -293,12 +286,19 @@ func (p *Parser) next(tok *lexer.Token) (mn ast.MetaNode, skip bool, err error) 
 	case lexer.TkIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
 			fnm := tok.Raw[:len(tok.Raw)-1]
-			f, ok := p.getFunc(fnm)
+			var argc int
+			f, ok := p.Tree.Funcs[fnm]
 			if !ok {
-				err = tokErr(pe.EUnknownFunction, tok)
-				return
+				bf, ok := builtins[fnm]
+				if !ok {
+					err = tokErr(pe.EUnknownFunction, tok)
+					return
+				}
+				argc = bf.ArgCount
+			} else {
+				argc = len(f.Args)
 			}
-			n, err = p.parseCall(fnm, f, tok.Where)
+			n, err = p.parseCall(fnm, argc, tok.Where)
 		} else {
 			err = tokErr(pe.EUnexpectedToken, tok)
 		}
