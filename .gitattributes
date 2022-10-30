@@ -1,1 +1,2 @@
 *.skol linguist-language=Haskell -linguist-detectable
+*.sk linguist-language=Haskell -linguist-detectable
