@@ -6,11 +6,30 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
-func makeFuncproto(ret types.Type, args ...types.Type) funcproto {
-	return basicFuncproto(args, ret)
+// builtin here represents only the prototype of a builting function. the
+// prototype is responsible for ensuring argument correctness and determining
+// the return value of the function. the "generic" builtin functions will have
+// return types that change with the passed arguments (append or concat for
+// example), while some will simply not do any extra checking at all (eq)
+type builtin func(ast.MetaNode, []types.Type) (types.Type, *pe.PrettyError)
+
+func simpleBuiltin(ret types.Type, exp ...types.Type) builtin {
+	return func(mn ast.MetaNode, got []types.Type) (r types.Type, err *pe.PrettyError) {
+		r = ret
+		if len(got) < len(exp) {
+			err = nodeErr(pe.ENeedMoreArgs, mn)
+		}
+		for i, ea := range exp {
+			if !ea.Equals(got[i]) {
+				err = typeMismatch(mn, ea, got[i])
+				return
+			}
+		}
+		return
+	}
 }
 
-func mathFuncproto(mn ast.MetaNode, t []types.Type) (rt types.Type, err *pe.PrettyError) {
+func mathBuiltin(mn ast.MetaNode, t []types.Type) (rt types.Type, err *pe.PrettyError) {
 	if len(t) < 2 {
 		err = pe.New(pe.ENeedMoreArgs)
 		return
@@ -24,7 +43,7 @@ func mathFuncproto(mn ast.MetaNode, t []types.Type) (rt types.Type, err *pe.Pret
 	return t[0], nil
 }
 
-func cmpFuncproto(mn ast.MetaNode, t []types.Type) (rt types.Type, err *pe.PrettyError) {
+func cmpBuiltin(mn ast.MetaNode, t []types.Type) (rt types.Type, err *pe.PrettyError) {
 	if len(t) < 2 {
 		err = pe.New(pe.ENeedMoreArgs)
 		return
@@ -38,12 +57,12 @@ func cmpFuncproto(mn ast.MetaNode, t []types.Type) (rt types.Type, err *pe.Prett
 	return types.Bool, nil
 }
 
-var defaultFuncs = map[string]funcproto{
-	"add": mathFuncproto,
-	"sub": mathFuncproto,
-	"mul": mathFuncproto,
-	"div": mathFuncproto,
-	"pow": mathFuncproto,
+var builtins = map[string]builtin{
+	"add": mathBuiltin,
+	"sub": mathBuiltin,
+	"mul": mathBuiltin,
+	"div": mathBuiltin,
+	"pow": mathBuiltin,
 	"mod": func(mn ast.MetaNode, t []types.Type) (rt types.Type, err *pe.PrettyError) {
 		if len(t) < 2 {
 			err = pe.New(pe.ENeedMoreArgs)
@@ -58,13 +77,13 @@ var defaultFuncs = map[string]funcproto{
 		return t[1], nil
 	},
 
-	"eq": makeFuncproto(types.Bool, types.Any, types.Any),
-	"gt": cmpFuncproto,
-	"lt": cmpFuncproto,
+	"eq": simpleBuiltin(types.Bool, types.Any, types.Any),
+	"gt": cmpBuiltin,
+	"lt": cmpBuiltin,
 
-	"not": makeFuncproto(types.Bool, types.Bool),
-	"and": makeFuncproto(types.Bool, types.Bool, types.Bool),
-	"or":  makeFuncproto(types.Bool, types.Bool, types.Bool),
+	"not": simpleBuiltin(types.Bool, types.Bool),
+	"and": simpleBuiltin(types.Bool, types.Bool, types.Bool),
+	"or":  simpleBuiltin(types.Bool, types.Bool, types.Bool),
 
 	"append": func(mn ast.MetaNode, t []types.Type) (rt types.Type, err *pe.PrettyError) {
 		if len(t) < 2 {
@@ -182,12 +201,12 @@ var defaultFuncs = map[string]funcproto{
 		return types.Int, nil
 	},
 
-	"str":        makeFuncproto(types.String, types.Any),
-	"bool":       makeFuncproto(types.Bool, types.Any),
-	"parse_bool": makeFuncproto(types.Result(types.Bool), types.String),
-	"char":       makeFuncproto(types.Result(types.Char), types.String),
-	"int":        makeFuncproto(types.Result(types.Int), types.String),
-	"float":      makeFuncproto(types.Result(types.Float), types.String),
+	"str":        simpleBuiltin(types.String, types.Any),
+	"bool":       simpleBuiltin(types.Bool, types.Any),
+	"parse_bool": simpleBuiltin(types.Result(types.Bool), types.String),
+	"char":       simpleBuiltin(types.Result(types.Char), types.String),
+	"int":        simpleBuiltin(types.Result(types.Int), types.String),
+	"float":      simpleBuiltin(types.Result(types.Float), types.String),
 
-	"print": makeFuncproto(types.Nothing, types.String),
+	"print": simpleBuiltin(types.Nothing, types.String),
 }

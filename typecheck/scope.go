@@ -1,15 +1,14 @@
 package typecheck
 
 import (
-	"github.com/syzkrash/skol/ast"
-	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
-// funcproto is responsible for validating that the types provided to a
-// function call are compatible with the provided types. It also provides
-// the return type for the given arguments. (for generic functions)
-type funcproto func(ast.MetaNode, []types.Type) (types.Type, *pe.PrettyError)
+// funcproto defines the prototype of a function: it's arguments and return type
+type funcproto struct {
+	Args []types.Descriptor
+	Ret  types.Type
+}
 
 // scope contains the types of variables and function prototypes. This is
 // effectively the same as [parser.Scope] and as such lacks documentation.
@@ -60,6 +59,6 @@ func (s *scope) getFunc(name string) (funcproto, bool) {
 	} else if s.parent != nil {
 		return s.parent.getFunc(name)
 	} else {
-		return nil, false
+		return funcproto{}, false
 	}
 }

@@ -30,7 +30,7 @@ func NewChecker() *Checker {
 		scope: &scope{
 			parent: nil,
 			vars:   make(map[string]types.Type),
-			funcs:  defaultFuncs,
+			funcs:  make(map[string]funcproto),
 		},
 	}
 }
@@ -51,11 +51,10 @@ func (c *Checker) Check(tree ast.AST) (errs []*pe.PrettyError) {
 	}
 	// first loop to declare functions
 	for _, f := range tree.Funcs {
-		a := make([]types.Type, len(f.Args))
-		for i, aa := range f.Args {
-			a[i] = aa.Type
+		c.scope.funcs[f.Name] = funcproto{
+			Args: f.Args,
+			Ret:  f.Ret,
 		}
-		c.scope.funcs[f.Name] = basicFuncproto(a, f.Ret)
 	}
 	// second loop to typecheck function bodies with function type information
 	for _, f := range tree.Funcs {
@@ -170,29 +169,24 @@ func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) (errs []*pe.PrettyE
 	case ast.NFuncDef:
 		nfuncdef := n.(ast.FuncDefNode)
 		args := make(map[string]types.Type)
-		argl := make([]types.Type, len(nfuncdef.Proto))
-		for i, a := range nfuncdef.Proto {
+		for _, a := range nfuncdef.Proto {
 			args[a.Name] = a.Type
-			argl[i] = a.Type
 		}
 		errs = append(errs, c.checkFunc(args, nfuncdef.Ret, nfuncdef.Body)...)
-		c.scope.funcs[nfuncdef.Name] = basicFuncproto(argl, nfuncdef.Ret)
+		c.scope.funcs[nfuncdef.Name] = funcproto{
+			Args: nfuncdef.Proto,
+			Ret:  nfuncdef.Ret,
+		}
 	case ast.NFuncExtern:
 		nfuncextern := n.(ast.FuncExternNode)
-		args := make([]types.Type, len(nfuncextern.Proto))
-		for i, a := range nfuncextern.Proto {
-			args[i] = a.Type
+		c.scope.funcs[nfuncextern.Alias] = funcproto{
+			Args: nfuncextern.Proto,
+			Ret:  nfuncextern.Ret,
 		}
-		c.scope.funcs[nfuncextern.Alias] = basicFuncproto(args, nfuncextern.Ret)
 
 	// others
 	case ast.NFuncCall:
 		nfunccall := n.(ast.FuncCallNode)
-		f, ok := c.scope.getFunc(nfunccall.Func)
-		if !ok {
-			errs = append(errs, typeMismatch(mn, nil, nil))
-			return
-		}
 		args := make([]types.Type, len(nfunccall.Args))
 		for i, a := range nfunccall.Args {
 			t, err := c.typeOf(a)
@@ -202,8 +196,26 @@ func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) (errs []*pe.PrettyE
 			}
 			args[i] = t
 		}
-		if _, err := f(mn, args); err != nil {
-			errs = append(errs, err)
+		f, ok := c.scope.getFunc(nfunccall.Func)
+		if !ok {
+			bf, ok := builtins[nfunccall.Func]
+			if !ok {
+				errs = append(errs, nodeErr(pe.EUnknownFunction, mn))
+				return
+			}
+			if _, err := bf(mn, args); err != nil {
+				errs = append(errs, err)
+			}
+			return
+		}
+		if len(args) != len(f.Args) {
+			errs = append(errs, nodeErr(pe.ENeedMoreArgs, mn))
+			return
+		}
+		for i := 0; i < len(args); i++ {
+			if !f.Args[i].Type.Equals(args[i]) {
+				errs = append(errs, typeMismatch(mn, f.Args[i].Type, args[i]))
+			}
 		}
 	}
 	return
@@ -271,11 +283,6 @@ func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *pe.PrettyError) {
 	// others
 	case ast.NFuncCall:
 		nfunccall := n.(ast.FuncCallNode)
-		f, ok_ := c.scope.getFunc(nfunccall.Func)
-		if !ok_ {
-			err = nodeErr(pe.EUnknownFunction, mn)
-			return
-		}
 		args := make([]types.Type, len(nfunccall.Args))
 		for i, a := range nfunccall.Args {
 			at, err_ := c.typeOf(a)
@@ -285,7 +292,27 @@ func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *pe.PrettyError) {
 			}
 			args[i] = at
 		}
-		t, err = f(mn, args)
+		f, ok := c.scope.getFunc(nfunccall.Func)
+		if !ok {
+			bf, ok := builtins[nfunccall.Func]
+			if !ok {
+				err = nodeErr(pe.EUnknownFunction, mn)
+				return
+			}
+			t, err = bf(mn, args)
+			return
+		}
+		if len(args) != len(f.Args) {
+			err = nodeErr(pe.ENeedMoreArgs, mn)
+			return
+		}
+		for i := 0; i < len(args); i++ {
+			if !f.Args[i].Type.Equals(args[i]) {
+				err = typeMismatch(mn, f.Args[i].Type, args[i])
+				return
+			}
+		}
+		t = f.Ret
 
 	default:
 		if sel, ok := n.(ast.Selector); !ok {
@@ -345,22 +372,4 @@ func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *pe.PrettyError) {
 
 	}
 	return
-}
-
-// basicFuncproto generates a funcproto for a function that accepts a certain
-// combination of arguments and always returns the same type.
-func basicFuncproto(exp []types.Type, ret types.Type) funcproto {
-	return func(mn ast.MetaNode, got []types.Type) (r types.Type, err *pe.PrettyError) {
-		r = ret
-		if len(got) < len(exp) {
-			err = typeMismatch(mn, nil, nil)
-		}
-		for i, ea := range exp {
-			if !ea.Equals(got[i]) {
-				err = typeMismatch(mn, ea, got[i])
-				return
-			}
-		}
-		return
-	}
 }
