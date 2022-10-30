@@ -43,24 +43,27 @@ func TestIf(t *testing.T) {
 	p.Scope.Vars["e"] = ast.BoolNode{Value: false}
 	p.Scope.Vars["it"] = ast.IntNode{Value: 123}
 
-	cases := map[string]ast.IfNode{
-		"?*()": {
+	expectAll(t, p, src, []testCase{{
+		Code: "?*()",
+		Result: ast.IfNode{
 			Main: ast.Branch{
 				Cond:  ast.MetaNode{Node: ast.BoolNode{Value: true}},
 				Block: ast.Block{},
 			},
 			Other: []ast.Branch{},
 			Else:  ast.Block{},
-		},
-		"?/()": {
+		}}, {
+		Code: "?/()",
+		Result: ast.IfNode{
 			Main: ast.Branch{
 				Cond:  ast.MetaNode{Node: ast.BoolNode{Value: false}},
 				Block: ast.Block{},
 			},
 			Other: []ast.Branch{},
 			Else:  ast.Block{},
-		},
-		"?do!(print! \"Deez\")": {
+		}}, {
+		Code: "?do!(print! \"Deez\")",
+		Result: ast.IfNode{
 			Main: ast.Branch{
 				Cond: ast.MetaNode{Node: ast.FuncCallNode{
 					Func: "do",
@@ -79,8 +82,9 @@ func TestIf(t *testing.T) {
 			},
 			Other: []ast.Branch{},
 			Else:  ast.Block{},
-		},
-		"?ok! it(print! \"OK\"):(print! \"Not OK\")": {
+		}}, {
+		Code: "?ok! it(print! \"OK\"):(print! \"Not OK\")",
+		Result: ast.IfNode{
 			Main: ast.Branch{
 				Cond: ast.MetaNode{Node: ast.FuncCallNode{
 					Func: "ok",
@@ -113,8 +117,9 @@ func TestIf(t *testing.T) {
 					},
 				},
 			},
-		},
-		"?a(>a):?b(>b):(>c)": {
+		}}, {
+		Code: "?a(>a):?b(>b):(>c)",
+		Result: ast.IfNode{
 			Main: ast.Branch{
 				Cond: ast.MetaNode{Node: ast.SelectorNode{
 					Parent: nil,
@@ -159,8 +164,9 @@ func TestIf(t *testing.T) {
 					},
 				},
 			},
-		},
-		"?a(>a):?b(>b):?c(>c):?d(>d):(>e)": {
+		}}, {
+		Code: "?a(>a):?b(>b):?c(>c):?d(>d):(>e)",
+		Result: ast.IfNode{
 			Main: ast.Branch{
 				Cond: ast.MetaNode{Node: ast.SelectorNode{
 					Parent: nil,
@@ -237,15 +243,8 @@ func TestIf(t *testing.T) {
 					},
 				},
 			},
-		},
-	}
-
-	for in, out := range cases {
-		t.Log(in)
-		src.Reset(in)
-		expect(t, p, ast.MetaNode{Node: out})
-		t.Log("OK")
-	}
+		}},
+	})
 }
 
 func TestWhile(t *testing.T) {
@@ -274,16 +273,19 @@ func TestWhile(t *testing.T) {
 		Ret: types.Bool,
 	}
 
-	cases := map[string]ast.WhileNode{
-		"**()": {
+	expectAll(t, p, src, []testCase{{
+		Code: "**()",
+		Result: ast.WhileNode{
 			Cond:  ast.MetaNode{Node: ast.BoolNode{Value: true}},
 			Block: ast.Block{},
-		},
-		"*/()": {
+		}}, {
+		Code: "*/()",
+		Result: ast.WhileNode{
 			Cond:  ast.MetaNode{Node: ast.BoolNode{Value: false}},
 			Block: ast.Block{},
-		},
-		"*Do!(Dont!)": {
+		}}, {
+		Code: "*Do!(Dont!)",
+		Result: ast.WhileNode{
 			Cond: ast.MetaNode{Node: ast.FuncCallNode{
 				Func: "Do",
 				Args: []ast.MetaNode{},
@@ -296,8 +298,9 @@ func TestWhile(t *testing.T) {
 					},
 				},
 			},
-		},
-		"*not! Quit (Do! >Dont!)": {
+		}}, {
+		Code: "*not! Quit (Do! >Dont!)",
+		Result: ast.WhileNode{
 			Cond: ast.MetaNode{Node: ast.FuncCallNode{
 				Func: "not",
 				Args: []ast.MetaNode{
@@ -323,13 +326,6 @@ func TestWhile(t *testing.T) {
 					},
 				},
 			},
-		},
-	}
-
-	for in, out := range cases {
-		t.Log(in)
-		src.Reset(in)
-		expect(t, p, ast.MetaNode{Node: out})
-		t.Log("OK")
-	}
+		}},
+	})
 }

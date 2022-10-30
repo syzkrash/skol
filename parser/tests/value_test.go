@@ -38,25 +38,29 @@ func TestFuncCall(t *testing.T) {
 		Ret:  types.String,
 	}
 
-	cases := map[string]ast.FuncCallNode{
-		"hi!": {
+	expectAll(t, p, src, []testCase{{
+		Code: "hi!",
+		Result: ast.FuncCallNode{
 			Func: "hi",
 			Args: []ast.MetaNode{}},
-
-		"hello! \"Joe\"": {
+	}, {
+		Code: "hello! \"Joe\"",
+		Result: ast.FuncCallNode{
 			Func: "hello",
 			Args: []ast.MetaNode{
 				{Node: ast.StringNode{Value: "Joe"}},
 			}},
-
-		"join! \";\" [](\"Hello\" \"world\")": {
+	}, {
+		Code: "join! \";\" [](\"Hello\" \"world\")",
+		Result: ast.FuncCallNode{
 			Func: "join",
 			Args: []ast.MetaNode{
 				{Node: ast.StringNode{Value: ";"}},
 				{Node: arrOf(types.String, "Hello", "world")},
 			}},
-
-		"join! \";\" [](hello! \"Joe\" hello! world!)": {
+	}, {
+		Code: "join! \";\" [](hello! \"Joe\" hello! world!)",
+		Result: ast.FuncCallNode{
 			Func: "join",
 			Args: []ast.MetaNode{
 				{Node: ast.StringNode{Value: ";"}},
@@ -76,14 +80,7 @@ func TestFuncCall(t *testing.T) {
 									Args: []ast.MetaNode{},
 								}}}},
 						}}}}}},
-	}
-
-	for in, out := range cases {
-		t.Log(in)
-		src.Reset(in)
-		expect(t, p, ast.MetaNode{Node: out})
-		t.Log("OK")
-	}
+	}})
 }
 
 func TestStruct(t *testing.T) {
@@ -108,23 +105,24 @@ func TestStruct(t *testing.T) {
 	p.Scope.Types["Rect"] = Rect
 	p.Scope.Types["Cuboid"] = Cuboid
 
-	cases := map[string]ast.StructNode{
-		"@V2I 6 9": {
+	expectAllValues(t, p, src, []testCase{{
+		Code: "@V2I 6 9",
+		Result: ast.StructNode{
 			Type: V2I,
 			Args: []ast.MetaNode{
 				{Node: ast.IntNode{Value: 6}},
 				{Node: ast.IntNode{Value: 9}},
-			}},
-
-		"@V3I 4 2 0": {
+			}}}, {
+		Code: "@V3I 4 2 0",
+		Result: ast.StructNode{
 			Type: V3I,
 			Args: []ast.MetaNode{
 				{Node: ast.IntNode{Value: 4}},
 				{Node: ast.IntNode{Value: 2}},
 				{Node: ast.IntNode{Value: 0}},
-			}},
-
-		"@Rect @V2I 12 34 @V2I 1 2": {
+			}}}, {
+		Code: "@Rect @V2I 12 34 @V2I 1 2",
+		Result: ast.StructNode{
 			Type: Rect,
 			Args: []ast.MetaNode{
 				{Node: ast.StructNode{
@@ -138,9 +136,9 @@ func TestStruct(t *testing.T) {
 					Args: []ast.MetaNode{
 						{Node: ast.IntNode{Value: 1}},
 						{Node: ast.IntNode{Value: 2}},
-					}}}}},
-
-		"@Cuboid @V3I 12 34 56 @V3I 3 3 3": {
+					}}}}}}, {
+		Code: "@Cuboid @V3I 12 34 56 @V3I 3 3 3",
+		Result: ast.StructNode{
 			Type: Cuboid,
 			Args: []ast.MetaNode{
 				{Node: ast.StructNode{
@@ -156,16 +154,8 @@ func TestStruct(t *testing.T) {
 						{Node: ast.IntNode{Value: 3}},
 						{Node: ast.IntNode{Value: 3}},
 						{Node: ast.IntNode{Value: 3}},
-					}}}}},
-	}
-
-	for in, out := range cases {
-		t.Log(in)
-		src.Reset(in)
-		n := expectValue(t, p, ast.NStruct)
-		compare(t, "NewStruct", ast.MetaNode{Node: out}, n)
-		t.Log("OK")
-	}
+					}}}}}},
+	})
 }
 
 func TestSelector(t *testing.T) {

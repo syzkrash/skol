@@ -13,12 +13,19 @@ import (
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
+type testCase struct {
+	Code   string
+	Result ast.Node
+}
+
 func makeParser(test string) (*parser.Parser, *strings.Reader) {
 	r := strings.NewReader("")
 	return parser.NewParser("Test"+test, r, "test"), r
 }
 
-func expect(t *testing.T, p *parser.Parser, exp ast.MetaNode) {
+func expect(t *testing.T, p *parser.Parser, r *strings.Reader, c testCase) {
+	t.Log(c.Code)
+	r.Reset(c.Code)
 	got, err := p.TopLevel()
 	if err != nil {
 		if pe, ok := err.(common.Printable); ok {
@@ -27,21 +34,35 @@ func expect(t *testing.T, p *parser.Parser, exp ast.MetaNode) {
 		t.Fatal(err)
 	}
 	t.Logf("%+v", got)
-	compare(t, "expect", exp, got)
+	compare(t, "expect", ast.MetaNode{Node: c.Result}, got)
 }
 
-func expectValue(t *testing.T, p *parser.Parser, k ast.NodeKind) ast.MetaNode {
-	mn, err := p.ParseValue()
+func expectValue(t *testing.T, p *parser.Parser, r *strings.Reader, c testCase) {
+	t.Log(c.Code)
+	r.Reset(c.Code)
+	got, err := p.ParseValue()
 	if err != nil {
 		if pe, ok := err.(common.Printable); ok {
 			pe.Print()
 		}
 		t.Fatal(err)
 	}
-	if mn.Node.Kind() != k {
-		t.Fatalf("expected %s, got %s", k, mn.Node.Kind())
+	t.Logf("%+v", got)
+	compare(t, "expectValue", ast.MetaNode{Node: c.Result}, got)
+}
+
+func expectAll(t *testing.T, p *parser.Parser, r *strings.Reader, cases []testCase) {
+	for i, c := range cases {
+		t.Logf("Test case #%d", i+1)
+		expect(t, p, r, c)
 	}
-	return mn
+}
+
+func expectAllValues(t *testing.T, p *parser.Parser, r *strings.Reader, cases []testCase) {
+	for i, c := range cases {
+		t.Logf("Test case #%d", i+1)
+		expectValue(t, p, r, c)
+	}
 }
 
 func compareLiteral(t *testing.T, note string, mexp, mgot ast.MetaNode) {

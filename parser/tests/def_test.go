@@ -10,119 +10,115 @@ import (
 func TestVarDef(t *testing.T) {
 	p, src := makeParser("VarDef")
 
-	cases := map[string]ast.VarDefNode{
-		"%SomeBool/bool": {
+	expectAll(t, p, src, []testCase{{
+		Code: "%SomeBool/bool",
+		Result: ast.VarDefNode{
 			Type: types.Bool,
 			Var:  "SomeBool",
-		},
-		"%SomeChar/char": {
+		}}, {
+		Code: "%SomeChar/char",
+		Result: ast.VarDefNode{
 			Type: types.Char,
 			Var:  "SomeChar",
-		},
-		"%SomeInt/int": {
+		}}, {
+		Code: "%SomeInt/int",
+		Result: ast.VarDefNode{
 			Type: types.Int,
 			Var:  "SomeInt",
-		},
-		"%SomeFloat/float": {
+		}}, {
+		Code: "%SomeFloat/float",
+		Result: ast.VarDefNode{
 			Type: types.Float,
 			Var:  "SomeFloat",
-		},
-		"%SomeString/string": {
+		}}, {
+		Code: "%SomeString/string",
+		Result: ast.VarDefNode{
 			Type: types.String,
 			Var:  "SomeString",
-		},
-	}
-
-	for in, out := range cases {
-		t.Log(in)
-		src.Reset(in)
-		expect(t, p, ast.MetaNode{Node: out})
-		t.Log("OK")
-	}
+		}},
+	})
 }
 
 func TestVarSet(t *testing.T) {
 	p, src := makeParser("VarSet")
 
-	cases := map[string]ast.VarSetNode{
-		"%B0: *": {
+	expectAll(t, p, src, []testCase{{
+		Code: "%B0: *",
+		Result: ast.VarSetNode{
 			Var:   "B0",
 			Value: ast.MetaNode{Node: ast.BoolNode{Value: true}},
-		},
-		"%C1: 'q'": {
+		}}, {
+		Code: "%C1: 'q'",
+		Result: ast.VarSetNode{
 			Var:   "C1",
 			Value: ast.MetaNode{Node: ast.CharNode{Value: 'q'}},
-		},
-		"%I2: 123": {
+		}}, {
+		Code: "%I2: 123",
+		Result: ast.VarSetNode{
 			Var:   "I2",
 			Value: ast.MetaNode{Node: ast.IntNode{Value: 123}},
-		},
-		"%F3: 12.34": {
+		}}, {
+		Code: "%F3: 12.34",
+		Result: ast.VarSetNode{
 			Var:   "F3",
 			Value: ast.MetaNode{Node: ast.FloatNode{Value: 12.34}},
-		},
-		"%S4: \"foo\"": {
+		}}, {
+		Code: "%S4: \"foo\"",
+		Result: ast.VarSetNode{
 			Var:   "S4",
 			Value: ast.MetaNode{Node: ast.StringNode{Value: "foo"}},
-		},
-	}
-
-	for in, out := range cases {
-		t.Log(in)
-		src.Reset(in)
-		expect(t, p, ast.MetaNode{Node: out})
-		t.Log("OK")
-	}
+		}},
+	})
 }
 
 func TestVarSetTyped(t *testing.T) {
 	p, src := makeParser("VarSetTyped")
 
-	cases := map[string]ast.VarSetTypedNode{
-		"%ExplicitBool/b:/": {
+	expectAll(t, p, src, []testCase{{
+		Code: "%ExplicitBool/b:/",
+		Result: ast.VarSetTypedNode{
 			Type:  types.Bool,
 			Var:   "ExplicitBool",
 			Value: ast.MetaNode{Node: ast.BoolNode{Value: false}},
-		},
-		"%ExplicitChar/c:'E'": {
+		}}, {
+		Code: "%ExplicitChar/c:'E'",
+		Result: ast.VarSetTypedNode{
 			Type:  types.Char,
 			Var:   "ExplicitChar",
 			Value: ast.MetaNode{Node: ast.CharNode{Value: 'E'}},
-		},
-		"%ExplicitInt/i:0": {
+		}}, {
+		Code: "%ExplicitInt/i:0",
+		Result: ast.VarSetTypedNode{
 			Type:  types.Int,
 			Var:   "ExplicitInt",
 			Value: ast.MetaNode{Node: ast.IntNode{Value: 0}},
-		},
-		"%ExplicitFloat/f:0.5": {
+		}}, {
+		Code: "%ExplicitFloat/f:0.5",
+		Result: ast.VarSetTypedNode{
 			Type:  types.Float,
 			Var:   "ExplicitFloat",
 			Value: ast.MetaNode{Node: ast.FloatNode{Value: 0.5}},
-		},
-		"%ExplicitString/s:\"pp\"": {
+		}}, {
+		Code: "%ExplicitString/s:\"pp\"",
+		Result: ast.VarSetTypedNode{
 			Type:  types.String,
 			Var:   "ExplicitString",
 			Value: ast.MetaNode{Node: ast.StringNode{Value: "pp"}},
-		},
-	}
-
-	for in, out := range cases {
-		t.Log(in)
-		src.Reset(in)
-		expect(t, p, ast.MetaNode{Node: out})
-		t.Log("OK")
-	}
+		}},
+	})
 }
 
 func TestFuncDef(t *testing.T) {
 	p, src := makeParser("FuncDef")
 
-	cases := map[string]ast.FuncDefNode{
-		"$a()": {
+	expectAll(t, p, src, []testCase{{
+		Code: "$a()",
+		Result: ast.FuncDefNode{
 			Name: "a",
 			Body: ast.Block{},
-		},
-		"$b(>*)": {
+		}}, {
+		Code: "$b(>*)",
+		Result: ast.FuncDefNode{
 			Name: "b",
 			Body: ast.Block{
 				ast.MetaNode{
@@ -131,8 +127,9 @@ func TestFuncDef(t *testing.T) {
 					},
 				},
 			},
-		},
-		"$c/char(>'q')": {
+		}}, {
+		Code: "$c/char(>'q')",
+		Result: ast.FuncDefNode{
 			Name: "c",
 			Body: ast.Block{
 				ast.MetaNode{
@@ -141,8 +138,9 @@ func TestFuncDef(t *testing.T) {
 					},
 				},
 			},
-		},
-		"$f/float num/float(>add! num 1.0)": {
+		}}, {
+		Code: "$f/float num/float(>add! num 1.0)",
+		Result: ast.FuncDefNode{
 			Name: "f",
 			Body: ast.Block{
 				ast.MetaNode{
@@ -160,8 +158,9 @@ func TestFuncDef(t *testing.T) {
 					},
 				},
 			},
-		},
-		"$i/i a/i b/i(>add! sub! a b sub! b a)": {
+		}}, {
+		Code: "$i/i a/i b/i(>add! sub! a b sub! b a)",
+		Result: ast.FuncDefNode{
 			Name: "i",
 			Body: ast.Block{
 				ast.MetaNode{
@@ -203,84 +202,71 @@ func TestFuncDef(t *testing.T) {
 					},
 				},
 			},
-		},
-	}
-
-	for in, out := range cases {
-		t.Log(in)
-		src.Reset(in)
-		expect(t, p, ast.MetaNode{Node: out})
-		t.Log("OK")
-	}
+		}},
+	})
 }
 
 func TestFuncExtern(t *testing.T) {
 	p, src := makeParser("FuncExtern")
 
-	cases := map[string]ast.FuncExternNode{
-		"$exit code/int?": {
+	expectAll(t, p, src, []testCase{{
+		Code: "$exit code/int?",
+		Result: ast.FuncExternNode{
 			Alias: "exit",
 			Name:  "",
-		},
-		"$puts/int txt/str?": {
+		}}, {
+		Code: "$puts/int txt/str?",
+		Result: ast.FuncExternNode{
 			Alias: "puts",
 			Name:  "",
-		},
-		"$os/str?\"os_id\"": {
+		}}, {
+		Code: "$os/str?\"os_id\"",
+		Result: ast.FuncExternNode{
 			Alias: "os",
 			Name:  "os_id",
-		},
-		"$is_64bit/bool?": {
+		}}, {
+		Code: "$is_64bit/bool?",
+		Result: ast.FuncExternNode{
 			Alias: "is_64bit",
 			Name:  "",
-		},
-		"$panic?": {
+		}}, {
+		Code: "$panic?",
+		Result: ast.FuncExternNode{
 			Alias: "panic",
 			Name:  "",
-		},
-	}
-
-	for in, out := range cases {
-		t.Log(in)
-		src.Reset(in)
-		expect(t, p, ast.MetaNode{Node: out})
-		t.Log("OK")
-	}
+		}},
+	})
 }
 
 func TestStructDef(t *testing.T) {
 	p, src := makeParser("StructDef")
 
-	cases := map[string]ast.StructDefNode{
-		"@V2I(x/i y/i)": {
+	expectAll(t, p, src, []testCase{{
+		Code: "@V2I(x/i y/i)",
+		Result: ast.StructDefNode{
 			Name: "V2I",
 			Fields: []types.Descriptor{
 				{Name: "x", Type: types.Int},
 				{Name: "y", Type: types.Int},
 			},
-		},
-		"@V3I(x/i y/i z/i)": {
+		}}, {
+		Code: "@V3I(x/i y/i z/i)",
+		Result: ast.StructDefNode{
 			Name: "V3I",
 			Fields: []types.Descriptor{
 				{Name: "x", Type: types.Int},
 				{Name: "y", Type: types.Int},
 				{Name: "z", Type: types.Int},
 			},
-		},
-		"@Position(x/f y/f z/i)": {
+		}}, {
+		Code: "@Position(x/f y/f z/i)",
+		Result: ast.StructDefNode{
 			Name: "Position",
 			Fields: []types.Descriptor{
 				{Name: "x", Type: types.Float},
 				{Name: "y", Type: types.Float},
 				{Name: "z", Type: types.Int},
 			},
-		},
-	}
-
-	for in, out := range cases {
-		t.Log(in)
-		src.Reset(in)
-		expect(t, p, ast.MetaNode{Node: out})
-		t.Log("OK")
-	}
+		}},
+	})
 }
