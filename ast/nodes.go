@@ -28,6 +28,7 @@ const (
 	NVarDef
 	NVarSetTyped
 	NFuncDef
+	NFuncShorthand
 	NFuncExtern
 	NStructDef
 
@@ -61,6 +62,7 @@ var nodeKindNames = []string{
 	"VarDef",
 	"VarTypedSet",
 	"FuncDef",
+	"FuncShorthand",
 	"FuncExtern",
 	"StructDef",
 	"Selector",
@@ -81,6 +83,17 @@ func (k NodeKind) Ensure() NodeKind {
 // String returns the name of this NodeKind if it is valid, "Invalid" otherwise.
 func (k NodeKind) String() string {
 	return nodeKindNames[k.Ensure()]
+}
+
+// IsValue returns true if this NodeKind represents a value
+func (k NodeKind) IsValue() bool {
+	switch k {
+	case NBool, NChar, NInt, NFloat, NString, NStruct, NArray,
+		NSelector, NTypecast, NIndexConst, NIndexSelector, NFuncCall:
+		return true
+	default:
+		return false
+	}
 }
 
 // Node represents an abstract AST node.

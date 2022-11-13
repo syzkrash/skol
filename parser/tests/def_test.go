@@ -206,6 +206,86 @@ func TestFuncDef(t *testing.T) {
 	})
 }
 
+func TestFuncShorthand(t *testing.T) {
+	p, src := makeParser("FuncDef")
+
+	expectAll(t, p, src, []testCase{{
+		Code: "$Add1/int n/int: add! n 1",
+		Result: ast.FuncShorthandNode{
+			Name: "Add1",
+			Proto: []types.Descriptor{{
+				Name: "n",
+				Type: types.Int,
+			}},
+			Ret: types.Int,
+			Body: ast.MetaNode{
+				Node: ast.FuncCallNode{
+					Func: "add",
+					Args: []ast.MetaNode{{
+						Node: ast.SelectorNode{
+							Parent: nil,
+							Child:  "n",
+						},
+					}, {
+						Node: ast.IntNode{
+							Value: 1,
+						},
+					}},
+				},
+			},
+		},
+	}, {
+		Code: "$SumSqr/int a/int b/int: add! mul! a a mul! b b",
+		Result: ast.FuncShorthandNode{
+			Name: "SumSqr",
+			Proto: []types.Descriptor{{
+				Name: "a",
+				Type: types.Int,
+			}, {
+				Name: "b",
+				Type: types.Int,
+			}},
+			Ret: types.Int,
+			Body: ast.MetaNode{
+				Node: ast.FuncCallNode{
+					Func: "add",
+					Args: []ast.MetaNode{{
+						Node: ast.FuncCallNode{
+							Func: "mul",
+							Args: []ast.MetaNode{{
+								Node: ast.SelectorNode{
+									Parent: nil,
+									Child:  "a",
+								},
+							}, {
+								Node: ast.SelectorNode{
+									Parent: nil,
+									Child:  "a",
+								},
+							}},
+						},
+					}, {
+						Node: ast.FuncCallNode{
+							Func: "mul",
+							Args: []ast.MetaNode{{
+								Node: ast.SelectorNode{
+									Parent: nil,
+									Child:  "b",
+								},
+							}, {
+								Node: ast.SelectorNode{
+									Parent: nil,
+									Child:  "b",
+								},
+							}},
+						},
+					}},
+				},
+			},
+		},
+	}})
+}
+
 func TestFuncExtern(t *testing.T) {
 	p, src := makeParser("FuncExtern")
 

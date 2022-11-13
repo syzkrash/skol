@@ -409,6 +409,22 @@ func (p *Parser) Parse() (tree ast.AST, err error) {
 				Node: n,
 			}
 			delete(p.Tree.Exerns, nfd.Name)
+		case ast.NFuncShorthand:
+			nfs := n.Node.(ast.FuncShorthandNode)
+			body := ast.Block{{Where: nfs.Body.Where}}
+			if nfs.Body.Node.Kind().IsValue() {
+				body[0].Node = ast.ReturnNode{Value: nfs.Body}
+			} else {
+				body[0].Node = nfs.Body.Node
+			}
+			p.Tree.Funcs[nfs.Name] = ast.Func{
+				Name: nfs.Name,
+				Args: nfs.Proto,
+				Ret:  nfs.Ret,
+				Body: body,
+				Node: n,
+			}
+			delete(p.Tree.Exerns, nfs.Name)
 		case ast.NFuncExtern:
 			nfe := n.Node.(ast.FuncExternNode)
 			p.Tree.Exerns[nfe.Alias] = ast.Extern{

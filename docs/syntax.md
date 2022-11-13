@@ -62,6 +62,13 @@ The function in the above example concatenates the string `"Hello, "` and the
 provided `String` argument `who`, into the `greeting` variable. It then `print`s
 the `greeting` variable and returns it.
 
+```hs
+$Greet/str who/str: concat! "Hello, " who
+```
+
+Skol also supports function shorthand syntax. A shorthand functions is
+effectively a function consisting entirely of one statement or value.
+
 ## Function Call
 
 ```hs

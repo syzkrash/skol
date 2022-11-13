@@ -60,6 +60,19 @@ func (FuncDefNode) Kind() NodeKind {
 	return NFuncDef
 }
 
+type FuncShorthandNode struct {
+	Name string
+	Proto []types.Descriptor
+	Ret types.Type
+	Body MetaNode
+}
+
+var _ Node = FuncShorthandNode{}
+
+func (FuncShorthandNode) Kind() NodeKind {
+	return NFuncShorthand
+}
+
 type FuncExternNode struct {
 	Alias string
 	Proto []types.Descriptor

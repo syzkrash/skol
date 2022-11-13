@@ -155,12 +155,17 @@ func (p *Parser) parseConst() (err error) {
 //	 ^                  ^
 //	 |                  |
 //	alias/skol name     actual name
+//
+// Function shorthand:
+//
+//	$Add1/int n/int: add_i! n 1
 func (p *Parser) parseFunc() (n ast.Node, err error) {
 	var (
-		name string
-		ret  types.Type
-		args []types.Descriptor
-		body ast.Block
+		name          string
+		ret           types.Type
+		args          []types.Descriptor
+		body          ast.Block
+		shorthandBody ast.MetaNode
 
 		argName string
 		argType types.Type
@@ -195,43 +200,83 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 	for {
 		tok, err = p.lexer.Next()
 
-		if tok.Kind == lexer.TkPunct && tok.Raw[0] == '?' {
-			n = ast.FuncExternNode{
-				Alias: name,
-				Proto: args,
-				Ret:   ret,
-				Name:  name,
-			}
-			return
-		}
-		if tok.Kind == lexer.TkPunct && tok.Raw[0] == '(' {
-			p.lexer.Rollback(tok)
-			p.Scope = &Scope{
-				Parent: p.Scope,
-				Vars:   make(map[string]ast.Node),
-				Consts: make(map[string]ast.Node),
-				Types:  make(map[string]types.Type),
-			}
-			for _, a := range args {
-				var falseVal, ok = p.NodeOf(a.Type)
-				if !ok {
-					err = tokErr(pe.EBadFuncArgType, tok)
+		if tok.Kind == lexer.TkPunct {
+			switch tok.Raw[0] {
+			case '?':
+				n = ast.FuncExternNode{
+					Alias: name,
+					Proto: args,
+					Ret:   ret,
+					Name:  name,
+				}
+				return
+			case '(':
+				p.lexer.Rollback(tok)
+				p.Scope = &Scope{
+					Parent: p.Scope,
+					Vars:   make(map[string]ast.Node),
+					Consts: make(map[string]ast.Node),
+					Types:  make(map[string]types.Type),
+				}
+				for _, a := range args {
+					var falseVal, ok = p.NodeOf(a.Type)
+					if !ok {
+						err = tokErr(pe.EBadFuncArgType, tok)
+						return
+					}
+					p.Scope.Vars[a.Name] = falseVal
+				}
+				body, err = p.parseBlock()
+				if err != nil {
 					return
 				}
-				p.Scope.Vars[a.Name] = falseVal
-			}
-			body, err = p.parseBlock()
-			if err != nil {
+				p.Scope = p.Scope.Parent
+				n = ast.FuncDefNode{
+					Name:  name,
+					Proto: args,
+					Ret:   ret,
+					Body:  body,
+				}
+				return
+			case ':':
+				p.Scope = &Scope{
+					Parent: p.Scope,
+					Vars:   make(map[string]ast.Node),
+					Consts: make(map[string]ast.Node),
+					Types:  make(map[string]types.Type),
+				}
+				for _, a := range args {
+					var falseVal, ok = p.NodeOf(a.Type)
+					if !ok {
+						err = tokErr(pe.EBadFuncArgType, tok)
+						return
+					}
+					p.Scope.Vars[a.Name] = falseVal
+				}
+				tok, err = p.lexer.Next()
+				if err != nil {
+					return
+				}
+				// ensure that @ always means structure instatiation inside of a
+				// shorthand (struct definitions are not allowed in functions anyways)
+				if tok.Kind == lexer.TkPunct && tok.Raw[0] == '@' {
+					p.lexer.Rollback(tok)
+					shorthandBody, err = p.ParseValue()
+				} else {
+					shorthandBody, _, err = p.next(tok)
+				}
+				if err != nil {
+					return
+				}
+				p.Scope = p.Scope.Parent
+				n = ast.FuncShorthandNode{
+					Name:  name,
+					Proto: args,
+					Ret:   ret,
+					Body:  shorthandBody,
+				}
 				return
 			}
-			p.Scope = p.Scope.Parent
-			n = ast.FuncDefNode{
-				Name:  name,
-				Proto: args,
-				Ret:   ret,
-				Body:  body,
-			}
-			return
 		}
 		if tok.Kind != lexer.TkIdent {
 			err = tokErr(pe.ENeedBodyOrExtern, tok)

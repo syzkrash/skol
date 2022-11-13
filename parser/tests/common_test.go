@@ -241,6 +241,13 @@ func compare(t *testing.T, note string, mexp, mgot ast.MetaNode) {
 			gn := gf.Body[i]
 			compare(t, fmt.Sprintf("%s: body node %d", note, i), en, gn)
 		}
+	case ast.NFuncShorthand:
+		ef := exp.(ast.FuncShorthandNode)
+		gf := exp.(ast.FuncShorthandNode)
+		if ef.Name != gf.Name {
+			t.Fatalf("%s: expected `%s` function, got `%s`", note, ef.Name, gf.Name)
+		}
+		compare(t, fmt.Sprintf("%s: body node", note), ef.Body, gf.Body)
 	case ast.NFuncExtern:
 		ee := exp.(ast.FuncExternNode)
 		ge := exp.(ast.FuncExternNode)

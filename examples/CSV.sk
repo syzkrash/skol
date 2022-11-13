@@ -19,21 +19,18 @@ Shows a more OOP-inspired approach to Skol programming.
 
 // NewReader creates a CSV reader for the given input string with the default
 // separators.
-$NewReader/Reader Src/str(
-  >@Reader DefaultRowSep DefaultValSep Src len! Src 0
-)
+$NewReader/Reader Src/str:
+  @Reader DefaultRowSep DefaultValSep Src len! Src 0
 
 // NewCustomReader is the same as NewReader, except it allows you to change the
 // separators used. For example, you may want to change the value separator to
 // a tab character.
-$NewCustomReader/Reader Src/str LSep/ch VSep/ch(
-  >@Reader LSep VSep Src len! Src 0
-)
+$NewCustomReader/Reader Src/str LSep/ch VSep/ch:
+  @Reader LSep VSep Src len! Src 0
 
 // ReaderIncrOff is a shorthand to increment the offset of a reader.
-$ReaderIncrOff/Reader R/Reader(
-  >@Reader R#RowSep R#ValSep R#Source R#SourceLen add! R#Off 1
-)
+$ReaderIncrOff/Reader R/Reader:
+  @Reader R#RowSep R#ValSep R#Source R#SourceLen add! R#Off 1
 
 @ReadResult(
   State/Reader
