@@ -48,6 +48,7 @@ const (
 	PReturn
 	PIf
 	PLoop
+	PExecute
 )
 
 var punctNames = []string{
@@ -125,6 +126,8 @@ func (t Token) Punct() (p Punct, ok bool) {
 		p = PIf
 	case '*':
 		p = PLoop
+	case '!':
+		p = PExecute
 	default:
 		p = PInvalid
 		ok = false

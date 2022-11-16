@@ -88,8 +88,13 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 			Value: tok.Raw[0],
 		}
 	case lexer.TIdent:
-		if tok.Raw[len(tok.Raw)-1] == '!' {
-			fn := tok.Raw[:len(tok.Raw)-1]
+		var maybeBang *lexer.Token
+		maybeBang, err = p.lexer.Next()
+		if err != nil {
+			return
+		}
+		if pn, ok := maybeBang.Punct(); ok && pn == lexer.PExecute {
+			fn := tok.Raw
 			var argc int
 			f, ok := p.Tree.Funcs[fn]
 			if !ok {
@@ -103,7 +108,11 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 				argc = len(f.Args)
 			}
 			mn.Node, err = p.parseCall(fn, argc, tok.Where)
-		} else if _, ok := p.Scope.FindVar(tok.Raw); ok {
+			return
+		}
+		p.lexer.Rollback(maybeBang)
+
+		if _, ok := p.Scope.FindVar(tok.Raw); ok {
 			mn.Node, err = p.parseSelector(tok)
 		} else if v, ok := p.Scope.FindConst(tok.Raw); ok {
 			mn.Node = v

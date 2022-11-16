@@ -286,24 +286,30 @@ func (p *Parser) next(tok *lexer.Token) (mn ast.MetaNode, skip bool, err error) 
 			err = tokErr(pe.EUnexpectedToken, tok)
 		}
 	case lexer.TIdent:
-		if tok.Raw[len(tok.Raw)-1] == '!' {
-			fnm := tok.Raw[:len(tok.Raw)-1]
-			var argc int
-			f, ok := p.Tree.Funcs[fnm]
-			if !ok {
-				bf, ok := builtins[fnm]
-				if !ok {
-					err = tokErr(pe.EUnknownFunction, tok)
-					return
-				}
-				argc = bf.ArgCount
-			} else {
-				argc = len(f.Args)
-			}
-			n, err = p.parseCall(fnm, argc, tok.Where)
-		} else {
-			err = tokErr(pe.EUnexpectedToken, tok)
+		var maybeBang *lexer.Token
+		maybeBang, err = p.lexer.Next()
+		if err != nil {
+			return
 		}
+		if pn, ok := maybeBang.Punct(); !ok || pn != lexer.PExecute {
+			p.lexer.Rollback(maybeBang)
+			err = tokErr(pe.EUnexpectedToken, tok)
+			return
+		}
+		fnm := tok.Raw
+		var argc int
+		f, ok := p.Tree.Funcs[fnm]
+		if !ok {
+			bf, ok := builtins[fnm]
+			if !ok {
+				err = tokErr(pe.EUnknownFunction, tok)
+				return
+			}
+			argc = bf.ArgCount
+		} else {
+			argc = len(f.Args)
+		}
+		n, err = p.parseCall(fnm, argc, tok.Where)
 	default:
 		err = tokErr(pe.EUnexpectedToken, tok)
 	}

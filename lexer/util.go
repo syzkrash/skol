@@ -5,7 +5,7 @@ func isSpace(c rune) bool {
 }
 
 func isIdent(c rune) bool {
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '!'
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
 }
 
 func isDigit(c rune) bool {
