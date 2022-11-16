@@ -25,7 +25,7 @@ func (CharNode) Kind() NodeKind {
 }
 
 type IntNode struct {
-	Value int32
+	Value int64
 }
 
 var _ Node = IntNode{}
@@ -35,7 +35,7 @@ func (IntNode) Kind() NodeKind {
 }
 
 type FloatNode struct {
-	Value float32
+	Value float64
 }
 
 var _ Node = FloatNode{}

@@ -44,7 +44,7 @@ func (l *Lexer) nextIdent(c rune) (tok *Token, err error) {
 	}
 finish:
 	tok = &Token{
-		Kind:  TkIdent,
+		Kind:  TIdent,
 		Where: pos,
 		Raw:   ident,
 	}
@@ -54,6 +54,7 @@ finish:
 func (l *Lexer) nextConstant(c rune) (tok *Token, err error) {
 	pos := l.src.Position
 	num := string(c)
+	isfloat := false
 	for {
 		c, _, err = l.src.ReadRune()
 		if errors.Is(err, io.EOF) {
@@ -70,13 +71,24 @@ func (l *Lexer) nextConstant(c rune) (tok *Token, err error) {
 			}
 			break
 		}
+		if c == '.' {
+			isfloat = true
+		}
 		num += string(c)
 	}
 finish:
-	tok = &Token{
-		Kind:  TkConstant,
-		Where: pos,
-		Raw:   num,
+	if isfloat {
+		tok = &Token{
+			Kind:  TFloat,
+			Where: pos,
+			Raw:   num,
+		}
+	} else {
+		tok = &Token{
+			Kind:  TInt,
+			Where: pos,
+			Raw:   num,
+		}
 	}
 	return
 }
@@ -113,7 +125,7 @@ func (l *Lexer) nextString() (tok *Token, err error) {
 		str += string(c)
 	}
 	tok = &Token{
-		Kind:  TkString,
+		Kind:  TString,
 		Where: pos,
 		Raw:   str,
 	}
@@ -154,7 +166,7 @@ func (l *Lexer) nextChar() (tok *Token, err error) {
 		err = pe.New(pe.EInvalidCharLit).Section("Caused by", "'%c' at %s", c, l.src.Position)
 	}
 	tok = &Token{
-		Kind:  TkChar,
+		Kind:  TChar,
 		Where: pos,
 		Raw:   string(lit),
 	}
@@ -165,7 +177,7 @@ func (l *Lexer) nextPunctuator(c rune) (tok *Token, ok bool) {
 	switch c {
 	case '(', ')', '[', ']', '$', '%', ':', '/', '>', '?', '*', '#', '@':
 		tok = &Token{
-			Kind:  TkPunct,
+			Kind:  TPunct,
 			Where: l.src.Position,
 			Raw:   string(c),
 		}
@@ -263,7 +275,7 @@ func (l *Lexer) internalNext() (tok *Token, err error) {
 			}
 			if !cmt {
 				tok = &Token{
-					Kind:  TkPunct,
+					Kind:  TPunct,
 					Where: l.src.Position,
 					Raw:   "/",
 				}

@@ -1,32 +1,29 @@
 package lexer
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
-// TokenKind classifes a token from one of the constants
-type TokenKind uint8
+type TokenKind byte
 
-// TokenKind constants
 const (
-	// Identifier
-	TkIdent TokenKind = iota
-	// Numeric constant
-	TkConstant
-	// Quoted string literal
-	TkString
-	// Single-character string literal
-	TkChar
-	// Punctuator
-	TkPunct
+	TIdent TokenKind = iota
+	TInt
+	TFloat
+	TString
+	TChar
+	TPunct
 )
 
 // used in (TokenKind).String()
 var tokenKinds = []string{
 	"Ident",
-	"Constant",
+	"Int",
+	"Float",
 	"String",
 	"Char",
 	"Punct",
-	"Oper",
 }
 
 // String returns the name of this kind of token
@@ -34,13 +31,111 @@ func (k TokenKind) String() string {
 	return tokenKinds[k]
 }
 
-// Token represents a single token of any kind
+type Punct byte
+
+const (
+	PInvalid Punct = iota
+	PLParen
+	PRParen
+	PLBrack
+	PRBrack
+	PIs
+	PType
+	PVar
+	PFunc
+	PStruct
+	PField
+	PReturn
+	PIf
+	PLoop
+)
+
+var punctNames = []string{
+	"Invalid",
+	"Left Paren",
+	"Right Paren",
+	"Left Bracket",
+	"Right Bracket",
+	"Is",
+	"Type",
+	"Var",
+	"Func",
+	"Struct",
+	"Field",
+	"Return",
+	"If",
+	"Loop",
+}
+
+func (p Punct) String() string {
+	return punctNames[p]
+}
+
 type Token struct {
 	Kind  TokenKind
 	Where Position
 	Raw   string
 }
 
-func (t *Token) String() string {
-	return fmt.Sprintf("%s `%s` at %s", t.Kind, t.Raw, t.Where)
+func (t Token) Int() (int64, bool) {
+	i, err := strconv.ParseInt(t.Raw, 0, 64)
+	if err != nil {
+		return 0, false
+	}
+	return i, true
+}
+
+func (t Token) Float() (float64, bool) {
+	f, err := strconv.ParseFloat(t.Raw, 64)
+	if err != nil {
+		return 0, false
+	}
+	return f, true
+}
+
+func (t Token) Punct() (p Punct, ok bool) {
+	if t.Kind != TPunct {
+		return 0, false
+	}
+	ok = true
+	switch t.Raw[0] {
+	case '(', '{':
+		p = PLParen
+	case ')', '}':
+		p = PRParen
+	case '[':
+		p = PLBrack
+	case ']':
+		p = PRBrack
+	case ':', '-':
+		p = PIs
+	case '/':
+		p = PType
+	case '%':
+		p = PVar
+	case '$':
+		p = PFunc
+	case '@':
+		p = PStruct
+	case '#':
+		p = PField
+	case '>':
+		p = PReturn
+	case '?':
+		p = PIf
+	case '*':
+		p = PLoop
+	default:
+		p = PInvalid
+		ok = false
+	}
+	return
+}
+
+func (t Token) String() string {
+	tn := t.Kind.String()
+	if p, ok := t.Punct(); ok {
+		tn += fmt.Sprintf(" (%s)", p)
+	}
+	return fmt.Sprintf("%s `%s` at %s", tn, t.Raw, t.Where)
 }

@@ -55,7 +55,7 @@ func (p *Parser) parseIf() (n ast.Node, err error) {
 		if err != nil {
 			return
 		}
-		if tok.Kind != lexer.TkPunct || tok.Raw != ":" {
+		if pn, ok := tok.Punct(); !ok || pn != lexer.PIs {
 			p.lexer.Rollback(tok)
 			break
 		}
@@ -63,7 +63,7 @@ func (p *Parser) parseIf() (n ast.Node, err error) {
 		if err != nil {
 			return
 		}
-		if tok.Kind == lexer.TkPunct && tok.Raw == "?" {
+		if pn, ok := tok.Punct(); ok && pn == lexer.PIf {
 			cond, err = p.ParseValue()
 			if err != nil {
 				return

@@ -1,9 +1,6 @@
 package parser
 
 import (
-	"strconv"
-	"strings"
-
 	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/lexer"
@@ -62,39 +59,35 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 	mn.Where = tok.Where
 
 	switch tok.Kind {
-	case lexer.TkConstant:
-		if strings.ContainsRune(tok.Raw, '.') {
-			var f float64
-			f, err = strconv.ParseFloat(tok.Raw, 32)
-			if err != nil {
-				err = tokErr(pe.EBadFloatLit, tok)
-				return
-			}
-
-			mn.Node = ast.FloatNode{
-				Value: float32(f),
-			}
-		} else {
-			var i int64
-			i, err = strconv.ParseInt(tok.Raw, 0, 32)
-			if err != nil {
-				err = tokErr(pe.EBadIntLit, tok)
-				return
-			}
-
-			mn.Node = ast.IntNode{
-				Value: int32(i),
-			}
+	case lexer.TInt:
+		i, ok := tok.Int()
+		if !ok {
+			err = tokErr(pe.EBadIntLit, tok)
+			return
 		}
-	case lexer.TkString:
+
+		mn.Node = ast.IntNode{
+			Value: i,
+		}
+	case lexer.TFloat:
+		f, ok := tok.Float()
+		if !ok {
+			err = tokErr(pe.EBadFloatLit, tok)
+			return
+		}
+
+		mn.Node = ast.FloatNode{
+			Value: f,
+		}
+	case lexer.TString:
 		mn.Node = ast.StringNode{
 			Value: tok.Raw,
 		}
-	case lexer.TkChar:
+	case lexer.TChar:
 		mn.Node = ast.CharNode{
 			Value: tok.Raw[0],
 		}
-	case lexer.TkIdent:
+	case lexer.TIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
 			fn := tok.Raw[:len(tok.Raw)-1]
 			var argc int
@@ -117,22 +110,23 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 		} else {
 			err = tokErr(pe.EUnknownVariable, tok)
 		}
-	case lexer.TkPunct:
-		switch tok.Raw[0] {
-		case '*':
+	case lexer.TPunct:
+		pn, _ := tok.Punct()
+		switch pn {
+		case lexer.PLoop:
 			mn.Node = ast.BoolNode{
 				Value: true,
 			}
-		case '/':
+		case lexer.PType:
 			mn.Node = ast.BoolNode{
 				Value: false,
 			}
-		case '@':
+		case lexer.PStruct:
 			tok, err = p.lexer.Next()
 			if err != nil {
 				return
 			}
-			if tok.Kind != lexer.TkIdent {
+			if tok.Kind != lexer.TIdent {
 				err = tokErr(pe.EExpectedName, tok)
 				return
 			}
@@ -154,14 +148,14 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 				Type: s,
 				Args: args,
 			}
-		case '[':
+		case lexer.PLBrack:
 			begin := tok
 			var elemtype types.Type = types.Undefined
 			tok, err = p.lexer.Next()
 			if err != nil {
 				return
 			}
-			if tok.Kind == lexer.TkIdent {
+			if tok.Kind == lexer.TIdent {
 				var ok bool
 				elemtype, ok = p.typeByName(tok.Raw)
 				if !ok {
@@ -173,7 +167,7 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 					return
 				}
 			}
-			if tok.Kind != lexer.TkPunct || tok.Raw[0] != ']' {
+			if pn, ok := tok.Punct(); !ok || pn != lexer.PRBrack {
 				err = tokErr(pe.EExpectedType, tok)
 				return
 			}
@@ -181,7 +175,7 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 			if err != nil {
 				return
 			}
-			if tok.Kind != lexer.TkPunct || tok.Raw[0] != '(' {
+			if pn, ok := tok.Punct(); !ok || pn != lexer.PLParen {
 				err = tokErr(pe.EExpectedLParen, tok)
 				return
 			}
@@ -192,7 +186,7 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 				if err != nil {
 					return
 				}
-				if tok.Kind == lexer.TkPunct && tok.Raw[0] == ')' {
+				if pn, ok := tok.Punct(); ok && pn == lexer.PRParen {
 					break
 				} else {
 					p.lexer.Rollback(tok)

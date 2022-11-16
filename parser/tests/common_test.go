@@ -319,9 +319,9 @@ func arrOf(element types.Type, elements ...any) ast.ArrayNode {
 		case rune:
 			enodes = append(enodes, ast.MetaNode{Node: ast.CharNode{Value: byte(e)}})
 		case int:
-			enodes = append(enodes, ast.MetaNode{Node: ast.IntNode{Value: int32(e)}})
+			enodes = append(enodes, ast.MetaNode{Node: ast.IntNode{Value: int64(e)}})
 		case float64:
-			enodes = append(enodes, ast.MetaNode{Node: ast.FloatNode{Value: float32(e)}})
+			enodes = append(enodes, ast.MetaNode{Node: ast.FloatNode{Value: e}})
 		case string:
 			enodes = append(enodes, ast.MetaNode{Node: ast.StringNode{Value: e}})
 		default:

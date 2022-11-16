@@ -58,14 +58,14 @@ func (p *Parser) parseType() (t types.Type, err error) {
 		return
 	}
 	isArray := false
-	if tk.Kind == lexer.TkPunct && tk.Raw[0] == '[' {
+	if pn, ok := tk.Punct(); ok && pn == lexer.PLBrack {
 		isArray = true
 		tk, err = p.lexer.Next()
 		if err != nil {
 			return
 		}
 	}
-	if tk.Kind != lexer.TkIdent {
+	if tk.Kind != lexer.TIdent {
 		err = tokErr(pe.EExpectedName, tk)
 		return
 	}
@@ -79,7 +79,7 @@ func (p *Parser) parseType() (t types.Type, err error) {
 		if err != nil {
 			return
 		}
-		if tk.Kind != lexer.TkPunct || tk.Raw[0] != ']' {
+		if pn, ok := tk.Punct(); ok && pn == lexer.PRBrack {
 			err = tokErr(pe.EExpectedRBrack, tk)
 			return
 		}

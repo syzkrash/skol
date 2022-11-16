@@ -91,7 +91,7 @@ func TestLiteralInt(t *testing.T) {
 	// generate a bunch of completely randomised integers to make sure no
 	// weirdness happens for example due to large numbers
 	for i := 0; i < 20; i++ {
-		num := rand.Int31()
+		num := rand.Int63()
 		if num%2 == 0 {
 			num = -num
 		}
@@ -121,7 +121,7 @@ func TestLiteralFloat(t *testing.T) {
 		Result: ast.FloatNode{Value: 0.0},
 	}}
 	for i := 0; i < 20; i++ {
-		num := rand.Float32()
+		num := rand.Float64()
 		if rand.Int()%2 == 0 {
 			num = -num
 		}

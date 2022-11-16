@@ -41,7 +41,7 @@ func (p *Parser) parseVar() (n ast.Node, err error) {
 		return
 	}
 
-	if tok.Kind != lexer.TkIdent {
+	if tok.Kind != lexer.TIdent {
 		err = tokErr(pe.EExpectedName, tok)
 		return
 	}
@@ -52,7 +52,7 @@ func (p *Parser) parseVar() (n ast.Node, err error) {
 		return
 	}
 
-	if tok.Kind == lexer.TkPunct && tok.Raw[0] == '/' {
+	if pn, ok := tok.Punct(); ok && pn == lexer.PType {
 		typed = true
 		vtype, err = p.parseType()
 		if err != nil {
@@ -67,7 +67,7 @@ func (p *Parser) parseVar() (n ast.Node, err error) {
 			return
 		}
 	}
-	if tok.Kind == lexer.TkPunct && tok.Raw[0] == ':' {
+	if pn, ok := tok.Punct(); ok && pn == lexer.PIs {
 		valued = true
 		value, err = p.ParseValue()
 		if err != nil {
@@ -114,7 +114,7 @@ func (p *Parser) parseConst() (err error) {
 	if err != nil {
 		return
 	}
-	if nameToken.Kind != lexer.TkIdent {
+	if nameToken.Kind != lexer.TIdent {
 		err = tokErr(pe.EExpectedName, nameToken)
 		return
 	}
@@ -123,7 +123,7 @@ func (p *Parser) parseConst() (err error) {
 	if err != nil {
 		return err
 	}
-	if sept.Kind != lexer.TkPunct || sept.Raw != ":" {
+	if pn, ok := sept.Punct(); !ok || pn != lexer.PIs {
 		err = tokErr(pe.EExpectedColon, sept)
 		return
 	}
@@ -177,7 +177,7 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 	if err != nil {
 		return
 	}
-	if tok.Kind != lexer.TkIdent {
+	if tok.Kind != lexer.TIdent {
 		err = tokErr(pe.EExpectedName, tok)
 		return
 	}
@@ -188,7 +188,7 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 	if err != nil {
 		return
 	}
-	if tok.Kind == lexer.TkPunct && tok.Raw[0] == '/' {
+	if pn, ok := tok.Punct(); ok && pn == lexer.PType {
 		ret, err = p.parseType()
 		if err != nil {
 			return
@@ -200,9 +200,9 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 	for {
 		tok, err = p.lexer.Next()
 
-		if tok.Kind == lexer.TkPunct {
-			switch tok.Raw[0] {
-			case '?':
+		if pn, ok := tok.Punct(); ok {
+			switch pn {
+			case lexer.PIf:
 				n = ast.FuncExternNode{
 					Alias: name,
 					Proto: args,
@@ -210,7 +210,7 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 					Name:  name,
 				}
 				return
-			case '(':
+			case lexer.PLParen:
 				p.lexer.Rollback(tok)
 				p.Scope = &Scope{
 					Parent: p.Scope,
@@ -238,7 +238,7 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 					Body:  body,
 				}
 				return
-			case ':':
+			case lexer.PIs:
 				p.Scope = &Scope{
 					Parent: p.Scope,
 					Vars:   make(map[string]ast.Node),
@@ -259,7 +259,7 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 				}
 				// ensure that @ always means structure instatiation inside of a
 				// shorthand (struct definitions are not allowed in functions anyways)
-				if tok.Kind == lexer.TkPunct && tok.Raw[0] == '@' {
+				if pn, ok := tok.Punct(); ok && pn == lexer.PStruct {
 					p.lexer.Rollback(tok)
 					shorthandBody, err = p.ParseValue()
 				} else {
@@ -278,7 +278,7 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 				return
 			}
 		}
-		if tok.Kind != lexer.TkIdent {
+		if tok.Kind != lexer.TIdent {
 			err = tokErr(pe.ENeedBodyOrExtern, tok)
 			return
 		}
@@ -290,7 +290,7 @@ func (p *Parser) parseFunc() (n ast.Node, err error) {
 			return
 		}
 
-		if tok.Kind != lexer.TkPunct || tok.Raw[0] != '/' {
+		if pn, ok := tok.Punct(); !ok || pn != lexer.PType {
 			err = tokErr(pe.EExpectedType, tok)
 			return
 		}
@@ -322,7 +322,7 @@ func (p *Parser) parseStruct() (n ast.Node, err error) {
 		return
 	}
 
-	if tok.Kind != lexer.TkIdent {
+	if tok.Kind != lexer.TIdent {
 		err = tokErr(pe.EExpectedName, tok)
 		return
 	}
@@ -333,7 +333,7 @@ func (p *Parser) parseStruct() (n ast.Node, err error) {
 		return nil, err
 	}
 
-	if tok.Kind != lexer.TkPunct || tok.Raw[0] != '(' {
+	if pn, ok := tok.Punct(); !ok || pn != lexer.PLParen {
 		err = tokErr(pe.EExpectedLParen, tok)
 		return
 	}
@@ -344,10 +344,10 @@ func (p *Parser) parseStruct() (n ast.Node, err error) {
 			return
 		}
 
-		if tok.Kind == lexer.TkPunct && tok.Raw[0] == ')' {
+		if pn, ok := tok.Punct(); ok && pn == lexer.PRParen {
 			break
 		}
-		if tok.Kind != lexer.TkIdent {
+		if tok.Kind != lexer.TIdent {
 			err = tokErr(pe.EExpectedName, tok)
 			return
 		}
@@ -358,7 +358,7 @@ func (p *Parser) parseStruct() (n ast.Node, err error) {
 			return
 		}
 
-		if tok.Kind != lexer.TkPunct || tok.Raw[0] != '/' {
+		if pn, ok := tok.Punct(); !ok || pn != lexer.PType {
 			err = tokErr(pe.EExpectedType, tok)
 			return
 		}

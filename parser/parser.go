@@ -99,7 +99,7 @@ func (p *Parser) parseSelector(start *lexer.Token) (n ast.Node, err error) {
 		// rollback the token we read in case it isn't a #
 		// we have just consumed an element of the selector, so if we don't have
 		// another # that means that is the end of the selector
-		if tok.Kind != lexer.TkPunct || tok.Raw[0] != '#' {
+		if pn, ok := tok.Punct(); !ok || pn != lexer.PField {
 			p.lexer.Rollback(tok)
 			return
 		}
@@ -111,7 +111,7 @@ func (p *Parser) parseSelector(start *lexer.Token) (n ast.Node, err error) {
 		}
 		switch tok.Kind {
 		// ident: select a field on a structure
-		case lexer.TkIdent:
+		case lexer.TIdent:
 			// append to the chain of selectors
 			n = ast.SelectorNode{
 				Parent: n.(ast.Selector),
@@ -119,7 +119,7 @@ func (p *Parser) parseSelector(start *lexer.Token) (n ast.Node, err error) {
 			}
 		// constant: index into an array
 		//	indexes are always unsigned integers, but base prefixes are allowed
-		case lexer.TkConstant:
+		case lexer.TInt:
 			// parse the index, this will error out if the index is not an unsigned
 			// integer
 			var idx uint64
@@ -134,9 +134,10 @@ func (p *Parser) parseSelector(start *lexer.Token) (n ast.Node, err error) {
 			}
 		// punct: can be a typecast or an array index
 		//	typecasts use the @ punctuator and indexes use the [] punctuators
-		case lexer.TkPunct:
-			switch tok.Raw[0] {
-			case '@':
+		case lexer.TPunct:
+			pn, _ := tok.Punct()
+			switch pn {
+			case lexer.PStruct:
 				// get the type for typecast
 				// this also allows arrays to be typecast (makes sense if you think about
 				// it)
@@ -150,7 +151,7 @@ func (p *Parser) parseSelector(start *lexer.Token) (n ast.Node, err error) {
 					Parent: n.(ast.Selector),
 					Cast:   t,
 				}
-			case '[':
+			case lexer.PLBrack:
 				// get the token starting the index
 				tok, err = p.lexer.Next()
 				if err != nil {
@@ -169,7 +170,7 @@ func (p *Parser) parseSelector(start *lexer.Token) (n ast.Node, err error) {
 				if err != nil {
 					return
 				}
-				if tok.Kind != lexer.TkPunct || tok.Raw[0] != ']' {
+				if pn, ok := tok.Punct(); !ok || pn != lexer.PRBrack {
 					err = tokErr(pe.EExpectedRBrack, tok)
 					return
 				}
@@ -223,7 +224,7 @@ func (p *Parser) parseBlock() (block ast.Block, err error) {
 		return
 	}
 
-	if tok.Kind != lexer.TkPunct || tok.Raw[0] != '(' {
+	if pn, ok := tok.Punct(); !ok || pn != lexer.PLParen {
 		err = tokErr(pe.EExpectedLParen, tok)
 		return
 	}
@@ -234,7 +235,7 @@ func (p *Parser) parseBlock() (block ast.Block, err error) {
 			return
 		}
 
-		if tok.Kind == lexer.TkPunct && tok.Raw[0] == ')' {
+		if pn, ok := tok.Punct(); ok && pn == lexer.PRParen {
 			break
 		}
 
@@ -260,21 +261,22 @@ func (p *Parser) next(tok *lexer.Token) (mn ast.MetaNode, skip bool, err error) 
 	)
 
 	switch tok.Kind {
-	case lexer.TkPunct:
-		switch tok.Raw[0] {
-		case '$':
+	case lexer.TPunct:
+		pn, _ := tok.Punct()
+		switch pn {
+		case lexer.PFunc:
 			n, err = p.parseFunc()
-		case '%':
+		case lexer.PVar:
 			n, err = p.parseVar()
-		case '?':
+		case lexer.PIf:
 			n, err = p.parseIf()
-		case '*':
+		case lexer.PLoop:
 			n, err = p.parseWhile()
-		case '@':
+		case lexer.PStruct:
 			n, err = p.parseStruct()
-		case '>':
+		case lexer.PReturn:
 			n, err = p.parseReturn()
-		case '#':
+		case lexer.PField:
 			err = p.parseConst()
 			if err != nil {
 				return
@@ -283,7 +285,7 @@ func (p *Parser) next(tok *lexer.Token) (mn ast.MetaNode, skip bool, err error) 
 		default:
 			err = tokErr(pe.EUnexpectedToken, tok)
 		}
-	case lexer.TkIdent:
+	case lexer.TIdent:
 		if tok.Raw[len(tok.Raw)-1] == '!' {
 			fnm := tok.Raw[:len(tok.Raw)-1]
 			var argc int

@@ -13,7 +13,7 @@ func TestIdent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tok.Kind != TkIdent {
+	if tok.Kind != TIdent {
 		t.Fatalf("Incorrect TokenKind! Want Ident but got %s!", tok.Kind)
 	}
 	if tok.Raw != "hello0" {
@@ -29,7 +29,7 @@ func TestConstant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tok.Kind != TkConstant {
+	if tok.Kind != TFloat {
 		t.Fatalf("Incorrect TokenKind! Want Constant but got %s!", tok.Kind)
 	}
 	if tok.Raw != "-123.456" {
@@ -45,7 +45,7 @@ func TestString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tok.Kind != TkString {
+	if tok.Kind != TString {
 		t.Fatalf("Incorrect TokenKind! Want String but got %s!", tok.Kind)
 	}
 	if tok.Raw != "hello\tworld\n" {
@@ -61,7 +61,7 @@ func TestChar(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tok.Kind != TkChar {
+	if tok.Kind != TChar {
 		t.Fatalf("Incorrect TokenKind! Want Char but got %s!", tok.Kind)
 	}
 	if tok.Raw != "'" {
@@ -77,10 +77,11 @@ func TestPunct(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tok.Kind != TkPunct {
+	pn, ok := tok.Punct()
+	if !ok {
 		t.Fatalf("Incorrect TokenKind! Want Punct but got %s!", tok.Kind)
 	}
-	if tok.Raw != "(" {
+	if pn != PLParen {
 		t.Fatalf("Incorrect string! Want `(` but got `%s`!", tok.Raw)
 	}
 }
