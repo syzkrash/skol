@@ -79,7 +79,7 @@ func (p *Parser) parseType() (t types.Type, err error) {
 		if err != nil {
 			return
 		}
-		if pn, ok := tk.Punct(); ok && pn == lexer.PRBrack {
+		if pn, ok := tk.Punct(); !ok || pn != lexer.PRBrack {
 			err = tokErr(pe.EExpectedRBrack, tk)
 			return
 		}
