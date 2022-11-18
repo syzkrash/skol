@@ -130,11 +130,11 @@ func (p *PrettyError) Unwrap() error {
 }
 
 func (p *PrettyError) Print() {
-	pprintln(fmt.Sprintf("Error %d", p.Code), gBold, cFgRed)
-	pprintln("  " + emsgs[p.Code])
+	Pprintln(fmt.Sprintf("Error %d", p.Code), Bold, FgRed)
+	Pprintln("  " + emsgs[p.Code])
 	for _, s := range p.sections {
-		pprintln(s.title, gBold)
-		pprintln("  " + s.message)
+		Pprintln(s.title, Bold)
+		Pprintln("  " + s.message)
 	}
 }
 

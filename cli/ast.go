@@ -26,10 +26,10 @@ By default, this parses and typechecks the file, then prints a summary of the
 resulting AST. If -json is provided, the AST is encoded as JSON and printed to
 stdout. If -pretty is also provided, additional whitespace is added to the JSON
 to increase readability.`,
-	Run: ast,
+	Run: runAst,
 }
 
-func ast(args []string) error {
+func runAst(args []string) error {
 	if len(args) < 1 {
 		return pe.New(pe.ENoInput)
 	}

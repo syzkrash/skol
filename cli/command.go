@@ -15,5 +15,6 @@ func init() {
 		AstCommand,
 		CompileCommand,
 		ReplCommand,
+		LintCommand,
 	}
 }

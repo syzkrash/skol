@@ -13,59 +13,59 @@ const (
 	ESC = "\x1b"
 	CSI = ESC + "["
 
-	gBold      seq = CSI + "1m"
-	gUnderline seq = CSI + "4m"
-	gNegative  seq = CSI + "7m"
-	gDim       seq = CSI + "2m"
+	Bold      seq = CSI + "1m"
+	Underline seq = CSI + "4m"
+	Negative  seq = CSI + "7m"
+	Dim       seq = CSI + "2m"
 
-	gNoBold      seq = CSI + "22m"
-	gNoUnderline seq = CSI + "24m"
-	gPositive    seq = CSI + "27m"
-	gNoDim       seq = gNoBold
+	NoBold      seq = CSI + "22m"
+	NoUnderline seq = CSI + "24m"
+	Positive    seq = CSI + "27m"
+	NoDim       seq = NoBold
 
-	cFgBlack   seq = CSI + "30m"
-	cFgRed     seq = CSI + "31m"
-	cFgGreen   seq = CSI + "32m"
-	cFgYellow  seq = CSI + "33m"
-	cFgBlue    seq = CSI + "34m"
-	cFgMagenta seq = CSI + "35m"
-	cFgCyan    seq = CSI + "36m"
-	cFgWhite   seq = CSI + "37m"
-	cFgDefault seq = CSI + "39m"
+	FgBlack   seq = CSI + "30m"
+	FgRed     seq = CSI + "31m"
+	FgGreen   seq = CSI + "32m"
+	FgYellow  seq = CSI + "33m"
+	FgBlue    seq = CSI + "34m"
+	FgMagenta seq = CSI + "35m"
+	FgCyan    seq = CSI + "36m"
+	FgWhite   seq = CSI + "37m"
+	FgDefault seq = CSI + "39m"
 
-	cBgBlack   seq = CSI + "40m"
-	cBgRed     seq = CSI + "41m"
-	cBgGreen   seq = CSI + "42m"
-	cBgYellow  seq = CSI + "43m"
-	cBgBlue    seq = CSI + "44m"
-	cBgMagenta seq = CSI + "45m"
-	cBgCyan    seq = CSI + "46m"
-	cBgWhite   seq = CSI + "47m"
-	cBgDefault seq = CSI + "49m"
+	BgBlack   seq = CSI + "40m"
+	BgRed     seq = CSI + "41m"
+	BgGreen   seq = CSI + "42m"
+	BgYellow  seq = CSI + "43m"
+	BgBlue    seq = CSI + "44m"
+	BgMagenta seq = CSI + "45m"
+	BgCyan    seq = CSI + "46m"
+	BgWhite   seq = CSI + "47m"
+	BgDefault seq = CSI + "49m"
 )
 
 func (s seq) reverse() seq {
 	switch s {
-	case gBold:
-		return gNoBold
-	case gUnderline:
-		return gNoUnderline
-	case gNegative:
-		return gPositive
-	case gDim:
-		return gNoDim
+	case Bold:
+		return NoBold
+	case Underline:
+		return NoUnderline
+	case Negative:
+		return Positive
+	case Dim:
+		return NoDim
 
-	case cFgBlack, cFgRed, cFgGreen, cFgYellow, cFgBlue, cFgMagenta, cFgCyan, cFgWhite:
-		return cFgDefault
+	case FgBlack, FgRed, FgGreen, FgYellow, FgBlue, FgMagenta, FgCyan, FgWhite:
+		return FgDefault
 
-	case cBgBlack, cBgRed, cBgGreen, cBgYellow, cBgBlue, cBgMagenta, cBgCyan, cBgWhite:
-		return cBgDefault
+	case BgBlack, BgRed, BgGreen, BgYellow, BgBlue, BgMagenta, BgCyan, BgWhite:
+		return BgDefault
 	}
 
 	return ""
 }
 
-func pprintln(msg string, g ...seq) {
+func Pprintln(msg string, g ...seq) {
 	if isatty.IsTerminal(os.Stderr.Fd()) {
 		for _, s := range g {
 			fmt.Fprint(os.Stderr, s)
