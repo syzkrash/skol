@@ -76,6 +76,8 @@ func TestDecode(t *testing.T) {
 			t.Fatalf("func %02X len mismatch: %02X != %02X", i, len(pf), len(ef))
 		}
 	}
+
+	t.Logf("Program:\n%s", p)
 }
 
 func TestRecode(t *testing.T) {

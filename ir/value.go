@@ -1,5 +1,10 @@
 package ir
 
+import (
+	"fmt"
+	"strings"
+)
+
 // Type represents the unique type identifier of a value
 type Type byte
 
@@ -12,6 +17,19 @@ const (
 	TypeArray
 	TypeRef
 )
+
+var typeNames = []string{
+	"INTEGER",
+	"FLOAT",
+	"CALL",
+	"STRUCT",
+	"ARRAY",
+	"REF",
+}
+
+func (t Type) String() string {
+	return typeNames[t]
+}
 
 // Value represents any valid value within the IR. Note that the type of this
 // value does not correspond to a skol type. It only consists of information
@@ -30,6 +48,10 @@ func (IntegerValue) Type() Type {
 	return TypeInteger
 }
 
+func (v IntegerValue) String() string {
+	return fmt.Sprintf("%s %d", TypeInteger, v.Value)
+}
+
 var _ Value = IntegerValue{}
 
 // FloatValue holds the data of a (immediate) float value
@@ -40,6 +62,10 @@ type FloatValue struct {
 // Type returns TypeFloat
 func (FloatValue) Type() Type {
 	return TypeFloat
+}
+
+func (v FloatValue) String() string {
+	return fmt.Sprintf("%s %f", TypeFloat, v.Value)
 }
 
 var _ Value = FloatValue{}
@@ -55,6 +81,16 @@ func (CallValue) Type() Type {
 	return TypeCall
 }
 
+func (v CallValue) String() string {
+	str := strings.Builder{}
+	fmt.Fprintf(&str, "%s %02X [%02X](", TypeCall, v.Func, len(v.Args))
+	for n := 0; n < len(v.Args)-1; n++ {
+		fmt.Fprintf(&str, "%s, ", v.Args[n])
+	}
+	fmt.Fprintf(&str, "%s)", v.Args[len(v.Args)-1])
+	return str.String()
+}
+
 var _ Value = CallValue{}
 
 // StructValue holds the data of a struct instantiation
@@ -65,6 +101,16 @@ type StructValue struct {
 // Type returns TypeStruct
 func (StructValue) Type() Type {
 	return TypeStruct
+}
+
+func (v StructValue) String() string {
+	str := strings.Builder{}
+	fmt.Fprintf(&str, "%s [%02X](", TypeStruct, len(v.Fields))
+	for n := 0; n < len(v.Fields)-1; n++ {
+		fmt.Fprintf(&str, "%s, ", v.Fields[n])
+	}
+	fmt.Fprintf(&str, "%s)", v.Fields[len(v.Fields)-1])
+	return str.String()
 }
 
 var _ Value = StructValue{}
@@ -79,6 +125,16 @@ func (ArrayValue) Type() Type {
 	return TypeArray
 }
 
+func (v ArrayValue) String() string {
+	str := strings.Builder{}
+	fmt.Fprintf(&str, "%s [%02X](", TypeArray, len(v.Elements))
+	for n := 0; n < len(v.Elements)-1; n++ {
+		fmt.Fprintf(&str, "%s, ", v.Elements[n])
+	}
+	fmt.Fprintf(&str, "%s)", v.Elements[len(v.Elements)-1])
+	return str.String()
+}
+
 var _ Value = ArrayValue{}
 
 // RefValue holds data of any reference
@@ -89,6 +145,10 @@ type RefValue struct {
 // Type returns TypeRef
 func (RefValue) Type() Type {
 	return TypeRef
+}
+
+func (v RefValue) String() string {
+	return fmt.Sprintf("%s %s", TypeRef, v.Ref)
 }
 
 var _ Value = RefValue{}

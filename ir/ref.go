@@ -1,5 +1,7 @@
 package ir
 
+import "fmt"
+
 // RefType represents the unique type identifier of a reference
 type RefType byte
 
@@ -10,6 +12,17 @@ const (
 	RefLocalIdx
 	RefGlobalIdx
 )
+
+var refNames = []string{
+	"LOCAL",
+	"GLOBAL",
+	"LOCAL.IDX",
+	"GLOBAL.IDX",
+}
+
+func (rt RefType) String() string {
+	return refNames[rt]
+}
 
 // Ref holds data of some value reference
 type Ref interface {
@@ -27,6 +40,10 @@ func (r SingleRef) Type() RefType {
 	return r.RefType
 }
 
+func (r SingleRef) String() string {
+	return fmt.Sprintf("%s %02X", r.RefType, r.Idx)
+}
+
 var _ Ref = SingleRef{}
 
 // DoubleRef is a reference with two unique identifiers
@@ -39,6 +56,10 @@ type DoubleRef struct {
 // Type returns this reference's underlying type
 func (r DoubleRef) Type() RefType {
 	return r.RefType
+}
+
+func (r DoubleRef) String() string {
+	return fmt.Sprintf("%s %02X$%08X", r.RefType, r.Val, r.Idx)
 }
 
 var _ Ref = DoubleRef{}
