@@ -1,6 +1,9 @@
 package parser
 
 import (
+	"errors"
+	"io"
+
 	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/lexer"
@@ -90,6 +93,9 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 	case lexer.TIdent:
 		var maybeBang *lexer.Token
 		maybeBang, err = p.lexer.Next()
+		if errors.Is(err, io.EOF) {
+			goto checkIdent
+		}
 		if err != nil {
 			return
 		}
@@ -112,6 +118,7 @@ func (p *Parser) ParseValue() (mn ast.MetaNode, err error) {
 		}
 		p.lexer.Rollback(maybeBang)
 
+	checkIdent:
 		if _, ok := p.Scope.FindVar(tok.Raw); ok {
 			mn.Node, err = p.parseSelector(tok)
 		} else if v, ok := p.Scope.FindConst(tok.Raw); ok {
