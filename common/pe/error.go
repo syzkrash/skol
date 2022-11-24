@@ -54,6 +54,8 @@ const (
 	EExpectedRBrack
 
 	EUnexpectedToken
+
+	EUnencodableNode
 )
 
 const (
@@ -102,6 +104,7 @@ var emsgs = map[ErrorCode]string{
 	EExpectedColon:        "Expected ':'.",
 	EExpectedRBrack:       "Expected ']'.",
 	EUnexpectedToken:      "Unexpected token.",
+	EUnencodableNode:      "This node cannot currently be encoded.",
 
 	ETypeMismatch:        "Type mismatch.",
 	EVarTypeChanged:      "Variable type cannot change.",
