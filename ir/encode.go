@@ -1,198 +1,118 @@
 package ir
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
+
+	"github.com/syzkrash/skol/common/pack"
 )
 
 // Encode writes a full IR representation of the program to the given writer,
 // WITH the magic string and version.
 func Encode(w io.Writer, p Program) (err error) {
-	_, err = w.Write([]byte(magic))
-	if err != nil {
-		return
+	pk := pack.NewPacker(w)
+	pk.Write([]byte(magic)).U8(ver).U8(p.Entrypoint)
+	encodeValueArray(pk, p.Globals)
+	encodeBlockArray(pk, p.Funcs)
+	if len(pk.Err) > 0 {
+		return pk.Err[0]
 	}
-	_, err = w.Write([]byte{ver, p.Entrypoint})
-	if err != nil {
-		return
-	}
-	err = encodeValueArray(w, p.Globals)
-	if err != nil {
-		return
-	}
-	err = encodeBlockArray(w, p.Funcs)
 	return
 }
 
-func encodeValue(w io.Writer, v Value) (err error) {
-	_, err = w.Write([]byte{byte(v.Type())})
-	if err != nil {
-		return
-	}
+func encodeValue(pk *pack.Packer, v Value) {
+	pk.U8(uint8(v.Type()))
 	switch v.Type() {
 	case TypeInteger:
-		unsigned := make([]byte, 8)
-		binary.BigEndian.PutUint64(unsigned, uint64(v.(IntegerValue).Value))
-		_, err = w.Write(unsigned)
-		return
+		pk.I64(v.(IntegerValue).Value)
 	case TypeFloat:
-		floatBits := math.Float64bits(v.(FloatValue).Value)
-		unsigned := make([]byte, 8)
-		binary.BigEndian.PutUint64(unsigned, floatBits)
-		_, err = w.Write(unsigned)
-		return
+		pk.F64(v.(FloatValue).Value)
 	case TypeCall:
 		cv := v.(CallValue)
-		_, err = w.Write([]byte{cv.Func})
-		if err != nil {
-			return
-		}
-		err = encodeValueArray(w, cv.Args)
-		return
+		pk.U8(cv.Func)
+		encodeValueArray(pk, cv.Args)
 	case TypeStruct:
-		err = encodeValueArray(w, v.(StructValue).Fields)
-		return
+		encodeValueArray(pk, v.(StructValue).Fields)
 	case TypeArray:
-		err = encodeValueArray(w, v.(ArrayValue).Elements)
-		return
+		encodeValueArray(pk, v.(ArrayValue).Elements)
 	case TypeRef:
-		err = encodeRef(w, v.(RefValue).Ref)
-		return
+		encodeRef(pk, v.(RefValue).Ref)
 	default:
-		err = fmt.Errorf("unknown value type: %02X", v.Type())
-		return
+		pk.Error(fmt.Errorf("unknown value type: %02X", v.Type()))
 	}
 }
 
-func encodeValueArray(w io.Writer, va []Value) (err error) {
-	_, err = w.Write([]byte{byte(len(va))})
+func encodeValueArray(pk *pack.Packer, va []Value) {
+	pk.U8(uint8(len(va)))
 	for _, v := range va {
-		err = encodeValue(w, v)
-		if err != nil {
-			return
-		}
+		encodeValue(pk, v)
 	}
-	return
 }
 
-func encodeRef(w io.Writer, r Ref) (err error) {
-	_, err = w.Write([]byte{byte(r.Type())})
-	if err != nil {
-		return
-	}
+func encodeRef(pk *pack.Packer, r Ref) {
+	pk.U8(uint8(r.Type()))
 	switch r.Type() {
 	case RefLocal, RefGlobal:
-		_, err = w.Write([]byte{r.(SingleRef).Idx})
-		return
+		pk.U8(r.(SingleRef).Idx)
 	case RefLocalIdx, RefGlobalIdx:
 		dr := r.(DoubleRef)
-		_, err = w.Write([]byte{dr.Val})
-		if err != nil {
-			return
-		}
-		rawIdx := make([]byte, 4)
-		binary.BigEndian.PutUint32(rawIdx, dr.Idx)
-		_, err = w.Write(rawIdx)
-		return
+		pk.U8(dr.Val).U32(dr.Idx)
 	default:
-		err = fmt.Errorf("unknown reference type: %02X", r.Type())
-		return
+		pk.Error(fmt.Errorf("unknown reference type: %02X", r.Type()))
 	}
 }
 
-func encodeBlock(w io.Writer, b Block) (err error) {
-	_, err = w.Write([]byte{byte(len(b))})
-	if err != nil {
-		return
-	}
+func encodeBlock(pk *pack.Packer, b Block) {
+	pk.U8(uint8(len(b)))
 	for _, i := range b {
-		err = encodeInstr(w, i)
-		if err != nil {
-			return
-		}
+		encodeInstr(pk, i)
 	}
-	return
 }
 
-func encodeInstr(w io.Writer, i Instr) (err error) {
-	_, err = w.Write([]byte{byte(i.Op())})
-	if err != nil {
-		return
-	}
+func encodeInstr(pk *pack.Packer, i Instr) {
+	pk.U8(uint8(i.Op()))
 	switch i.Op() {
 	case OpSet:
 		si := i.(SetInstr)
-		err = encodeRef(w, si.Target)
-		if err != nil {
-			return
-		}
-		err = encodeValue(w, si.Value)
-		return
+		encodeRef(pk, si.Target)
+		encodeValue(pk, si.Value)
 	case OpCall:
 		ci := i.(CallInstr)
-		_, err = w.Write([]byte{ci.Func})
-		if err != nil {
-			return
-		}
-		err = encodeValueArray(w, ci.Args)
-		return
+		pk.U8(ci.Func)
+		encodeValueArray(pk, ci.Args)
 	case OpRet:
-		err = encodeValue(w, i.(RetInstr).Value)
-		return
+		encodeValue(pk, i.(RetInstr).Value)
 	case OpBranch:
-		err = encodeBranchArray(w, i.(BranchInstr).branches)
-		return
+		encodeBranchArray(pk, i.(BranchInstr).branches)
 	case OpLoop:
-		err = encodeBranchOf(w, i.(LoopInstr).Cond, i.(LoopInstr).Body)
-		return
+		encodeBranchOf(pk, i.(LoopInstr).Cond, i.(LoopInstr).Body)
 	default:
-		err = fmt.Errorf("unknown instruction: %02X", i.Op())
-		return
+		pk.Error(fmt.Errorf("unknown instruction: %02X", i.Op()))
 	}
 }
 
-func encodeBlockArray(w io.Writer, ba []Block) (err error) {
-	_, err = w.Write([]byte{byte(len(ba))})
-	if err != nil {
-		return
-	}
+func encodeBlockArray(pk *pack.Packer, ba []Block) {
+	pk.U8(uint8(len(ba)))
 	for _, b := range ba {
-		err = encodeBlock(w, b)
-		if err != nil {
-			return
-		}
+		encodeBlock(pk, b)
 	}
-	return
 }
 
-func encodeBranch(w io.Writer, b branch) (err error) {
-	err = encodeValue(w, b.Cond)
-	if err != nil {
-		return
-	}
-	err = encodeBlock(w, b.Body)
-	return
+func encodeBranch(pk *pack.Packer, b branch) {
+	encodeValue(pk, b.Cond)
+	encodeBlock(pk, b.Body)
 }
 
-func encodeBranchOf(w io.Writer, cond Value, body Block) (err error) {
-	return encodeBranch(w, branch{
+func encodeBranchOf(pk *pack.Packer, cond Value, body Block) {
+	encodeBranch(pk, branch{
 		Cond: cond,
 		Body: body,
 	})
 }
 
-func encodeBranchArray(w io.Writer, ba []branch) (err error) {
-	_, err = w.Write([]byte{byte(len(ba))})
-	if err != nil {
-		return
-	}
+func encodeBranchArray(pk *pack.Packer, ba []branch) {
+	pk.U8(uint8(len(ba)))
 	for _, b := range ba {
-		err = encodeBranch(w, b)
-		if err != nil {
-			return
-		}
+		encodeBranch(pk, b)
 	}
-	return
 }

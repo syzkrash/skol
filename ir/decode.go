@@ -1,11 +1,11 @@
 package ir
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
-	"math"
+
+	"github.com/syzkrash/skol/common/pack"
 )
 
 const (
@@ -16,318 +16,162 @@ const (
 // Decode reads an encoded Program from the given Reader. This assumes the
 // input starts with the "SKIR" magic string.
 func Decode(r io.Reader) (prog Program, err error) {
-	magicBytes := make([]byte, len(magic))
-	_, err = r.Read(magicBytes)
-	if err != nil {
-		return
-	}
+	u := pack.NewUnpacker(r)
+	magicBytes := u.Bytes(uint(len(magic)))
 	if string(magicBytes) != magic {
 		err = errors.New("invalid or missing magic")
 	}
-	p := make([]byte, 1)
-	_, err = r.Read(p)
-	if err != nil {
+	if fv := u.U8(); fv != ver {
+		err = fmt.Errorf("incorrect IR version: %02X (expected %02X)", fv, ver)
 		return
 	}
-	if p[0] != ver {
-		err = fmt.Errorf("incorrect IR version: %02X (expected %02X)", p[0], ver)
-		return
+	prog.Entrypoint = u.U8()
+
+	count := u.U8()
+	prog.Globals = make([]Value, count)
+	for i := 0; i < int(count); i++ {
+		prog.Globals[i] = decodeValue(u)
 	}
-	_, err = r.Read(p)
-	if err != nil {
-		return
+
+	count = u.U8()
+	prog.Funcs = make([]Block, count)
+	for i := 0; i < int(count); i++ {
+		prog.Funcs[i] = decodeBlock(u)
 	}
-	prog.Entrypoint = p[0]
-	_, err = r.Read(p)
-	if err != nil {
-		return
-	}
-	prog.Globals = make([]Value, p[0])
-	for i := 0; i < int(p[0]); i++ {
-		var val Value
-		val, err = decodeValue(r)
-		if err != nil {
-			return
-		}
-		prog.Globals[i] = val
-	}
-	_, err = r.Read(p)
-	if err != nil {
-		return
-	}
-	prog.Funcs = make([]Block, p[0])
-	for i := 0; i < int(p[0]); i++ {
-		var body []Instr
-		body, err = decodeBlock(r)
-		if err != nil {
-			return
-		}
-		prog.Funcs[i] = body
+
+	if len(u.Err) > 0 {
+		err = u.Err[0]
 	}
 
 	return
 }
 
-func decodeValue(r io.Reader) (val Value, err error) {
-	p := make([]byte, 1)
-	_, err = r.Read(p)
-	if err != nil {
-		return
-	}
-	ty := Type(p[0])
+func decodeValue(u *pack.Unpacker) (val Value) {
+	ty := Type(u.U8())
 	switch ty {
 	case TypeInteger:
-		rawInt := make([]byte, 8)
-		_, err = r.Read(rawInt)
-		if err != nil {
-			return
-		}
-		unsigned := binary.BigEndian.Uint64(rawInt)
-		val = IntegerValue{Value: int64(unsigned)}
-		return
+		val = IntegerValue{Value: u.I64()}
 	case TypeFloat:
-		rawFloat := make([]byte, 8)
-		_, err = r.Read(rawFloat)
-		if err != nil {
-			return
-		}
-		floatBits := binary.BigEndian.Uint64(rawFloat)
-		val = FloatValue{Value: math.Float64frombits(floatBits)}
-		return
+		val = FloatValue{Value: u.F64()}
 	case TypeCall:
-		_, err = r.Read(p)
-		if err != nil {
-			return
-		}
-		fn := p[0]
-		_, err = r.Read(p)
-		if err != nil {
-			return
-		}
-		args := make([]Value, p[0])
-		var arg Value
-		for i := 0; i < int(p[0]); i++ {
-			arg, err = decodeValue(r)
-			if err != nil {
-				return
-			}
-			args[i] = arg
+		fn := u.U8()
+		count := u.U8()
+		args := make([]Value, count)
+		for i := 0; i < int(count); i++ {
+			args[i] = decodeValue(u)
 		}
 		val = CallValue{
 			Func: fn,
 			Args: args,
 		}
-		return
 	case TypeStruct:
-		_, err = r.Read(p)
-		if err != nil {
-			return
-		}
-		fields := make([]Value, p[0])
-		var field Value
-		for i := 0; i < int(p[0]); i++ {
-			field, err = decodeValue(r)
-			if err != nil {
-				return
-			}
-			fields[i] = field
+		count := u.U8()
+		fields := make([]Value, count)
+		for i := 0; i < int(count); i++ {
+			fields[i] = decodeValue(u)
 		}
 		val = StructValue{
 			Fields: fields,
 		}
-		return
 	case TypeArray:
-		_, err = r.Read(p)
-		if err != nil {
-			return
-		}
-		elems := make([]Value, p[0])
-		var elem Value
-		for i := 0; i < int(p[0]); i++ {
-			elem, err = decodeValue(r)
-			if err != nil {
-				return
-			}
-			elems[i] = elem
+		count := u.U8()
+		elems := make([]Value, count)
+		for i := 0; i < int(count); i++ {
+			elems[i] = decodeValue(u)
 		}
 		val = ArrayValue{
 			Elements: elems,
 		}
-		return
 	case TypeRef:
-		var ref Ref
-		ref, err = decodeRef(r)
-		if err != nil {
-			return
-		}
 		val = RefValue{
-			Ref: ref,
+			Ref: decodeRef(u),
 		}
-		return
 	default:
-		err = fmt.Errorf("unknown value type: %02X", ty)
-		return
-	}
-}
-
-func decodeRef(r io.Reader) (ref Ref, err error) {
-	p := make([]byte, 1)
-	_, err = r.Read(p)
-	if err != nil {
-		return
-	}
-	rt := RefType(p[0])
-	switch rt {
-	case RefLocal, RefGlobal:
-		_, err = r.Read(p)
-		if err != nil {
-			return
-		}
-		ref = SingleRef{
-			RefType: rt,
-			Idx:     p[0],
-		}
-		return
-	case RefLocalIdx, RefGlobalIdx:
-		val := p[0]
-		_, err = r.Read(p)
-		if err != nil {
-			return
-		}
-		rawIdx := make([]byte, 4)
-		_, err = r.Read(rawIdx)
-		if err != nil {
-			return
-		}
-		idx := binary.BigEndian.Uint32(rawIdx)
-		ref = DoubleRef{
-			RefType: rt,
-			Val:     val,
-			Idx:     idx,
-		}
-		return
-	default:
-		err = fmt.Errorf("unknown reference type: %02X", rt)
-		return
-	}
-}
-
-func decodeBlock(r io.Reader) (block Block, err error) {
-	p := make([]byte, 1)
-	_, err = r.Read(p)
-	if err != nil {
-		return
-	}
-	block = make(Block, p[0])
-	for i := 0; i < int(p[0]); i++ {
-		var instr Instr
-		instr, err = decodeInstr(r)
-		if err != nil {
-			return
-		}
-		block[i] = instr
+		u.Error(fmt.Errorf("unknown value type: %02X", ty))
 	}
 	return
 }
 
-func decodeInstr(r io.Reader) (instr Instr, err error) {
-	p := make([]byte, 1)
-	_, err = r.Read(p)
-	if err != nil {
-		return
+func decodeRef(u *pack.Unpacker) (ref Ref) {
+	rt := RefType(u.U8())
+	switch rt {
+	case RefLocal, RefGlobal:
+		ref = SingleRef{
+			RefType: rt,
+			Idx:     u.U8(),
+		}
+	case RefLocalIdx, RefGlobalIdx:
+		// read these here to make sure they are read in the correct order
+		v := u.U8()
+		i := u.U32()
+		ref = DoubleRef{
+			RefType: rt,
+			Val:     v,
+			Idx:     i,
+		}
+	default:
+		u.Error(fmt.Errorf("unknown reference type: %02X", rt))
 	}
-	op := Opcode(p[0])
+	return
+}
+
+func decodeBlock(u *pack.Unpacker) (block Block) {
+	count := u.U8()
+	block = make(Block, count)
+	for i := 0; i < int(count); i++ {
+		block[i] = decodeInstr(u)
+	}
+	return
+}
+
+func decodeInstr(u *pack.Unpacker) (instr Instr) {
+	op := Opcode(u.U8())
 	switch op {
 	case OpSet:
-		var target Ref
-		target, err = decodeRef(r)
-		if err != nil {
-			return
-		}
-		var val Value
-		val, err = decodeValue(r)
-		if err != nil {
-			return
-		}
+		target := decodeRef(u)
+		val := decodeValue(u)
 		instr = SetInstr{
 			Target: target,
 			Value:  val,
 		}
-		return
 	case OpCall:
-		_, err = r.Read(p)
-		if err != nil {
-			return
-		}
-		fn := p[0]
-		_, err = r.Read(p)
-		if err != nil {
-			return
-		}
-		args := make([]Value, p[0])
-		for i := 0; i < int(p[0]); i++ {
-			var val Value
-			val, err = decodeValue(r)
-			if err != nil {
-				return
-			}
-			args[i] = val
+		fn := u.U8()
+		count := u.U8()
+		args := make([]Value, count)
+		for i := 0; i < int(count); i++ {
+			args[i] = decodeValue(u)
 		}
 		instr = CallInstr{
 			Func: fn,
 			Args: args,
 		}
-		return
 	case OpRet:
-		var val Value
-		val, err = decodeValue(r)
-		if err != nil {
-			return
-		}
 		instr = RetInstr{
-			Value: val,
+			Value: decodeValue(u),
 		}
-		return
 	case OpBranch:
-		_, err = r.Read(p)
-		if err != nil {
-			return
-		}
-		branches := make([]branch, p[0])
-		for i := 0; i < int(p[0]); i++ {
-			var branch branch
-			branch, err = decodeBranch(r)
-			if err != nil {
-				return
-			}
-			branches[i] = branch
+		count := u.U8()
+		branches := make([]branch, count)
+		for i := 0; i < int(count); i++ {
+			branches[i] = decodeBranch(u)
 		}
 		instr = BranchInstr{
 			branches: branches,
 		}
-		return
 	case OpLoop:
-		var branch branch
-		branch, err = decodeBranch(r)
-		if err != nil {
-			return
-		}
+		branch := decodeBranch(u)
 		instr = LoopInstr{
 			Cond: branch.Cond,
 			Body: branch.Body,
 		}
-		return
 	default:
-		err = fmt.Errorf("unknown instruction: %02X", op)
-		return
+		u.Error(fmt.Errorf("unknown instruction: %02X", op))
 	}
+	return
 }
 
-func decodeBranch(r io.Reader) (branch branch, err error) {
-	branch.Cond, err = decodeValue(r)
-	if err != nil {
-		return
-	}
-	branch.Body, err = decodeBlock(r)
+func decodeBranch(u *pack.Unpacker) (branch branch) {
+	branch.Cond = decodeValue(u)
+	branch.Body = decodeBlock(u)
 	return
 }

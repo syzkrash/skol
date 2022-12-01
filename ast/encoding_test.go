@@ -2,34 +2,32 @@ package ast_test
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/common"
-	"github.com/syzkrash/skol/parser/values/types"
+	"github.com/syzkrash/skol/parser"
 )
 
 func TestEncode(t *testing.T) {
-	tree := ast.NewAST()
-	tree.Vars["greeting"] = ast.Var{
-		Name: "greeting",
-		Value: ast.MetaNode{Node: ast.StringNode{
-			Value: "Hello, world!",
-		}},
+	p := parser.NewParser(
+		"TestEncode",
+		strings.NewReader(`
+			#greeting: "Hello, world!"
+
+			$hello/int(
+				print! greeting
+				>123
+			)
+		`),
+		"test")
+
+	tree, err := p.Parse()
+	if err != nil {
+		t.Fatal(err)
 	}
-	tree.Funcs["hello"] = ast.Func{
-		Name: "hello",
-		Args: []types.Descriptor{},
-		Ret:  types.Nothing,
-		Body: []ast.MetaNode{{Node: ast.FuncCallNode{
-			Func: "print",
-			Args: []ast.MetaNode{{Node: ast.SelectorNode{
-				Parent: nil,
-				Child: "greeting",
-			}}},
-		}}},
-		Node: ast.MetaNode{},
-	}
+
 	out := bytes.Buffer{}
 	if err := ast.Encode(&out, tree); err != nil {
 		if p, ok := err.(common.Printable); ok {
