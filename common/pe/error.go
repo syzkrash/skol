@@ -56,6 +56,10 @@ const (
 	EUnexpectedToken
 
 	EUnencodableNode
+	EBadNodeKind
+	EBadTypePrim
+	EBadMagic
+	EBadEncoderVer
 )
 
 const (
@@ -105,6 +109,10 @@ var emsgs = map[ErrorCode]string{
 	EExpectedRBrack:       "Expected ']'.",
 	EUnexpectedToken:      "Unexpected token.",
 	EUnencodableNode:      "This node cannot currently be encoded.",
+	EBadNodeKind:          "Unknown node kind.",
+	EBadTypePrim:          "Unknown type primitive.",
+	EBadMagic:             "Magic string is missing or invalid.",
+	EBadEncoderVer:        "Incompatible file format version.",
 
 	ETypeMismatch:        "Type mismatch.",
 	EVarTypeChanged:      "Variable type cannot change.",

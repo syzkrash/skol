@@ -66,6 +66,7 @@ func encodeFunc(pk *pack.Packer, f Func) {
 }
 
 func encodeExtern(pk *pack.Packer, e Extern) {
+	pk.Str(e.Alias)
 	pk.Str(e.Name)
 	encodeType(pk, e.Ret)
 	encodeDescriptorSlice(pk, e.Args)
@@ -153,10 +154,6 @@ func encodeType(pk *pack.Packer, t types.Type) {
 	pk.U8(uint8(p))
 
 	switch p {
-	case types.PNothing:
-		pk.U8(0)
-	case types.PUndefined:
-		pk.U8(0)
 	case types.PStruct:
 		st := t.(types.StructType)
 		pk.Str(st.Name)

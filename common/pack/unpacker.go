@@ -8,9 +8,10 @@ import (
 // Unpacker contains facilities for reading concrete values from byte streams
 // read from an [io.Reader]
 type Unpacker struct {
-	in  io.Reader
-	Err []error
-	buf [8]byte
+	in     io.Reader
+	Err    []error
+	buf    [8]byte
+	Offset uint32
 }
 
 // NewUnpacker creates a [Unpacker] for the given [io.Reader]
@@ -31,6 +32,8 @@ func (u *Unpacker) Error(e error) {
 func (u *Unpacker) read(p []byte) {
 	if _, err := u.in.Read(p); err != nil {
 		u.Error(err)
+	} else {
+		u.Offset += uint32(len(p))
 	}
 }
 
