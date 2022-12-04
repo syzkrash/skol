@@ -3,3 +3,4 @@ skol
 *.skol.py
 *.skol.ast_dump.txt
 *.skol.sim.txt
+/_skolcache

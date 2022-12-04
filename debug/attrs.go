@@ -9,6 +9,7 @@ const (
 	AttrLexer
 	AttrParser
 	AttrScope
+	AttrCache
 )
 
 func (a Attribute) Name() string {
@@ -19,6 +20,8 @@ func (a Attribute) Name() string {
 		return "Parser"
 	case AttrScope:
 		return "Scope"
+	case AttrCache:
+		return "Cache"
 	default:
 		return "Debug"
 	}

@@ -8,7 +8,10 @@ import (
 	"io"
 	"os"
 
+	"github.com/syzkrash/skol/ast"
+	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/common/pe"
+	"github.com/syzkrash/skol/debug"
 	"github.com/syzkrash/skol/parser"
 	"github.com/syzkrash/skol/typecheck"
 )
@@ -46,20 +49,7 @@ func runAst(args []string) error {
 	flags.BoolVar(&prettyJSON, "pretty", false, "")
 	flags.Parse(args[1:])
 
-	f, err := os.Open(input)
-	if err != nil {
-		return pe.New(pe.EBadInput).Cause(err)
-	}
-	defer f.Close()
-	data, err := io.ReadAll(f)
-	if err != nil {
-		return pe.New(pe.EBadInput).Cause(err)
-	}
-
-	src := bytes.NewReader(data)
-	p := parser.NewParser(input, src, "ast")
-
-	tree, err := p.Parse()
+	tree, err := parseOrCacheAST(input)
 	if err != nil {
 		return err
 	}
@@ -158,4 +148,63 @@ func runAst(args []string) error {
 	}
 
 	return nil
+}
+
+func parseOrCacheAST(input string) (tree ast.AST, err error) {
+	debug.Log(debug.AttrCache, "Checking for AST cache for %s", input)
+	cacheName := common.CachedASTName(input)
+	asts, err := os.Stat(cacheName)
+	if err == nil {
+		srcs, err := os.Stat(input)
+		if err == nil {
+			if srcs.ModTime().Before(asts.ModTime()) {
+				return loadCachedAST(cacheName)
+			}
+		}
+	}
+	return parseAST(input, cacheName)
+}
+
+func loadCachedAST(input string) (tree ast.AST, err error) {
+	debug.Log(debug.AttrCache, "Loading cached AST from %s", input)
+	// we don't need to check if the file exists as this function would not get
+	// called if it didn't (due to the os.Stat call)
+	f, _ := os.Open(input)
+	defer f.Close()
+	return ast.Decode(f)
+}
+
+func parseAST(input, cacheName string) (tree ast.AST, err error) {
+	debug.Log(debug.AttrCache, "No cached AST found for %s", input)
+	f, err := os.Open(input)
+	if err != nil {
+		err = pe.New(pe.EBadInput).Cause(err)
+		return
+	}
+	data, err := io.ReadAll(f)
+	f.Close()
+	if err != nil {
+		err = pe.New(pe.EBadInput).Cause(err)
+		return
+	}
+
+	src := bytes.NewReader(data)
+	p := parser.NewParser(input, src, "ast")
+
+	tree, err = p.Parse()
+	if err != nil {
+		return
+	}
+
+	f, err = os.Create(cacheName)
+	if err != nil {
+		err = pe.New(pe.EBadAST).Cause(err)
+		return
+	}
+	err = ast.Encode(f, tree)
+	if err == nil {
+		debug.Log(debug.AttrCache, "Cached AST for %s", input)
+	}
+	f.Close()
+	return
 }
