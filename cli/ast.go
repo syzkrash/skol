@@ -16,6 +16,7 @@ import (
 	"github.com/syzkrash/skol/typecheck"
 )
 
+// AstCommand defines the `skol ast` command.
 var AstCommand = Command{
 	Name:  "ast",
 	Short: "Dump file AST",
@@ -209,11 +210,35 @@ func parseAST(input, cacheName string) (tree ast.AST, err error) {
 		return
 	}
 
-	src := bytes.NewReader(data)
-	p := parser.NewParser(input, src, "ast")
+	errs := make(chan error)
+	var errOne error
 
-	tree, err = p.Parse()
-	if err != nil {
+	go func() {
+		for err := range errs {
+			if err == nil {
+				continue
+			}
+
+			if errOne == nil {
+				errOne = err
+				continue
+			}
+
+			if perr, ok := err.(common.Printable); ok {
+				perr.Print()
+			} else {
+				fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+			}
+		}
+	}()
+
+	src := bytes.NewReader(data)
+	p := parser.NewParser(input, src, "ast", errs)
+
+	tree = p.Parse()
+	close(errs)
+	if errOne != nil {
+		err = errOne
 		return
 	}
 

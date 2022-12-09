@@ -11,6 +11,20 @@ import (
 )
 
 func TestEncode(t *testing.T) {
+	errs := make(chan error)
+	var parseError error
+
+	go func() {
+		for err := range errs {
+			if err == nil {
+				continue
+			}
+
+			close(errs)
+			parseError = err
+		}
+	}()
+
 	p := parser.NewParser(
 		"TestEncode",
 		strings.NewReader(`
@@ -21,11 +35,11 @@ func TestEncode(t *testing.T) {
 				>123
 			)
 		`),
-		"test")
+		"test", errs)
 
-	tree, err := p.Parse()
-	if err != nil {
-		t.Fatal(err)
+	tree := p.Parse()
+	if parseError != nil {
+		t.Fatal(parseError)
 	}
 
 	out := bytes.Buffer{}
@@ -39,6 +53,20 @@ func TestEncode(t *testing.T) {
 }
 
 func TestRecode(t *testing.T) {
+	errs := make(chan error)
+	var parseError error
+
+	go func() {
+		for err := range errs {
+			if err == nil {
+				continue
+			}
+
+			close(errs)
+			parseError = err
+		}
+	}()
+
 	p := parser.NewParser(
 		"TestRecode",
 		strings.NewReader(`
@@ -49,11 +77,11 @@ func TestRecode(t *testing.T) {
 				>123
 			)
 		`),
-		"test")
+		"test", errs)
 
-	tree, err := p.Parse()
-	if err != nil {
-		t.Fatal(err)
+	tree := p.Parse()
+	if parseError != nil {
+		t.Fatal(parseError)
 	}
 
 	out := bytes.Buffer{}

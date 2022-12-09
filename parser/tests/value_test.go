@@ -10,7 +10,7 @@ import (
 )
 
 func TestFuncCall(t *testing.T) {
-	p, src := makeParser("FuncCall")
+	p, src := makeParser(t, "FuncCall")
 
 	p.Tree.Funcs["hi"] = ast.Func{
 		Name: "hi",
@@ -84,7 +84,7 @@ func TestFuncCall(t *testing.T) {
 }
 
 func TestStruct(t *testing.T) {
-	p, src := makeParser("Struct")
+	p, src := makeParser(t, "Struct")
 
 	V2I := types.MakeStruct("V2I",
 		"x", types.Int,
@@ -159,7 +159,7 @@ func TestStruct(t *testing.T) {
 }
 
 func TestSelector(t *testing.T) {
-	p, src := makeParser("Selector")
+	p, src := makeParser(t, "Selector")
 
 	X := types.MakeStruct("X")
 	Y := types.MakeStruct("Y",

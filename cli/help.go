@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+// HelpCommand represents the `skol help` command, doubling as a default command
+// to use when no command was specified.
 var HelpCommand = Command{
 	Name:  "help",
 	Short: "Need help?",

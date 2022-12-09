@@ -8,7 +8,7 @@ import (
 )
 
 func TestIf(t *testing.T) {
-	p, src := makeParser("If")
+	p, src := makeParser(t, "If")
 
 	p.Tree.Funcs["do"] = ast.Func{
 		Name: "do",
@@ -248,7 +248,7 @@ func TestIf(t *testing.T) {
 }
 
 func TestWhile(t *testing.T) {
-	p, src := makeParser("While")
+	p, src := makeParser(t, "While")
 
 	p.Scope.Vars["Quit"] = ast.BoolNode{Value: false}
 

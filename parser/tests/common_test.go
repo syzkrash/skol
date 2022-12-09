@@ -18,26 +18,45 @@ type testCase struct {
 	Result ast.Node
 }
 
-func makeParser(test string) (*parser.Parser, *strings.Reader) {
+var parseError error
+
+func makeParser(t *testing.T, test string) (*parser.Parser, *strings.Reader) {
+	errs := make(chan error)
+	go func() {
+		for err := range errs {
+			if err == nil {
+				continue
+			}
+
+			close(errs)
+			if pe, ok := err.(common.Printable); ok {
+				pe.Print()
+			}
+
+			parseError = err
+		}
+	}()
 	r := strings.NewReader("")
-	return parser.NewParser("Test"+test, r, "test"), r
+	return parser.NewParser("Test"+test, r, "test", errs), r
 }
 
 func expect(t *testing.T, p *parser.Parser, r *strings.Reader, c testCase) {
+	if parseError != nil {
+		t.Fatal(parseError)
+	}
+
 	t.Log(c.Code)
 	r.Reset(c.Code)
-	got, err := p.TopLevel()
-	if err != nil {
-		if pe, ok := err.(common.Printable); ok {
-			pe.Print()
-		}
-		t.Fatal(err)
-	}
+	got := p.TopLevel()
 	t.Logf("%+v", got)
 	compare(t, "expect", ast.MetaNode{Node: c.Result}, got)
 }
 
 func expectValue(t *testing.T, p *parser.Parser, r *strings.Reader, c testCase) {
+	if parseError != nil {
+		t.Fatal(parseError)
+	}
+
 	t.Log(c.Code)
 	r.Reset(c.Code)
 	got, err := p.ParseValue()
@@ -66,6 +85,10 @@ func expectAllValues(t *testing.T, p *parser.Parser, r *strings.Reader, cases []
 }
 
 func compareLiteral(t *testing.T, note string, mexp, mgot ast.MetaNode) {
+	if parseError != nil {
+		t.Fatal(parseError)
+	}
+
 	exp := mexp.Node
 	got := mgot.Node
 	if exp.Kind() != got.Kind() {
@@ -105,6 +128,10 @@ func compareLiteral(t *testing.T, note string, mexp, mgot ast.MetaNode) {
 }
 
 func compare(t *testing.T, note string, mexp, mgot ast.MetaNode) {
+	if parseError != nil {
+		t.Fatal(parseError)
+	}
+
 	exp := mexp.Node
 	got := mgot.Node
 	if exp == nil && got != nil {

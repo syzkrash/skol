@@ -11,7 +11,7 @@ import (
 )
 
 func TestLiteralBool(t *testing.T) {
-	p, src := makeParser("LiteralBool")
+	p, src := makeParser(t, "LiteralBool")
 
 	expectAllValues(t, p, src, []testCase{{
 		Code:   "*",
@@ -23,7 +23,7 @@ func TestLiteralBool(t *testing.T) {
 }
 
 func TestLiteralChar(t *testing.T) {
-	p, src := makeParser("LiteralChar")
+	p, src := makeParser(t, "LiteralChar")
 
 	cases := []testCase{{
 		Code:   "'\\\\'",
@@ -58,7 +58,7 @@ func TestLiteralChar(t *testing.T) {
 }
 
 func TestLiteralInt(t *testing.T) {
-	p, src := makeParser("LiteralInt")
+	p, src := makeParser(t, "LiteralInt")
 
 	cases := []testCase{{
 		Code:   "-1",
@@ -105,7 +105,7 @@ func TestLiteralInt(t *testing.T) {
 }
 
 func TestLiteralFloat(t *testing.T) {
-	p, src := makeParser("LiteralFloat")
+	p, src := makeParser(t, "LiteralFloat")
 
 	cases := []testCase{{
 		Code:   "1.0",
@@ -135,7 +135,7 @@ func TestLiteralFloat(t *testing.T) {
 }
 
 func TestLiteralString(t *testing.T) {
-	p, src := makeParser("LiteralString")
+	p, src := makeParser(t, "LiteralString")
 
 	escaper := strings.NewReplacer("\\", "\\\\", "\"", "\\\"")
 	cases := []testCase{{
@@ -165,7 +165,7 @@ func TestLiteralString(t *testing.T) {
 }
 
 func TestLiteralArray(t *testing.T) {
-	p, src := makeParser("LiteralArray")
+	p, src := makeParser(t, "LiteralArray")
 
 	expectAllValues(t, p, src, []testCase{{
 		Code:   "[bool]()",

@@ -16,6 +16,7 @@ import (
 // them.
 type Parser struct {
 	lexer  *lexer.Lexer
+	errs   chan error
 	Tree   ast.AST
 	Engine string
 	Scope  *Scope
@@ -23,13 +24,221 @@ type Parser struct {
 
 // NewParser creates a new parser for the given engine, creating a [Lexer] with
 // the given input stream.
-func NewParser(fn string, src io.RuneScanner, eng string) *Parser {
+func NewParser(fn string, src io.RuneScanner, eng string, errOut chan error) *Parser {
 	return &Parser{
 		lexer:  lexer.NewLexer(src, fn),
+		errs:   errOut,
 		Tree:   ast.NewAST(),
 		Engine: eng,
 		Scope:  NewScope(nil),
 	}
+}
+
+// Parse constructs nodes using the internal lexer's tokens and compiles them
+// into an [ast.AST].
+func (p *Parser) Parse() ast.AST {
+	var (
+		n    ast.MetaNode
+		skip bool
+	)
+
+	p.Tree = ast.AST{
+		Vars:     make(map[string]ast.Var),
+		Typedefs: make(map[string]ast.Typedef),
+		Funcs:    make(map[string]ast.Func),
+		Exerns:   make(map[string]ast.Extern),
+		Structs:  make(map[string]ast.Structure),
+	}
+
+	for {
+		tok, err := p.lexer.Next()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			p.errs <- err
+			continue
+		}
+
+		n, skip, err = p.next(tok)
+		if skip {
+			continue
+		}
+		if err != nil {
+			debug.Log(debug.AttrParser, "Error %s", err)
+		} else {
+			debug.Log(debug.AttrParser, "%s node at %s", n.Node.Kind(), n.Where)
+		}
+		if err != nil {
+			p.errs <- err
+			continue
+		}
+
+		switch n.Node.Kind() {
+		case ast.NVarSet:
+			nvs := n.Node.(ast.VarSetNode)
+			p.Tree.Vars[nvs.Var] = ast.Var{
+				Name:  nvs.Var,
+				Value: nvs.Value,
+				Node:  n,
+			}
+			delete(p.Tree.Typedefs, nvs.Var)
+		case ast.NVarDef:
+			nvd := n.Node.(ast.VarDefNode)
+			p.Tree.Typedefs[nvd.Var] = ast.Typedef{
+				Name: nvd.Var,
+				Type: nvd.Type,
+				Node: n,
+			}
+		case ast.NVarSetTyped:
+			nvst := n.Node.(ast.VarSetTypedNode)
+			p.Tree.Vars[nvst.Var] = ast.Var{
+				Name:  nvst.Var,
+				Value: nvst.Value,
+				Node:  n,
+			}
+		case ast.NFuncDef:
+			nfd := n.Node.(ast.FuncDefNode)
+			p.Tree.Funcs[nfd.Name] = ast.Func{
+				Name: nfd.Name,
+				Args: nfd.Proto,
+				Ret:  nfd.Ret,
+				Body: nfd.Body,
+				Node: n,
+			}
+			delete(p.Tree.Exerns, nfd.Name)
+		case ast.NFuncShorthand:
+			nfs := n.Node.(ast.FuncShorthandNode)
+			body := ast.Block{{Where: nfs.Body.Where}}
+			if nfs.Body.Node.Kind().IsValue() {
+				body[0].Node = ast.ReturnNode{Value: nfs.Body}
+			} else {
+				body[0].Node = nfs.Body.Node
+			}
+			p.Tree.Funcs[nfs.Name] = ast.Func{
+				Name: nfs.Name,
+				Args: nfs.Proto,
+				Ret:  nfs.Ret,
+				Body: body,
+				Node: n,
+			}
+			delete(p.Tree.Exerns, nfs.Name)
+		case ast.NFuncExtern:
+			nfe := n.Node.(ast.FuncExternNode)
+			p.Tree.Exerns[nfe.Alias] = ast.Extern{
+				Name:  nfe.Name,
+				Alias: nfe.Alias,
+				Ret:   nfe.Ret,
+				Args:  nfe.Proto,
+				Node:  n,
+			}
+		case ast.NStructDef:
+			nsd := n.Node.(ast.StructDefNode)
+			p.Tree.Structs[nsd.Name] = ast.Structure{
+				Name:   nsd.Name,
+				Fields: nsd.Fields,
+				Node:   n,
+			}
+		default:
+			p.errs <- nodeErr(pe.EIllegalTopLevelNode, n)
+			continue
+		}
+	}
+
+	return p.Tree
+}
+
+// TopLevel parses a top-level statement. One of:
+//   - Function/Extern definition
+//   - Variable defintion and/or assignment
+//   - Structure type definition
+func (p *Parser) TopLevel() (mn ast.MetaNode) {
+	tok, err := p.lexer.Next()
+	if err != nil {
+		p.errs <- err
+		return
+	}
+
+	var skip bool
+	for {
+		mn, skip, err = p.next(tok)
+		if err != nil {
+			p.errs <- err
+			return
+		}
+		if !skip {
+			break
+		}
+	}
+
+	return
+}
+
+// next constructs whatever node is next. If skip is true, no node was produced
+// by the given code and next() needs to be called again to retrieve a node.
+func (p *Parser) next(tok *lexer.Token) (mn ast.MetaNode, skip bool, err error) {
+	var (
+		n ast.Node
+	)
+
+	switch tok.Kind {
+	case lexer.TPunct:
+		pn, _ := tok.Punct()
+		switch pn {
+		case lexer.PFunc:
+			n, err = p.parseFunc()
+		case lexer.PVar:
+			n, err = p.parseVar()
+		case lexer.PIf:
+			n, err = p.parseIf()
+		case lexer.PLoop:
+			n, err = p.parseWhile()
+		case lexer.PStruct:
+			n, err = p.parseStruct()
+		case lexer.PReturn:
+			n, err = p.parseReturn()
+		case lexer.PField:
+			err = p.parseConst()
+			if err != nil {
+				return
+			}
+			skip = true
+		default:
+			err = tokErr(pe.EUnexpectedToken, tok)
+		}
+	case lexer.TIdent:
+		var maybeBang *lexer.Token
+		maybeBang, err = p.lexer.Next()
+		if err != nil {
+			return
+		}
+		if pn, ok := maybeBang.Punct(); !ok || pn != lexer.PExecute {
+			p.lexer.Rollback(maybeBang)
+			err = tokErr(pe.EUnexpectedToken, tok)
+			return
+		}
+		fnm := tok.Raw
+		var argc int
+		f, ok := p.Tree.Funcs[fnm]
+		if !ok {
+			bf, ok := builtins[fnm]
+			if !ok {
+				err = tokErr(pe.EUnknownFunction, tok)
+				return
+			}
+			argc = bf.ArgCount
+		} else {
+			argc = len(f.Args)
+		}
+		n, err = p.parseCall(fnm, argc, tok.Where)
+	default:
+		err = tokErr(pe.EUnexpectedToken, tok)
+	}
+
+	mn.Node = n
+	mn.Where = tok.Where
+
+	return
 }
 
 // parseCall parses a function call. This function requires that an argument
@@ -250,212 +459,6 @@ func (p *Parser) parseBlock() (block ast.Block, err error) {
 		block = append(block, n)
 	}
 
-	return
-}
-
-// next constructs whatever node is next. If skip is true, no node was produced
-// by the given code and next() needs to be called again to retrieve a node.
-func (p *Parser) next(tok *lexer.Token) (mn ast.MetaNode, skip bool, err error) {
-	var (
-		n ast.Node
-	)
-
-	switch tok.Kind {
-	case lexer.TPunct:
-		pn, _ := tok.Punct()
-		switch pn {
-		case lexer.PFunc:
-			n, err = p.parseFunc()
-		case lexer.PVar:
-			n, err = p.parseVar()
-		case lexer.PIf:
-			n, err = p.parseIf()
-		case lexer.PLoop:
-			n, err = p.parseWhile()
-		case lexer.PStruct:
-			n, err = p.parseStruct()
-		case lexer.PReturn:
-			n, err = p.parseReturn()
-		case lexer.PField:
-			err = p.parseConst()
-			if err != nil {
-				return
-			}
-			skip = true
-		default:
-			err = tokErr(pe.EUnexpectedToken, tok)
-		}
-	case lexer.TIdent:
-		var maybeBang *lexer.Token
-		maybeBang, err = p.lexer.Next()
-		if err != nil {
-			return
-		}
-		if pn, ok := maybeBang.Punct(); !ok || pn != lexer.PExecute {
-			p.lexer.Rollback(maybeBang)
-			err = tokErr(pe.EUnexpectedToken, tok)
-			return
-		}
-		fnm := tok.Raw
-		var argc int
-		f, ok := p.Tree.Funcs[fnm]
-		if !ok {
-			bf, ok := builtins[fnm]
-			if !ok {
-				err = tokErr(pe.EUnknownFunction, tok)
-				return
-			}
-			argc = bf.ArgCount
-		} else {
-			argc = len(f.Args)
-		}
-		n, err = p.parseCall(fnm, argc, tok.Where)
-	default:
-		err = tokErr(pe.EUnexpectedToken, tok)
-	}
-
-	mn.Node = n
-	mn.Where = tok.Where
-
-	return
-}
-
-// TopLevel parses a top-level statement. One of:
-//   - Function/Extern definition
-//   - Variable defintion and/or assignment
-//   - Structure type definition
-func (p *Parser) TopLevel() (mn ast.MetaNode, err error) {
-	tok, err := p.lexer.Next()
-	if err != nil {
-		return
-	}
-
-	var skip bool
-	for {
-		mn, skip, err = p.next(tok)
-		if err != nil {
-			return
-		}
-		if !skip {
-			break
-		}
-	}
-
-	return
-}
-
-// Parse constructs nodes using the internal lexer's tokens and compiles them
-// into an [ast.AST].
-func (p *Parser) Parse() (tree ast.AST, err error) {
-	var (
-		tok  *lexer.Token
-		n    ast.MetaNode
-		skip bool
-	)
-
-	p.Tree = ast.AST{
-		Vars:     make(map[string]ast.Var),
-		Typedefs: make(map[string]ast.Typedef),
-		Funcs:    make(map[string]ast.Func),
-		Exerns:   make(map[string]ast.Extern),
-		Structs:  make(map[string]ast.Structure),
-	}
-
-	for {
-		tok, err = p.lexer.Next()
-		if errors.Is(err, io.EOF) {
-			err = nil
-			break
-		}
-		if err != nil {
-			return
-		}
-
-		n, skip, err = p.next(tok)
-		if skip {
-			continue
-		}
-		if err != nil {
-			debug.Log(debug.AttrParser, "Error %s", err)
-		} else {
-			debug.Log(debug.AttrParser, "%s node at %s", n.Node.Kind(), n.Where)
-		}
-		if err != nil {
-			return
-		}
-
-		switch n.Node.Kind() {
-		case ast.NVarSet:
-			nvs := n.Node.(ast.VarSetNode)
-			p.Tree.Vars[nvs.Var] = ast.Var{
-				Name:  nvs.Var,
-				Value: nvs.Value,
-				Node:  n,
-			}
-			delete(p.Tree.Typedefs, nvs.Var)
-		case ast.NVarDef:
-			nvd := n.Node.(ast.VarDefNode)
-			p.Tree.Typedefs[nvd.Var] = ast.Typedef{
-				Name: nvd.Var,
-				Type: nvd.Type,
-				Node: n,
-			}
-		case ast.NVarSetTyped:
-			nvst := n.Node.(ast.VarSetTypedNode)
-			p.Tree.Vars[nvst.Var] = ast.Var{
-				Name:  nvst.Var,
-				Value: nvst.Value,
-				Node:  n,
-			}
-		case ast.NFuncDef:
-			nfd := n.Node.(ast.FuncDefNode)
-			p.Tree.Funcs[nfd.Name] = ast.Func{
-				Name: nfd.Name,
-				Args: nfd.Proto,
-				Ret:  nfd.Ret,
-				Body: nfd.Body,
-				Node: n,
-			}
-			delete(p.Tree.Exerns, nfd.Name)
-		case ast.NFuncShorthand:
-			nfs := n.Node.(ast.FuncShorthandNode)
-			body := ast.Block{{Where: nfs.Body.Where}}
-			if nfs.Body.Node.Kind().IsValue() {
-				body[0].Node = ast.ReturnNode{Value: nfs.Body}
-			} else {
-				body[0].Node = nfs.Body.Node
-			}
-			p.Tree.Funcs[nfs.Name] = ast.Func{
-				Name: nfs.Name,
-				Args: nfs.Proto,
-				Ret:  nfs.Ret,
-				Body: body,
-				Node: n,
-			}
-			delete(p.Tree.Exerns, nfs.Name)
-		case ast.NFuncExtern:
-			nfe := n.Node.(ast.FuncExternNode)
-			p.Tree.Exerns[nfe.Alias] = ast.Extern{
-				Name:  nfe.Name,
-				Alias: nfe.Alias,
-				Ret:   nfe.Ret,
-				Args:  nfe.Proto,
-				Node:  n,
-			}
-		case ast.NStructDef:
-			nsd := n.Node.(ast.StructDefNode)
-			p.Tree.Structs[nsd.Name] = ast.Structure{
-				Name:   nsd.Name,
-				Fields: nsd.Fields,
-				Node:   n,
-			}
-		default:
-			err = nodeErr(pe.EIllegalTopLevelNode, n)
-			return
-		}
-	}
-
-	tree = p.Tree
 	return
 }
 

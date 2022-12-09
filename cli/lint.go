@@ -2,16 +2,19 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"sync"
 
 	"github.com/syzkrash/skol/ast"
+	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/lint"
 	"github.com/syzkrash/skol/parser"
 )
 
+// LintCommand defines the `skol lint` command.
 var LintCommand = Command{
 	Name:  "lint",
 	Short: "Check a file for non-critical errors.",
@@ -37,10 +40,33 @@ func runLint(args []string) error {
 		return pe.New(pe.EBadInput).Cause(err)
 	}
 
-	p := parser.NewParser(input, bytes.NewReader(srcraw), "lint")
-	tree, err := p.Parse()
-	if err != nil {
-		return err
+	errs := make(chan error)
+	var errOne error
+
+	go func() {
+		for err := range errs {
+			if err == nil {
+				continue
+			}
+
+			if errOne == nil {
+				errOne = err
+				continue
+			}
+
+			if perr, ok := err.(common.Printable); ok {
+				perr.Print()
+			} else {
+				fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+			}
+		}
+	}()
+
+	p := parser.NewParser(input, bytes.NewReader(srcraw), "lint", errs)
+	tree := p.Parse()
+	close(errs)
+	if errOne != nil {
+		return errOne
 	}
 
 	wg := sync.WaitGroup{}

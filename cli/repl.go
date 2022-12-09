@@ -2,6 +2,7 @@ package cli
 
 import "github.com/syzkrash/skol/common/pe"
 
+// ReplCommand represents the `skol repl` command.
 var ReplCommand = Command{
 	Name:  "repl",
 	Short: "Start a REPL session",

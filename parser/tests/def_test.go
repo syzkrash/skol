@@ -8,7 +8,7 @@ import (
 )
 
 func TestVarDef(t *testing.T) {
-	p, src := makeParser("VarDef")
+	p, src := makeParser(t, "VarDef")
 
 	expectAll(t, p, src, []testCase{{
 		Code: "%SomeBool/bool",
@@ -40,7 +40,7 @@ func TestVarDef(t *testing.T) {
 }
 
 func TestVarSet(t *testing.T) {
-	p, src := makeParser("VarSet")
+	p, src := makeParser(t, "VarSet")
 
 	expectAll(t, p, src, []testCase{{
 		Code: "%B0: *",
@@ -72,7 +72,7 @@ func TestVarSet(t *testing.T) {
 }
 
 func TestVarSetTyped(t *testing.T) {
-	p, src := makeParser("VarSetTyped")
+	p, src := makeParser(t, "VarSetTyped")
 
 	expectAll(t, p, src, []testCase{{
 		Code: "%ExplicitBool/b:/",
@@ -109,7 +109,7 @@ func TestVarSetTyped(t *testing.T) {
 }
 
 func TestFuncDef(t *testing.T) {
-	p, src := makeParser("FuncDef")
+	p, src := makeParser(t, "FuncDef")
 
 	expectAll(t, p, src, []testCase{{
 		Code: "$a()",
@@ -207,7 +207,7 @@ func TestFuncDef(t *testing.T) {
 }
 
 func TestFuncShorthand(t *testing.T) {
-	p, src := makeParser("FuncDef")
+	p, src := makeParser(t, "FuncDef")
 
 	expectAll(t, p, src, []testCase{{
 		Code: "$Add1/int n/int: add! n 1",
@@ -287,7 +287,7 @@ func TestFuncShorthand(t *testing.T) {
 }
 
 func TestFuncExtern(t *testing.T) {
-	p, src := makeParser("FuncExtern")
+	p, src := makeParser(t, "FuncExtern")
 
 	expectAll(t, p, src, []testCase{{
 		Code: "$exit code/int?",
@@ -319,7 +319,7 @@ func TestFuncExtern(t *testing.T) {
 }
 
 func TestStructDef(t *testing.T) {
-	p, src := makeParser("StructDef")
+	p, src := makeParser(t, "StructDef")
 
 	expectAll(t, p, src, []testCase{{
 		Code: "@V2I(x/i y/i)",

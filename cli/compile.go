@@ -15,6 +15,7 @@ import (
 	"github.com/syzkrash/skol/typecheck"
 )
 
+// CompileCommand represents the `skol compile` command
 var CompileCommand = Command{
 	Name:  "compile",
 	Short: "Compile a file",
@@ -67,10 +68,33 @@ func compile(args []string) error {
 		return pe.New(pe.EUnknownEngine).Section("Engine", engine)
 	}
 
-	p := parser.NewParser(input, bytes.NewReader(srcraw), engine)
-	ast, err := p.Parse()
-	if err != nil {
-		return err
+	errs := make(chan error)
+	var errOne error
+
+	go func() {
+		for err := range errs {
+			if err == nil {
+				continue
+			}
+
+			if errOne == nil {
+				errOne = err
+				continue
+			}
+
+			if perr, ok := err.(common.Printable); ok {
+				perr.Print()
+			} else {
+				fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+			}
+		}
+	}()
+
+	p := parser.NewParser(input, bytes.NewReader(srcraw), engine, errs)
+	ast := p.Parse()
+	if errOne != nil {
+		close(errs)
+		return errOne
 	}
 
 	// cool note:
@@ -78,31 +102,11 @@ func compile(args []string) error {
 	// for printing to stderr. Because printing to stderr is quite slow, this does
 	// offer a very slight speedup, especially in case of many errors.
 
-	errs := make(chan error)
+	errs = make(chan error)
+	errOne = nil
 
-	go func() {
-		typecheck.NewChecker(errs).Check(ast)
-		close(errs)
-	}()
-
-	var errOne error
-
-	for err := range errs {
-		if err == nil {
-			continue
-		}
-
-		if errOne == nil {
-			errOne = err
-			continue
-		}
-
-		if perr, ok := err.(common.Printable); ok {
-			perr.Print()
-		} else {
-			fmt.Fprintf(os.Stderr, "Error: %s", err)
-		}
-	}
+	typecheck.NewChecker(errs).Check(ast)
+	close(errs)
 
 	if errOne != nil {
 		return err
