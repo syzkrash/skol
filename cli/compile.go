@@ -3,11 +3,13 @@ package cli
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 
 	"github.com/syzkrash/skol/codegen"
 	"github.com/syzkrash/skol/codegen/py"
+	"github.com/syzkrash/skol/common"
 	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/parser"
 	"github.com/syzkrash/skol/typecheck"
@@ -71,12 +73,39 @@ func compile(args []string) error {
 		return err
 	}
 
-	errs := typecheck.NewChecker().Check(ast)
-	if len(errs) > 0 {
-		for _, e := range errs[1:] {
-			e.Print()
+	// cool note:
+	// It is neat to have a separate goroutine for typechecking and a separate one
+	// for printing to stderr. Because printing to stderr is quite slow, this does
+	// offer a very slight speedup, especially in case of many errors.
+
+	errs := make(chan error)
+
+	go func() {
+		typecheck.NewChecker(errs).Check(ast)
+		close(errs)
+	}()
+
+	var errOne error
+
+	for err := range errs {
+		if err == nil {
+			continue
 		}
-		return errs[0]
+
+		if errOne == nil {
+			errOne = err
+			continue
+		}
+
+		if perr, ok := err.(common.Printable); ok {
+			perr.Print()
+		} else {
+			fmt.Fprintf(os.Stderr, "Error: %s", err)
+		}
+	}
+
+	if errOne != nil {
+		return err
 	}
 
 	var ephBuf *bytes.Buffer

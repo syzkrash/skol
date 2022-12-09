@@ -54,13 +54,34 @@ func runAst(args []string) error {
 		return err
 	}
 
-	errs := typecheck.NewChecker().Check(tree)
-	if len(errs) > 0 {
-		for _, e := range errs {
-			e.Print()
+	errs := make(chan error)
+
+	go func() {
+		typecheck.NewChecker(errs).Check(tree)
+		close(errs)
+	}()
+
+	var errOne error
+
+	for err := range errs {
+		if err == nil {
+			continue
 		}
-		fmt.Fprintf(os.Stderr, "Found %d type error(s)\n", len(errs))
-		return nil
+
+		if errOne == nil {
+			errOne = err
+			continue
+		}
+
+		if perr, ok := err.(common.Printable); ok {
+			perr.Print()
+		} else {
+			fmt.Fprintf(os.Stderr, "Error: %s", err)
+		}
+	}
+
+	if errOne != nil {
+		return err
 	}
 
 	if asJSON {

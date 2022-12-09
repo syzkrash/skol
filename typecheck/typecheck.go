@@ -1,51 +1,38 @@
 package typecheck
 
 import (
-	"github.com/qeaml/all/slices"
 	"github.com/syzkrash/skol/ast"
 	"github.com/syzkrash/skol/common/pe"
 	"github.com/syzkrash/skol/parser/values/types"
 )
 
-func typeMismatch(mn ast.MetaNode, want, got types.Type) *pe.PrettyError {
-	return pe.New(pe.ETypeMismatch).Section("Wanted type", "%s", want).Section("Got type", "%s", got).Section("Caused by", "`%s` node at %s", mn.Node.Kind(), mn.Where)
-}
-
-func varRetype(mn ast.MetaNode, old, new types.Type) *pe.PrettyError {
-	return pe.New(pe.EVarTypeChanged).Section("Original type", "%s", old).Section("New type", "%s", new).Section("Caused by", "`%s` node at %s", mn.Node.Kind(), mn.Where)
-}
-
-func nodeErr(c pe.ErrorCode, mn ast.MetaNode) *pe.PrettyError {
-	return pe.New(c).Section("Caused by", "`%s` node at %s", mn.Node.Kind(), mn.Where)
-}
-
 // Checker ensures type correctness of an AST.
 type Checker struct {
 	scope *scope
+	errs  chan error
 }
 
 // NewChecker creates a blank Checker.
-func NewChecker() *Checker {
+func NewChecker(errOut chan error) *Checker {
 	return &Checker{
 		scope: &scope{
 			parent: nil,
 			vars:   make(map[string]types.Type),
 			funcs:  make(map[string]funcproto),
 		},
+		errs: errOut,
 	}
 }
 
 // Check thoroughly inspects the provided AST for any typing-related errors
 // that may have occured.
-func (c *Checker) Check(tree ast.AST) (errs []*pe.PrettyError) {
+func (c *Checker) Check(tree ast.AST) {
 	for _, v := range tree.Typedefs {
 		c.scope.vars[v.Name] = v.Type
 	}
 	for _, v := range tree.Vars {
-		t, err := c.typeOf(v.Value)
-		if err != nil {
-			errs = append(errs, err)
-		} else {
+		t, ok := c.typeOf(v.Value)
+		if ok {
 			c.scope.vars[v.Name] = t
 		}
 	}
@@ -62,16 +49,11 @@ func (c *Checker) Check(tree ast.AST) (errs []*pe.PrettyError) {
 		for _, a := range f.Args {
 			args[a.Name] = a.Type
 		}
-		errs = append(errs, c.checkFunc(args, f.Ret, f.Body)...)
+		c.checkFunc(args, f.Ret, f.Body)
 	}
-
-	errs = slices.Filter(errs, func(e *pe.PrettyError) bool {
-		return e != nil
-	})
-	return
 }
 
-func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) (errs []*pe.PrettyError) {
+func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) {
 	n := mn.Node
 
 	switch n.Kind() {
@@ -79,66 +61,60 @@ func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) (errs []*pe.PrettyE
 	case ast.NStruct:
 		nstruct := n.(ast.StructNode)
 		for i, a := range nstruct.Args {
-			at, err := c.typeOf(a)
-			if err != nil {
-				errs = append(errs, err)
+			at, ok := c.typeOf(a)
+			if !ok {
 				continue
 			}
 			ft := nstruct.Type.Fields[i].Type
 			if !ft.Equals(at) {
-				errs = append(errs, typeMismatch(a, ft, at))
+				c.typeMismatch(a, ft, at)
 			}
 		}
 	case ast.NArray:
 		narray := n.(ast.ArrayNode)
 		for _, e := range narray.Elems {
-			et, err := c.typeOf(e)
-			if err != nil {
-				errs = append(errs, err)
+			et, ok := c.typeOf(e)
+			if !ok {
 				continue
 			}
 			if !narray.Type.Equals(et) {
-				errs = append(errs, typeMismatch(e, narray.Type, et))
+				c.typeMismatch(e, narray.Type, et)
 			}
 		}
 
 	// control flow
 	case ast.NIf:
 		nif := n.(ast.IfNode)
-		errs = append(errs, c.checkBranch(nif.Main, ret)...)
+		c.checkBranch(nif.Main, ret)
 		for _, b := range nif.Other {
-			errs = append(errs, c.checkBranch(b, ret)...)
+			c.checkBranch(b, ret)
 		}
-		errs = append(errs, c.checkBlock(nif.Else, ret)...)
+		c.checkBlock(nif.Else, ret)
 	case ast.NWhile:
 		nwhile := n.(ast.WhileNode)
-		if err := c.checkCond(nwhile.Cond); err != nil {
-			errs = append(errs, err)
-		}
-		errs = append(errs, c.checkBlock(nwhile.Block, ret)...)
+		c.checkCond(nwhile.Cond)
+		c.checkBlock(nwhile.Block, ret)
 	case ast.NReturn:
 		nreturn := n.(ast.ReturnNode)
-		rt, err := c.typeOf(nreturn.Value)
-		if err != nil {
-			errs = append(errs, err)
+		rt, ok := c.typeOf(nreturn.Value)
+		if !ok {
 			return
 		}
 		if !ret.Equals(rt) {
-			errs = append(errs, typeMismatch(nreturn.Value, ret, rt))
+			c.typeMismatch(nreturn.Value, ret, rt)
 		}
 
 	// definitions
 	case ast.NVarSet:
 		nvarset := n.(ast.VarSetNode)
-		errs = append(errs, c.checkNode(nvarset.Value, ret)...)
-		nvt, err := c.typeOf(nvarset.Value)
-		if err != nil {
-			errs = append(errs, err)
+		c.checkNode(nvarset.Value, ret)
+		nvt, ok := c.typeOf(nvarset.Value)
+		if !ok {
 			return
 		}
 		if ovt, ok := c.scope.getVar(nvarset.Var); ok {
 			if !ovt.Equals(nvt) {
-				errs = append(errs, typeMismatch(mn, ovt, nvt))
+				c.typeMismatch(mn, ovt, nvt)
 			}
 		} else {
 			c.scope.setVar(nvarset.Var, nvt)
@@ -148,22 +124,21 @@ func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) (errs []*pe.PrettyE
 		c.scope.setVar(nvardef.Var, nvardef.Type)
 	case ast.NVarSetTyped:
 		nvarsettyped := n.(ast.VarSetTypedNode)
-		errs = append(errs, c.checkNode(nvarsettyped.Value, ret)...)
-		nvt, err := c.typeOf(nvarsettyped.Value)
-		if err != nil {
-			errs = append(errs, err)
+		c.checkNode(nvarsettyped.Value, ret)
+		nvt, ok := c.typeOf(nvarsettyped.Value)
+		if !ok {
 			return
 		}
 		ovt, ok := c.scope.getVar(nvarsettyped.Var)
 		if ok {
 			if !ovt.Equals(nvarsettyped.Type) {
-				errs = append(errs, varRetype(nvarsettyped.Value, ovt, nvarsettyped.Type))
+				c.varRetype(nvarsettyped.Value, ovt, nvarsettyped.Type)
 			}
 			if !ovt.Equals(nvt) {
-				errs = append(errs, typeMismatch(nvarsettyped.Value, ovt, nvt))
+				c.typeMismatch(nvarsettyped.Value, ovt, nvt)
 			}
 			if !ovt.Equals(nvarsettyped.Type) {
-				errs = append(errs, typeMismatch(nvarsettyped.Value, ovt, nvt))
+				c.typeMismatch(nvarsettyped.Value, ovt, nvt)
 			}
 		}
 	case ast.NFuncDef:
@@ -172,7 +147,7 @@ func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) (errs []*pe.PrettyE
 		for _, a := range nfuncdef.Proto {
 			args[a.Name] = a.Type
 		}
-		errs = append(errs, c.checkFunc(args, nfuncdef.Ret, nfuncdef.Body)...)
+		c.checkFunc(args, nfuncdef.Ret, nfuncdef.Body)
 		c.scope.funcs[nfuncdef.Name] = funcproto{
 			Args: nfuncdef.Proto,
 			Ret:  nfuncdef.Ret,
@@ -189,9 +164,8 @@ func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) (errs []*pe.PrettyE
 		nfunccall := n.(ast.FuncCallNode)
 		args := make([]types.Type, len(nfunccall.Args))
 		for i, a := range nfunccall.Args {
-			t, err := c.typeOf(a)
-			if err != nil {
-				errs = append(errs, err)
+			t, ok := c.typeOf(a)
+			if !ok {
 				return
 			}
 			args[i] = t
@@ -200,21 +174,21 @@ func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) (errs []*pe.PrettyE
 		if !ok {
 			bf, ok := builtins[nfunccall.Func]
 			if !ok {
-				errs = append(errs, nodeErr(pe.EUnknownFunction, mn))
+				c.nodeErr(pe.EUnknownFunction, mn)
 				return
 			}
 			if _, err := bf(mn, args); err != nil {
-				errs = append(errs, err)
+				c.errs <- err
 			}
 			return
 		}
 		if len(args) != len(f.Args) {
-			errs = append(errs, nodeErr(pe.ENeedMoreArgs, mn))
+			c.nodeErr(pe.ENeedMoreArgs, mn)
 			return
 		}
 		for i := 0; i < len(args); i++ {
 			if !f.Args[i].Type.Equals(args[i]) {
-				errs = append(errs, typeMismatch(mn, f.Args[i].Type, args[i]))
+				c.typeMismatch(mn, f.Args[i].Type, args[i])
 			}
 		}
 	}
@@ -223,44 +197,42 @@ func (c *Checker) checkNode(mn ast.MetaNode, ret types.Type) (errs []*pe.PrettyE
 
 // checkFunc ensures type correctness given the function arguments' types and
 // the return type.
-func (c *Checker) checkFunc(args map[string]types.Type, ret types.Type, body ast.Block) (errs []*pe.PrettyError) {
+func (c *Checker) checkFunc(args map[string]types.Type, ret types.Type, body ast.Block) {
 	c.scope = c.scope.sub()
 	for n, t := range args {
 		c.scope.vars[n] = t
 	}
-	errs = c.checkBlock(body, ret)
+	c.checkBlock(body, ret)
 	c.scope = c.scope.parent
 	return
 }
 
-func (c *Checker) checkBranch(b ast.Branch, ret types.Type) (errs []*pe.PrettyError) {
-	if err := c.checkCond(b.Cond); err != nil {
-		errs = append(errs, err)
-	}
-	errs = append(errs, c.checkBlock(b.Block, ret)...)
-	return
+func (c *Checker) checkBranch(b ast.Branch, ret types.Type) {
+	c.checkCond(b.Cond)
+	c.checkBlock(b.Block, ret)
 }
 
-func (c *Checker) checkCond(mn ast.MetaNode) (err *pe.PrettyError) {
-	ct, err := c.typeOf(mn)
-	if err != nil {
-		return
+func (c *Checker) checkCond(mn ast.MetaNode) bool {
+	ct, ok := c.typeOf(mn)
+	if !ok {
+		return false
 	}
 	if !types.Bool.Equals(ct) {
-		err = typeMismatch(mn, types.Bool, ct)
+		c.typeMismatch(mn, types.Bool, ct)
+		return false
 	}
-	return
+	return true
 }
 
-func (c *Checker) checkBlock(b ast.Block, ret types.Type) (errs []*pe.PrettyError) {
+func (c *Checker) checkBlock(b ast.Block, ret types.Type) {
 	for _, mn := range b {
-		errs = append(errs, c.checkNode(mn, ret)...)
+		c.checkNode(mn, ret)
 	}
 	return
 }
 
 // typeOf determines the type of any abstract AST node.
-func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *pe.PrettyError) {
+func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, ok bool) {
 	n := mn.Node
 
 	switch n.Kind() {
@@ -285,52 +257,66 @@ func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *pe.PrettyError) {
 		nfunccall := n.(ast.FuncCallNode)
 		args := make([]types.Type, len(nfunccall.Args))
 		for i, a := range nfunccall.Args {
-			at, err_ := c.typeOf(a)
-			if err_ != nil {
-				err = err_
+			var at types.Type
+			at, ok = c.typeOf(a)
+			if !ok {
 				return
 			}
 			args[i] = at
 		}
-		f, ok := c.scope.getFunc(nfunccall.Func)
+		var f funcproto
+		f, ok = c.scope.getFunc(nfunccall.Func)
 		if !ok {
-			bf, ok := builtins[nfunccall.Func]
+			var bf builtin
+			bf, ok = builtins[nfunccall.Func]
 			if !ok {
-				err = nodeErr(pe.EUnknownFunction, mn)
+				c.nodeErr(pe.EUnknownFunction, mn)
 				return
 			}
+			var err error
 			t, err = bf(mn, args)
+			if err != nil {
+				ok = false
+				c.errs <- err
+			}
 			return
 		}
 		if len(args) != len(f.Args) {
-			err = nodeErr(pe.ENeedMoreArgs, mn)
+			c.nodeErr(pe.ENeedMoreArgs, mn)
+			ok = false
 			return
 		}
 		for i := 0; i < len(args); i++ {
 			if !f.Args[i].Type.Equals(args[i]) {
-				err = typeMismatch(mn, f.Args[i].Type, args[i])
+				c.typeMismatch(mn, f.Args[i].Type, args[i])
+				ok = false
 				return
 			}
 		}
 		t = f.Ret
 
 	default:
-		if sel, ok := n.(ast.Selector); !ok {
-			err = nodeErr(pe.ETypeOfUnimplemented, mn)
+		var sel ast.Selector
+		if sel, ok = n.(ast.Selector); !ok {
+			c.nodeErr(pe.ETypeOfUnimplemented, mn)
+			ok = false
 		} else {
 			p := sel.Path()
 			if len(p) < 1 {
-				err = nodeErr(pe.EEmptySelector, mn)
+				c.nodeErr(pe.EEmptySelector, mn)
+				ok = false
 				return
 			}
 			root := p[0]
 			if !root.IsName() {
-				err = nodeErr(pe.EBadSelectorRoot, mn)
+				c.nodeErr(pe.EBadSelectorRoot, mn)
+				ok = false
 				return
 			}
-			rootType, ok := c.scope.getVar(root.Name)
+			var rootType types.Type
+			rootType, ok = c.scope.getVar(root.Name)
 			if !ok {
-				err = nodeErr(pe.EUnknownVariable, mn)
+				c.nodeErr(pe.EUnknownVariable, mn)
 				return
 			}
 			t = rootType
@@ -341,18 +327,21 @@ func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *pe.PrettyError) {
 				switch {
 				case e.IsCast():
 					if !t.Equals(e.Cast) {
-						err = typeMismatch(mn, e.Cast, t)
+						c.typeMismatch(mn, e.Cast, t)
+						ok = false
 						return
 					}
 					t = e.Cast
 				case e.IsName():
 					if t.Prim() != types.PStruct {
-						err = nodeErr(pe.EBadSelectorParent, mn)
+						c.nodeErr(pe.EBadSelectorParent, mn)
+						ok = false
 						return
 					}
-					fieldType, ok := t.(types.StructType).FieldType(e.Name)
+					var fieldType types.Type
+					fieldType, ok = t.(types.StructType).FieldType(e.Name)
 					if !ok {
-						err = nodeErr(pe.EUnknownField, mn)
+						c.nodeErr(pe.EUnknownField, mn)
 						return
 					}
 					t = fieldType
@@ -362,7 +351,8 @@ func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *pe.PrettyError) {
 						return
 					}
 					if t.Prim() != types.PArray {
-						err = nodeErr(pe.EBadIndexParent, mn)
+						c.nodeErr(pe.EBadIndexParent, mn)
+						ok = false
 						return
 					}
 					t = types.Result(t.(types.ArrayType).Element)
@@ -372,4 +362,24 @@ func (c *Checker) typeOf(mn ast.MetaNode) (t types.Type, err *pe.PrettyError) {
 
 	}
 	return
+}
+
+func (c *Checker) typeMismatch(mn ast.MetaNode, want, got types.Type) {
+	c.errs <- typeMismatch(mn, want, got)
+}
+
+func (c *Checker) varRetype(mn ast.MetaNode, old, new types.Type) {
+	c.errs <- pe.New(pe.EVarTypeChanged).Section("Original type", "%s", old).Section("New type", "%s", new).Section("Caused by", "`%s` node at %s", mn.Node.Kind(), mn.Where)
+}
+
+func (c *Checker) nodeErr(e pe.ErrorCode, mn ast.MetaNode) {
+	c.errs <- nodeErr(e, mn)
+}
+
+func typeMismatch(mn ast.MetaNode, want, got types.Type) *pe.PrettyError {
+	return pe.New(pe.ETypeMismatch).Section("Wanted type", "%s", want).Section("Got type", "%s", got).Section("Caused by", "`%s` node at %s", mn.Node.Kind(), mn.Where)
+}
+
+func nodeErr(e pe.ErrorCode, mn ast.MetaNode) *pe.PrettyError {
+	return pe.New(e).Section("Caused by", "`%s` node at %s", mn.Node.Kind(), mn.Where)
 }
