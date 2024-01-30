@@ -3,6 +3,11 @@
 **skol** (for **S**yz**k**rash **O**rdinary **L**anguage) is a minimalist,
 keyword-less language for computers.
 
+## Bye-bye!
+
+Skol is no longer in development. If you wish it was, however, feel free to
+fork the repository and keep it going.
+
 ## Quickstart
 
 Skol is not yet ready to be used in production, therefore you have to build it
